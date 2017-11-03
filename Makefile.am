@@ -31,6 +31,6 @@ maintainer-clean-local:
 	-rm m4/lt~obsolete.m4
 	-rm libtool
 	-rm stamp-h1
-	find . -type f -name '*~' -exec rm -f '{}' \;
-	find . -name ".libs" -exec rm -rf '{}' \;
-	find . -name ".dirstamp" -exec rm -rf '{}' \;
+	-find . -type f -name '*~' -exec rm -f '{}' \;
+	-find . -name ".libs" -exec rm -rf '{}' \;
+	-find . -name ".dirstamp" -exec rm -rf '{}' \;
