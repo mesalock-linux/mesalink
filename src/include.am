@@ -1,0 +1,4 @@
+target/release/libmesalink.$(DYLIB_EXTENSION):
+	cargo build --release
+clean-local:
+	-cargo clean

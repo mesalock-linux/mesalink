@@ -1,0 +1,15 @@
+[package]
+name = "mesalink"
+version = "0.0.1"
+authors = ["Yiming Jing <jingyiming@baidu.com>"]
+description = "Mesalink is an OpenSSL-compatible TLS library based on Rustls and Ring"
+
+[lib]
+name = "mesalink"
+crate-type = ["cdylib"]
+
+[dependencies]
+rustls = { git = "https://github.com/ctz/rustls" }
+libc = "0.2"
+webpki = { git = "https://github.com/briansmith/webpki" }
+webpki-roots = { git = "https://github.com/briansmith/webpki-roots", branch = "webpki-github" }
