@@ -22,7 +22,7 @@
 //#include <mesalink/version.h>
 #include <mesalink/visibility.h>
 
-typedef struct MESALINK             MESALINK;
+typedef struct MESALINK_SSL         MESALINK_SSL;
 typedef struct MESALINK_METHOD      MESALINK_METHOD;
 typedef struct MEASLINK_CTX         MESALINK_CTX;
 
@@ -34,14 +34,14 @@ MESALINK_API MESALINK_METHOD *mesalink_TLSv1_2_client_method();
 //MESALINK_API MESALINK_METHOD *mesalink_TLSv1_3_client_method();
 
 MESALINK_API MESALINK_CTX*  mesalink_CTX_new(MESALINK_METHOD*);
-MESALINK_API MESALINK*      mesalink_new(MESALINK_CTX*);
-MESALINK_API int            mesalink_set_fd(MESALINK*, int);
-MESALINK_API int            mesalink_connect(MESALINK*);
-MESALINK_API int            mesalink_write(MESALINK*, const void*, int);
-MESALINK_API int            mesalink_read(MESALINK*, void*, int);
+MESALINK_API MESALINK_SSL*  mesalink_SSL_new(MESALINK_CTX*);
+MESALINK_API int            mesalink_SSL_set_fd(MESALINK_SSL*, int);
+MESALINK_API int            mesalink_SSL_connect(MESALINK_SSL*);
+MESALINK_API int            mesalink_SSL_write(MESALINK_SSL*, const void*, int);
+MESALINK_API int            mesalink_SSL_read(MESALINK_SSL*, void*, int);
 
 MESALINK_API void           mesalink_CTX_free(MESALINK_CTX*);
-MESALINK_API void           mesalink_free(MESALINK*);
+MESALINK_API void           mesalink_SSL_free(MESALINK_SSL*);
 
 #ifdef __cplusplus
     } /* extern C */

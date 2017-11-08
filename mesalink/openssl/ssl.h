@@ -22,7 +22,7 @@
     extern "C" {
 #endif 
 
-typedef MESALINK        SSL;
+typedef MESALINK_SSL    SSL;
 typedef MESALINK_METHOD SSL_METHOD;
 typedef MESALINK_CTX    SSL_CTX;
 
@@ -33,14 +33,14 @@ typedef MESALINK_CTX    SSL_CTX;
 //#define TLSv1_3_client_method   mesalink_TLSv1_3_client_method
 
 #define SSL_CTX_new             mesalink_CTX_new
-#define SSL_new                 mesalink_new
-#define SSL_set_fd              mesalink_set_fd
-#define SSL_connect             mesalink_connect
-#define SSL_write               mesalink_write
-#define SSL_read                mesalink_read
+#define SSL_new                 mesalink_SSL_new
+#define SSL_set_fd              mesalink_SSL_set_fd
+#define SSL_connect             mesalink_SSL_connect
+#define SSL_write               mesalink_SSL_write
+#define SSL_read                mesalink_SSL_read
 
 #define SSL_CTX_free            mesalink_CTX_free
-#define SSL_free                mesalink_free
+#define SSL_free                mesalink_SSL_free
 
 #ifdef __cplusplus
     } /* extern C */
