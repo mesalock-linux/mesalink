@@ -41,7 +41,7 @@ int main(void) {
         return -1;
     }
 
-    if ((hp = gethostbyname("google.com")) == NULL) {
+    if ((hp = gethostbyname("cloudflare.com")) == NULL) {
         printf("[-] Gethostname error\n");
         return -1;
     }
@@ -67,14 +67,18 @@ int main(void) {
         printf("[-] Socket not connected");
         return -1;
     } else {
-        int sendlen, recvlen;
-        sprintf(sendbuf, request, "google.com");
+        int sendlen, recvlen, total_recv_len;
+        sprintf(sendbuf, request, "blog.cloudflare.com");
         //printf("[+] Connected with %s cipher suites\n", mesalink_get_cipher(ssl));
         sendlen = SSL_write(ssl, sendbuf, strlen(sendbuf));
         printf("[+] Sent %d bytes\n\n%s\n", sendlen, sendbuf);
-        recvlen = SSL_read(ssl, recvbuf, sizeof(recvbuf));
-        recvbuf[recvlen] = 0;
-        printf("[+] Received %ld bytes\n\n%s\n\n", strlen(recvbuf), recvbuf);
+        do {
+            recvlen = SSL_read(ssl, recvbuf, sizeof(recvbuf));
+            recvbuf[recvlen] = 0;
+            total_recv_len += strlen(recvbuf);
+            printf("%s", recvbuf);
+        } while (recvlen > 0);
+        printf("[+] Received %d bytes\n", total_recv_len);
         SSL_free(ssl);
     }
     close(sockfd);

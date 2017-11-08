@@ -30,19 +30,19 @@ const MAGIC: u32 = 0xc0d4c5a9;
 #[repr(C)]
 pub struct MESALINK_METHOD {
     magic: u32,
-    config: Arc<ClientConfig>,
+    tls_version: ProtocolVersion,
 }
 
 #[repr(C)]
 pub struct MESALINK_CTX {
     magic: u32,
-    session: ClientSession,
+    config: Arc<ClientConfig>,
 }
 
 #[repr(C)]
 pub struct MESALINK_SSL<'a> {
     magic: u32,
-    session: &'a mut ClientSession,
+    session: ClientSession,
     socket: Option<TcpStream>,
     stream: Option<Stream<'a, ClientSession, TcpStream>>,
 }
@@ -67,21 +67,18 @@ pub extern "C" fn mesalink_TLSv1_1_client_method() -> *mut MESALINK_METHOD {
 
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_2_client_method() -> *mut MESALINK_METHOD {
-    mesalink_client_method_ex(ProtocolVersion::TLSv1_2)
+    let method = MESALINK_METHOD {
+        magic: MAGIC,
+        tls_version: ProtocolVersion::TLSv1_2,
+    };
+    Box::into_raw(Box::new(method))
 }
 
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_3_client_method() -> *mut MESALINK_METHOD {
-    mesalink_client_method_ex(ProtocolVersion::TLSv1_3)
-}
-
-fn mesalink_client_method_ex(tls_version: ProtocolVersion) -> *mut MESALINK_METHOD {
-    let mut client_config = ClientConfig::new();
-    client_config.versions = vec![tls_version];
-    client_config.root_store.add_server_trust_anchors(&TLS_SERVER_ROOTS);
     let method = MESALINK_METHOD {
         magic: MAGIC,
-        config: Arc::new(client_config),
+        tls_version: ProtocolVersion::TLSv1_3,
     };
     Box::into_raw(Box::new(method))
 }
@@ -93,13 +90,16 @@ pub extern "C" fn mesalink_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut MES
         &*method_ptr
     };
     assert!(method.magic == MAGIC, "Corrupted MESALINK_METHOD pointer");
-    let dns_name = DNSNameRef::try_from_ascii_str("google.com").unwrap();
-    let client_session = ClientSession::new(&method.config, dns_name);
-    let ctx = MESALINK_CTX {
+
+    let mut client_config = ClientConfig::new();
+    client_config.versions = vec![method.tls_version];
+    client_config.root_store.add_server_trust_anchors(&TLS_SERVER_ROOTS);
+    
+    let context = MESALINK_CTX {
         magic: MAGIC,
-        session: client_session,
+        config: Arc::new(client_config),
     };
-    Box::into_raw(Box::new(ctx))
+    Box::into_raw(Box::new(context))
 }
 
 #[no_mangle]
@@ -110,9 +110,12 @@ pub extern "C" fn mesalink_SSL_new<'a>(ctx_ptr: *mut MESALINK_CTX) -> *mut MESAL
     };
     assert!(ctx.magic == MAGIC, "Corrupted MESALINK_CTX pointer");
 
+    let dns_name = DNSNameRef::try_from_ascii_str("blog.cloudflare.com").unwrap();
+    let client_session = ClientSession::new(&ctx.config, dns_name);
+
     let ssl = MESALINK_SSL {
         magic: MAGIC,
-        session: &mut ctx.session,
+        session: client_session,
         socket: None,
         stream: None,
     };
@@ -128,7 +131,7 @@ pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> 
     assert!(ssl.magic == MAGIC, "Corrupted MESALINK pointer");
     let socket = unsafe { TcpStream::from_raw_fd(fd) };
     ssl.socket = Some(socket);
-    let stream = Stream::new(ssl.session, ssl.socket.as_mut().unwrap());
+    let stream = Stream::new(&mut ssl.session, ssl.socket.as_mut().unwrap());
     ssl.stream = Some(stream);
     0
 }
@@ -179,7 +182,6 @@ pub extern "C" fn mesalink_SSL_write(ssl_ptr: *mut MESALINK_SSL, buf_ptr: *const
     }
     rc.unwrap() as c_int
 }
-
 
 #[no_mangle]
 pub extern "C" fn mesalink_CTX_free(ctx_ptr: *mut MESALINK_CTX) {
