@@ -1,4 +1,4 @@
-/* ssh.h
+/* ssl.h
  *                            _ _       _    
  *                           | (_)     | |   
  *  _ __ ___   ___  ___  __ _| |_ _ __ | | __
@@ -11,8 +11,8 @@
  * This file is part of Mesalink.
  */
 
-#ifndef MESALINK_SSL_H
-#define MESALINK_SSL_H
+#ifndef MESALINK_H
+#define MESALINK_H
 
 #ifdef __cplusplus
     extern "C" {
@@ -27,11 +27,11 @@ typedef struct MESALINK_METHOD      MESALINK_METHOD;
 typedef struct MEASLINK_CTX         MESALINK_CTX;
 
 typedef MESALINK_METHOD* (*mesalink_method_func)();
-//MESALINK_API MESALINK_METHOD *mesalink_SSLv3_client_method();
-//MESALINK_API MESALINK_METHOD *mesalink_TLSv1_client_method();
-//MESALINK_API MESALINK_METHOD *mesalink_TLSv1_1_client_method();
+MESALINK_API MESALINK_METHOD *mesalink_SSLv3_client_method();
+MESALINK_API MESALINK_METHOD *mesalink_TLSv1_client_method();
+MESALINK_API MESALINK_METHOD *mesalink_TLSv1_1_client_method();
 MESALINK_API MESALINK_METHOD *mesalink_TLSv1_2_client_method();
-//MESALINK_API MESALINK_METHOD *mesalink_TLSv1_3_client_method();
+MESALINK_API MESALINK_METHOD *mesalink_TLSv1_3_client_method();
 
 MESALINK_API MESALINK_CTX*  mesalink_CTX_new(MESALINK_METHOD*);
 MESALINK_API MESALINK_SSL*  mesalink_SSL_new(MESALINK_CTX*);
@@ -47,4 +47,4 @@ MESALINK_API void           mesalink_SSL_free(MESALINK_SSL*);
     } /* extern C */
 #endif
 
-#endif /* MESALINK_SSL_H */
+#endif /* MESALINK_H */

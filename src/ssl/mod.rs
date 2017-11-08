@@ -17,6 +17,7 @@ use std::net::TcpStream;
 use std::io::{Read, Write};
 use std::os::unix::io::FromRawFd;
 use std::slice;
+use std::ptr;
 use libc::{c_uchar, c_int};
 
 use rustls::{ClientConfig, ProtocolVersion};
@@ -47,9 +48,36 @@ pub struct MESALINK_SSL<'a> {
 }
 
 #[no_mangle]
+pub extern "C" fn mesalink_SSLv3_client_method() -> *mut MESALINK_METHOD {
+    let p: *mut MESALINK_METHOD = ptr::null_mut();
+    p
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_TLSv1_client_method() -> *mut MESALINK_METHOD {
+    let p: *mut MESALINK_METHOD = ptr::null_mut();
+    p
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_TLSv1_1_client_method() -> *mut MESALINK_METHOD {
+    let p: *mut MESALINK_METHOD = ptr::null_mut();
+    p
+}
+
+#[no_mangle]
 pub extern "C" fn mesalink_TLSv1_2_client_method() -> *mut MESALINK_METHOD {
+    mesalink_client_method_ex(ProtocolVersion::TLSv1_2)
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_TLSv1_3_client_method() -> *mut MESALINK_METHOD {
+    mesalink_client_method_ex(ProtocolVersion::TLSv1_3)
+}
+
+fn mesalink_client_method_ex(tls_version: ProtocolVersion) -> *mut MESALINK_METHOD {
     let mut client_config = ClientConfig::new();
-    client_config.versions = vec![ProtocolVersion::TLSv1_2];
+    client_config.versions = vec![tls_version];
     client_config.root_store.add_server_trust_anchors(&TLS_SERVER_ROOTS);
     let method = MESALINK_METHOD {
         magic: MAGIC,

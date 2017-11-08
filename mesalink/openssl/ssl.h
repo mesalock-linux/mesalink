@@ -1,4 +1,4 @@
-/* openssl/ssh.h
+/* openssl/ssl.h
  *                            _ _       _    
  *                           | (_)     | |   
  *  _ __ ___   ___  ___  __ _| |_ _ __ | | __
@@ -26,11 +26,11 @@ typedef MESALINK_SSL    SSL;
 typedef MESALINK_METHOD SSL_METHOD;
 typedef MESALINK_CTX    SSL_CTX;
 
-//#define SSLv3_client_method     mesalink_SSLv3_client_method
-//#define TLSv1_client_method     mesalink_TLSv1_client_method
-//#define TLSv1_1_client_method   mesalink_TLSv1_1_client_method
+#define SSLv3_client_method     mesalink_SSLv3_client_method
+#define TLSv1_client_method     mesalink_TLSv1_client_method
+#define TLSv1_1_client_method   mesalink_TLSv1_1_client_method
 #define TLSv1_2_client_method   mesalink_TLSv1_2_client_method
-//#define TLSv1_3_client_method   mesalink_TLSv1_3_client_method
+#define TLSv1_3_client_method   mesalink_TLSv1_3_client_method
 
 #define SSL_CTX_new             mesalink_CTX_new
 #define SSL_new                 mesalink_SSL_new
