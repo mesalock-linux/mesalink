@@ -26,6 +26,11 @@ typedef struct MESALINK_SSL         MESALINK_SSL;
 typedef struct MESALINK_METHOD      MESALINK_METHOD;
 typedef struct MEASLINK_CTX         MESALINK_CTX;
 
+enum {
+    SSL_FAILURE = 0,
+    SSL_SUCCESS = 1
+};
+
 typedef MESALINK_METHOD* (*mesalink_method_func)();
 MESALINK_API MESALINK_METHOD *mesalink_SSLv3_client_method();
 MESALINK_API MESALINK_METHOD *mesalink_TLSv1_client_method();

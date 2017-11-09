@@ -12,6 +12,7 @@
  */
 
 #![allow(non_snake_case)]
+
 use std::sync::Arc;
 use std::net::TcpStream;
 use std::io::{Read, Write};
@@ -47,6 +48,11 @@ pub struct MESALINK_SSL<'a> {
     session: Option<ClientSession>,
     socket: Option<TcpStream>,
     stream: Option<Stream<'a, ClientSession, TcpStream>>,
+}
+
+pub enum SslConstants {
+    SslFailure = 0,
+    SslSuccess = 1,
 }
 
 #[no_mangle]
@@ -130,9 +136,15 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(ssl_ptr: *mut MESALINK_SSL, 
         assert!(!hostname_ptr.is_null(), "Hostname is null");
         CStr::from_ptr(hostname_ptr)
     };
-    let dnsname = DNSNameRef::try_from_ascii_str(hostname.to_str().unwrap()).unwrap();
-    ssl.session = Some(ClientSession::new(&ssl.context.config, dnsname));
-    0
+    match DNSNameRef::try_from_ascii_str(hostname.to_str().unwrap()) {
+        Ok(dnsname) => {
+            ssl.session = Some(ClientSession::new(&ssl.context.config, dnsname));
+            SslConstants::SslSuccess as c_int
+        },
+        Err(_) => {
+            SslConstants::SslFailure as c_int
+        }
+    }
 }
 
 #[no_mangle]
@@ -146,7 +158,7 @@ pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> 
     ssl.socket = Some(socket);
     let stream = Stream::new(ssl.session.as_mut().unwrap(), ssl.socket.as_mut().unwrap());
     ssl.stream = Some(stream);
-    0
+    SslConstants::SslSuccess as c_int
 }
 
 #[no_mangle]
@@ -157,8 +169,8 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     };
     assert!(ssl.magic == MAGIC, "Corrupted MESALINK_SSL pointer");
     match ssl.stream {
-        Some(_) => 0,
-        None => -1,
+        Some(_) => SslConstants::SslSuccess as c_int,
+        None => SslConstants::SslFailure as c_int,
     }
 }
 
@@ -171,12 +183,10 @@ pub extern "C" fn mesalink_SSL_read(ssl_ptr: *mut MESALINK_SSL, buf_ptr: *mut c_
     assert!(ssl.magic == MAGIC, "Corrupted MESALINK_SSL pointer");
     let mut buf = unsafe { slice::from_raw_parts_mut(buf_ptr, buf_len as usize) };
     let stream = ssl.stream.as_mut().unwrap();
-    let rc = stream.read(&mut buf);
-    if rc.is_err() {
-        println!("TLS read error: {:?}", rc);
-        return -1;
+    match stream.read(&mut buf) {
+        Ok(count) => count as c_int,
+        Err(_) => SslConstants::SslFailure as c_int,
     }
-    rc.unwrap() as c_int
 }
 
 #[no_mangle]
@@ -188,12 +198,10 @@ pub extern "C" fn mesalink_SSL_write(ssl_ptr: *mut MESALINK_SSL, buf_ptr: *const
     assert!(ssl.magic == MAGIC, "Corrupted MESALINK_SSL pointer");
     let buf = unsafe { slice::from_raw_parts(buf_ptr, buf_len as usize) };
     let stream = ssl.stream.as_mut().unwrap();
-    let rc = stream.write(buf);
-    if rc.is_err() {
-        println!("TLS write error: {:?}", rc);
-        return -1;
+    match stream.write(buf) {
+        Ok(count) => count as c_int,
+        Err(_) => SslConstants::SslFailure as c_int,
     }
-    rc.unwrap() as c_int
 }
 
 #[no_mangle]

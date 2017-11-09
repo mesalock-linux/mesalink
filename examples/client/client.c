@@ -75,11 +75,11 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    if (SSL_set_fd(ssl, sockfd) < 0) {
+    if (SSL_set_fd(ssl, sockfd) != SSL_SUCCESS) {
         printf("[-] SSL set fd failed\n");
         return -1;
     }
-    if (SSL_connect(ssl) < 0) {
+    if (SSL_connect(ssl) != SSL_SUCCESS) {
         printf("[-] Socket not connected");
         return -1;
     } else {
