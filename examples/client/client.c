@@ -21,19 +21,25 @@
 #include <netdb.h>
 #include <mesalink/openssl/ssl.h>
 
-int main(void) {
+int main(int argc, char *argv[]) {
     int ret;
     int sockfd;
     struct hostent *hp;
     struct sockaddr_in addr;
     char sendbuf[1024] = {0};
     char recvbuf[1024] = {0};
-    const char *hostname = "blog.cloudflare.com";
+    const char *hostname;
     const char *request = "GET / HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nAccept-Encoding: identity\r\n\r\n";
 
     SSL_METHOD *method;
     SSL_CTX *ctx;
     SSL *ssl;
+
+    if (argc != 2) {
+        printf("Usage: %s <hostname>\n", argv[0]);
+        return 0;
+    }
+    hostname = argv[1];
 
     method = TLSv1_2_client_method();
     if (method == NULL) {
@@ -78,7 +84,7 @@ int main(void) {
         return -1;
     } else {
         int sendlen, recvlen, total_recv_len;
-        sprintf(sendbuf, request, "blog.cloudflare.com");
+        sprintf(sendbuf, request, hostname);
         //printf("[+] Connected with %s cipher suites\n", mesalink_get_cipher(ssl));
         sendlen = SSL_write(ssl, sendbuf, strlen(sendbuf));
         printf("[+] Sent %d bytes\n\n%s\n", sendlen, sendbuf);
