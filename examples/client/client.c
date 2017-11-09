@@ -28,6 +28,7 @@ int main(void) {
     struct sockaddr_in addr;
     char sendbuf[1024] = {0};
     char recvbuf[1024] = {0};
+    const char *hostname = "blog.cloudflare.com";
     const char *request = "GET / HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nAccept-Encoding: identity\r\n\r\n";
 
     SSL_METHOD *method;
@@ -35,13 +36,17 @@ int main(void) {
     SSL *ssl;
 
     method = TLSv1_2_client_method();
+    if (method == NULL) {
+        printf("[-] Error: method failed to create\n");
+        return -1;
+    }
     ctx = SSL_CTX_new(method);
     if (ctx == NULL) {
         printf("[-] Error: context failed to create\n");
         return -1;
     }
 
-    if ((hp = gethostbyname("cloudflare.com")) == NULL) {
+    if ((hp = gethostbyname(hostname)) == NULL) {
         printf("[-] Gethostname error\n");
         return -1;
     }
@@ -59,6 +64,11 @@ int main(void) {
     if (ssl == NULL) {
         printf("[-] SSL creation failed\n");
     }
+    if (SSL_set_tlsext_host_name(ssl, hostname) < 0) {
+        printf("[-] SSL set hostname failed\n");
+        return -1;
+    }
+
     if (SSL_set_fd(ssl, sockfd) < 0) {
         printf("[-] SSL set fd failed\n");
         return -1;
@@ -78,7 +88,7 @@ int main(void) {
             total_recv_len += strlen(recvbuf);
             printf("%s", recvbuf);
         } while (recvlen > 0);
-        printf("[+] Received %d bytes\n", total_recv_len);
+        printf("\n[+] Received %d bytes\n", total_recv_len);
         SSL_free(ssl);
     }
     close(sockfd);

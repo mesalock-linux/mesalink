@@ -35,6 +35,7 @@ MESALINK_API MESALINK_METHOD *mesalink_TLSv1_3_client_method();
 
 MESALINK_API MESALINK_CTX*  mesalink_CTX_new(MESALINK_METHOD*);
 MESALINK_API MESALINK_SSL*  mesalink_SSL_new(MESALINK_CTX*);
+MESALINK_API int            mesalink_SSL_set_tlsext_host_name(MESALINK_SSL*, const char*);
 MESALINK_API int            mesalink_SSL_set_fd(MESALINK_SSL*, int);
 MESALINK_API int            mesalink_SSL_connect(MESALINK_SSL*);
 MESALINK_API int            mesalink_SSL_write(MESALINK_SSL*, const void*, int);

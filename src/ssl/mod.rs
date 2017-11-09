@@ -15,10 +15,11 @@
 use std::sync::Arc;
 use std::net::TcpStream;
 use std::io::{Read, Write};
+use std::ffi::CStr;
 use std::os::unix::io::FromRawFd;
 use std::slice;
 use std::ptr;
-use libc::{c_uchar, c_int};
+use libc::{c_uchar, c_char, c_int};
 
 use rustls::{ClientConfig, ProtocolVersion};
 use rustls::{ClientSession, Stream};
@@ -42,7 +43,8 @@ pub struct MESALINK_CTX {
 #[repr(C)]
 pub struct MESALINK_SSL<'a> {
     magic: u32,
-    session: ClientSession,
+    context: &'a mut MESALINK_CTX,
+    session: Option<ClientSession>,
     socket: Option<TcpStream>,
     stream: Option<Stream<'a, ClientSession, TcpStream>>,
 }
@@ -90,11 +92,9 @@ pub extern "C" fn mesalink_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut MES
         &*method_ptr
     };
     assert!(method.magic == MAGIC, "Corrupted MESALINK_METHOD pointer");
-
     let mut client_config = ClientConfig::new();
     client_config.versions = vec![method.tls_version];
     client_config.root_store.add_server_trust_anchors(&TLS_SERVER_ROOTS);
-    
     let context = MESALINK_CTX {
         magic: MAGIC,
         config: Arc::new(client_config),
@@ -109,17 +109,30 @@ pub extern "C" fn mesalink_SSL_new<'a>(ctx_ptr: *mut MESALINK_CTX) -> *mut MESAL
         &mut *ctx_ptr
     };
     assert!(ctx.magic == MAGIC, "Corrupted MESALINK_CTX pointer");
-
-    let dns_name = DNSNameRef::try_from_ascii_str("blog.cloudflare.com").unwrap();
-    let client_session = ClientSession::new(&ctx.config, dns_name);
-
     let ssl = MESALINK_SSL {
         magic: MAGIC,
-        session: client_session,
+        context: ctx,
+        session: None,
         socket: None,
         stream: None,
     };
     Box::into_raw(Box::new(ssl))
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_set_tlsext_host_name(ssl_ptr: *mut MESALINK_SSL, hostname_ptr: *const c_char) -> c_int {
+    let ssl = unsafe {
+        assert!(!ssl_ptr.is_null(), "MESALINK_CTX pointer is null");
+        &mut *ssl_ptr
+    };
+    assert!(ssl.magic == MAGIC, "Corrupted MESALINK_SSL pointer");
+    let hostname = unsafe {
+        assert!(!hostname_ptr.is_null(), "Hostname is null");
+        CStr::from_ptr(hostname_ptr)
+    };
+    let dnsname = DNSNameRef::try_from_ascii_str(hostname.to_str().unwrap()).unwrap();
+    ssl.session = Some(ClientSession::new(&ssl.context.config, dnsname));
+    0
 }
 
 #[no_mangle]
@@ -128,10 +141,10 @@ pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> 
         assert!(!ssl_ptr.is_null(), "MESALINK_CTX pointer is null");
         &mut *ssl_ptr
     };
-    assert!(ssl.magic == MAGIC, "Corrupted MESALINK pointer");
+    assert!(ssl.magic == MAGIC, "Corrupted MESALINK_SSL pointer");
     let socket = unsafe { TcpStream::from_raw_fd(fd) };
     ssl.socket = Some(socket);
-    let stream = Stream::new(&mut ssl.session, ssl.socket.as_mut().unwrap());
+    let stream = Stream::new(ssl.session.as_mut().unwrap(), ssl.socket.as_mut().unwrap());
     ssl.stream = Some(stream);
     0
 }
@@ -139,10 +152,10 @@ pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> 
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     let ssl = unsafe {
-        assert!(!ssl_ptr.is_null(), "MESALINK pointer is null");
+        assert!(!ssl_ptr.is_null(), "MESALINK_SSL pointer is null");
         &mut *ssl_ptr
     };
-    assert!(ssl.magic == MAGIC, "Corrupted MESALINK pointer");
+    assert!(ssl.magic == MAGIC, "Corrupted MESALINK_SSL pointer");
     match ssl.stream {
         Some(_) => 0,
         None => -1,
@@ -152,10 +165,10 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_read(ssl_ptr: *mut MESALINK_SSL, buf_ptr: *mut c_uchar, buf_len: c_int) -> c_int {
     let ssl = unsafe {
-        assert!(!ssl_ptr.is_null(), "MESALINK pointer is null");
+        assert!(!ssl_ptr.is_null(), "MESALINK_SSL pointer is null");
         &mut *ssl_ptr
     };
-    assert!(ssl.magic == MAGIC, "Corrupted MESALINK pointer");
+    assert!(ssl.magic == MAGIC, "Corrupted MESALINK_SSL pointer");
     let mut buf = unsafe { slice::from_raw_parts_mut(buf_ptr, buf_len as usize) };
     let stream = ssl.stream.as_mut().unwrap();
     let rc = stream.read(&mut buf);
@@ -169,10 +182,10 @@ pub extern "C" fn mesalink_SSL_read(ssl_ptr: *mut MESALINK_SSL, buf_ptr: *mut c_
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_write(ssl_ptr: *mut MESALINK_SSL, buf_ptr: *const c_uchar, buf_len: c_int) -> c_int {
     let ssl = unsafe {
-        assert!(!ssl_ptr.is_null(), "MESALINK pointer is null");
+        assert!(!ssl_ptr.is_null(), "MESALINK_SSL pointer is null");
         &mut *ssl_ptr
     };
-    assert!(ssl.magic == MAGIC, "Corrupted MESALINK pointer");
+    assert!(ssl.magic == MAGIC, "Corrupted MESALINK_SSL pointer");
     let buf = unsafe { slice::from_raw_parts(buf_ptr, buf_len as usize) };
     let stream = ssl.stream.as_mut().unwrap();
     let rc = stream.write(buf);
@@ -186,7 +199,7 @@ pub extern "C" fn mesalink_SSL_write(ssl_ptr: *mut MESALINK_SSL, buf_ptr: *const
 #[no_mangle]
 pub extern "C" fn mesalink_CTX_free(ctx_ptr: *mut MESALINK_CTX) {
     let ctx = unsafe {
-        assert!(!ctx_ptr.is_null(), "MESALINK pointer is null");
+        assert!(!ctx_ptr.is_null(), "MESALINK_CTX pointer is null");
         &mut *ctx_ptr
     };
     assert!(ctx.magic == MAGIC, "Corrupted MESALINK_CTX pointer");
@@ -198,10 +211,10 @@ pub extern "C" fn mesalink_CTX_free(ctx_ptr: *mut MESALINK_CTX) {
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_free(ptr: *mut MESALINK_SSL) {
     let ssl = unsafe {
-        assert!(!ptr.is_null(), "MESALINK pointer is null");
+        assert!(!ptr.is_null(), "MESALINK_SSL pointer is null");
         &mut *ptr
     };
-    assert!(ssl.magic == MAGIC, "Corrupted MESALINK pointer");
+    assert!(ssl.magic == MAGIC, "Corrupted MESALINK_SSL pointer");
     unsafe {
         let _dropped = Box::from_raw(ptr);
     }
