@@ -136,14 +136,18 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(ssl_ptr: *mut MESALINK_SSL, 
         assert!(!hostname_ptr.is_null(), "Hostname is null");
         CStr::from_ptr(hostname_ptr)
     };
-    match DNSNameRef::try_from_ascii_str(hostname.to_str().unwrap()) {
-        Ok(dnsname) => {
-            ssl.session = Some(ClientSession::new(&ssl.context.config, dnsname));
-            SslConstants::SslSuccess as c_int
-        },
-        Err(_) => {
-            SslConstants::SslFailure as c_int
+    if let Ok(hostname_str) = hostname.to_str() {
+        match DNSNameRef::try_from_ascii_str(hostname_str) {
+            Ok(dnsname) => {
+                ssl.session = Some(ClientSession::new(&ssl.context.config, dnsname));
+                SslConstants::SslSuccess as c_int
+            },
+            Err(_) => {
+                SslConstants::SslFailure as c_int
+            }
         }
+    } else {
+        SslConstants::SslFailure as c_int
     }
 }
 
@@ -212,7 +216,7 @@ pub extern "C" fn mesalink_CTX_free(ctx_ptr: *mut MESALINK_CTX) {
     };
     assert!(ctx.magic == MAGIC, "Corrupted MESALINK_CTX pointer");
     unsafe {
-        let _dropped = Box::from_raw(ctx_ptr);
+        let _to_be_dropped = Box::from_raw(ctx_ptr);
     }
 }
 
@@ -224,6 +228,6 @@ pub extern "C" fn mesalink_SSL_free(ptr: *mut MESALINK_SSL) {
     };
     assert!(ssl.magic == MAGIC, "Corrupted MESALINK_SSL pointer");
     unsafe {
-        let _dropped = Box::from_raw(ptr);
+        let _to_be_dropped = Box::from_raw(ptr);
     }
 }

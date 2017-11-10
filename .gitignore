@@ -4,3 +4,16 @@ Cargo.lock
 .DS_Store
 **/*.o
 examples/client/client
+Makefile
+Makefile.in
+aclocal.m4
+autom4te.cache/
+build-aux/
+config.in
+config.log
+config.status
+configure
+examples/client/.dirstamp
+libtool
+m4/
+stamp-h1
