@@ -3,10 +3,11 @@ name = "mesalink"
 version = "0.0.1"
 authors = ["Yiming Jing <jingyiming@baidu.com>"]
 description = "Mesalink is an OpenSSL-compatible TLS library based on Rustls and Ring"
+build = "build.rs"
 
 [lib]
 name = "mesalink"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 rustls = { git = "https://github.com/ctz/rustls" }

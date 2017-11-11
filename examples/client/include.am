@@ -1,4 +1,4 @@
 noinst_PROGRAMS += examples/client/client
 examples_client_client_SOURCES = examples/client/client.c
-examples_client_client_LDADD = $(abs_builddir)/target/release/libmesalink.$(DYLIB_EXTENSION)
-examples_client_client_DEPENDENCIES = target/release/libmesalink.$(DYLIB_EXTENSION)
+examples_client_client_LDADD = $(abs_builddir)/target/release/libmesalink.la
+examples_client_client_DEPENDENCIES = target/release/libmesalink.la

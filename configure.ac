@@ -19,25 +19,6 @@ LT_LANG([C])
 
 AC_PROG_CC
 
-DYLIB_EXTENSION=
-
-case "${host_os}" in
-    linux*)
-        DYLIB_EXTENSION=so
-        ;;
-    cygwin*|mingw*)
-        DYLIB_EXTENSION=dll
-        ;;
-    darwin*)
-        DYLIB_EXTENSION=dylib
-        ;;
-    *)
-        AC_MSG_ERROR(["OS $host_os is not supported"])
-        ;;
-esac
-
-AC_SUBST(DYLIB_EXTENSION)
-
 AC_CHECK_HEADERS([netdb.h netinet/in.h string.h sys/socket.h unistd.h])
 AC_CHECK_FUNCS([gethostbyname memset socket])
 AC_CHECK_PROG(CARGO, [cargo], [yes], [no])
@@ -48,7 +29,6 @@ AC_CHECK_PROG(RUSTC, [rustc], [yes], [no])
 AS_IF(test x$RUSTC = xno,
     AC_MSG_ERROR([rustc is required])
 )
-
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
