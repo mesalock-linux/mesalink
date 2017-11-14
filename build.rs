@@ -17,7 +17,7 @@ fn generate_la(lib: &str) -> std::io::Result<()> {
     let old_lib_path = PathBuf::from(format!("{}/{}.a", target_dir, lib));
     let new_lib_path = PathBuf::from(format!("{}/{}.a", libs_dir, lib));
     if !libs_path.exists() {
-        fs::create_dir_all(&libs_path).unwrap();
+        fs::create_dir_all(&libs_path)?;
     }
     if la_path.exists() {
         fs::remove_file(&la_path)?;
