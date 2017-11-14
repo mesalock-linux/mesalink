@@ -79,7 +79,6 @@ macro_rules! sanitize_ptr_return_fail {
     }
 }
 
-
 #[no_mangle]
 pub extern "C" fn mesalink_SSLv3_client_method() -> *mut MESALINK_METHOD {
     let p: *mut MESALINK_METHOD = ptr::null_mut();
@@ -127,6 +126,7 @@ pub extern "C" fn mesalink_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut MES
         magic: MAGIC,
         config: Arc::new(client_config),
     };
+    let _ = unsafe { Box::from_raw(method_ptr) };
     Box::into_raw(Box::new(context))
 }
 
