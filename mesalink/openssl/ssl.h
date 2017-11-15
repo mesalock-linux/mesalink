@@ -28,6 +28,7 @@ typedef MESALINK_CTX    SSL_CTX;
 
 #define SSL_library_init            mesalink_library_init
 #define OpenSSL_add_ssl_algorithms  mesalink_add_ssl_algorithms
+#define SSL_load_error_strings      mesalink_SSL_load_error_strings
 
 #define SSLv3_client_method         mesalink_SSLv3_client_method
 #define TLSv1_client_method         mesalink_TLSv1_client_method

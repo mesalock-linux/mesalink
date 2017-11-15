@@ -11,8 +11,8 @@
  * This file is part of Mesalink.
  */
 
-#ifndef MESALINK_H
-#define MESALINK_H
+#ifndef MESALINK_SSL_H
+#define MESALINK_SSL_H
 
 #ifdef __cplusplus
     extern "C" {
@@ -33,6 +33,11 @@ enum {
 
 MESALINK_API int            mesalink_library_init();
 MESALINK_API int            mesalink_add_ssl_algorithms();
+MESALINK_API void           mesalink_SSL_load_error_strings();
+MESALINK_API void           mesalink_ERR_load_error_strings();
+MESALINK_API void           mesalink_ERR_free_error_strings();
+
+MESALINK_API const char*    mesalink_ERR_reason_error_string(unsigned long);
 
 typedef MESALINK_METHOD* (*mesalink_method_func)();
 MESALINK_API MESALINK_METHOD *mesalink_SSLv3_client_method();
@@ -56,4 +61,4 @@ MESALINK_API void           mesalink_SSL_free(MESALINK_SSL*);
     } /* extern C */
 #endif
 
-#endif /* MESALINK_H */
+#endif /* MESALINK_SSL_H */

@@ -9,8 +9,14 @@ build = "build.rs"
 name = "mesalink"
 crate-type = ["cdylib", "staticlib"]
 
+[features]
+default = ["error_strings"]
+error_strings = []
+tls13_draft = []
+
 [dependencies]
 rustls = { git = "https://github.com/ctz/rustls" }
 libc = "0.2"
 webpki = { git = "https://github.com/briansmith/webpki" }
 webpki-roots = { git = "https://github.com/briansmith/webpki-roots", branch = "webpki-github" }
+lazy_static = "0.2.*"

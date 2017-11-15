@@ -20,6 +20,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <mesalink/openssl/ssl.h>
+#include <mesalink/openssl/err.h>
 
 int main(int argc, char *argv[]) {
     int ret;
@@ -42,6 +43,10 @@ int main(int argc, char *argv[]) {
     hostname = argv[1];
 
     SSL_library_init();
+    ERR_load_crypto_strings();
+    SSL_load_error_strings();
+
+    printf("Test error: %s\n", ERR_reason_error_string(GENERAL));
 
     method = TLSv1_2_client_method();
     if (method == NULL) {
