@@ -31,6 +31,9 @@ enum {
     SSL_SUCCESS = 1
 };
 
+MESALINK_API int            mesalink_library_init();
+MESALINK_API int            mesalink_add_ssl_algorithms();
+
 typedef MESALINK_METHOD* (*mesalink_method_func)();
 MESALINK_API MESALINK_METHOD *mesalink_SSLv3_client_method();
 MESALINK_API MESALINK_METHOD *mesalink_TLSv1_client_method();

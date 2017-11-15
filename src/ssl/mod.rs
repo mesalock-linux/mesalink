@@ -80,6 +80,16 @@ macro_rules! sanitize_ptr_return_fail {
 }
 
 #[no_mangle]
+pub extern "C" fn mesalink_library_init() -> c_int {
+    1
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_add_ssl_algorithms() -> c_int {
+    mesalink_library_init()
+}
+
+#[no_mangle]
 pub extern "C" fn mesalink_SSLv3_client_method() -> *mut MESALINK_METHOD {
     let p: *mut MESALINK_METHOD = ptr::null_mut();
     p

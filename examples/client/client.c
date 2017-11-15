@@ -41,6 +41,8 @@ int main(int argc, char *argv[]) {
     }
     hostname = argv[1];
 
+    SSL_library_init();
+
     method = TLSv1_2_client_method();
     if (method == NULL) {
         printf("[-] Error: method failed to create\n");
