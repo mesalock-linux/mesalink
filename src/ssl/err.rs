@@ -13,8 +13,9 @@
 
 use libc::{c_char, c_ulong};
 use std::ffi::CString;
+use std::cell::RefCell;
+use std::collections::VecDeque;
 
-#[cfg(feature = "error_strings")]
 pub enum ErrorCode {
     InappropriateMessage = -401,
     InappropriateHandshakeMessage = -402,
@@ -31,9 +32,13 @@ pub enum ErrorCode {
     FailedToGetCurrentTime = -413,
 }
 
+thread_local! {
+    pub static ERROR_QUEUE: RefCell<VecDeque<ErrorCode>> = RefCell::new(VecDeque::new());
+}
+
 #[cfg(feature = "error_strings")]
 lazy_static! {
-    static ref INAPPROPRIATE_MESSAGE:  &'static str = "InappropriateMessage";
+    static ref INAPPROPRIATE_MESSAGE: &'static str = "InappropriateMessage";
     static ref INAPPROPRIATE_HANDSHAKE_MESSAGE: &'static str = "InappropriateHandshakeMessage";
     static ref CORRUPT_MESSAGE: &'static str = "CorruptMessage";
     static ref CORRUPT_MESSAGE_PAYLOAD: &'static str = "CorruptMessagePayload";
@@ -101,4 +106,39 @@ pub extern "C" fn mesalink_ERR_reason_error_string(_errno: c_ulong) -> *const c_
             .unwrap()
             .into_raw(),
     }
+}
+
+pub fn mesalink_push_error(err: ErrorCode) {
+    ERROR_QUEUE.with( |f| {
+        f.borrow_mut().push_back(err);
+    });
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_ERR_get_error() -> c_ulong {
+    let error = ERROR_QUEUE.with( |f| {
+        f.borrow_mut().pop_front()
+    });
+    match error {
+        Some(errno) => errno as c_ulong,
+        None => 0, // No error in the queue
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_ERR_peek_last_error() -> c_ulong {
+    let error = ERROR_QUEUE.with( |f| {
+        f.borrow().front()
+    });
+    match error {
+        Some(errno) => errno as c_ulong,
+        None => 0, // No error in the queue
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_ERR_clear_error() {
+    ERROR_QUEUE.with( |f| {
+        f.borrow_mut().clear();
+    });
 }

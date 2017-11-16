@@ -24,6 +24,7 @@ use rustls::{ClientConfig, ProtocolVersion};
 use rustls::{ClientSession, Stream};
 use webpki::DNSNameRef;
 use webpki_roots::TLS_SERVER_ROOTS;
+use ::ssl::err::{ErrorCode, mesalink_push_error};
 
 const MAGIC: u32 = 0xc0d4c5a9;
 
@@ -178,7 +179,10 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
                 ssl.session = Some(ClientSession::new(&ssl.context.config, dnsname));
                 SslConstants::SslSuccess as c_int
             }
-            Err(_) => SslConstants::SslFailure as c_int,
+            Err(_) => {
+                mesalink_push_error(ErrorCode::General);
+                SslConstants::SslFailure as c_int
+            },
         }
     } else {
         SslConstants::SslFailure as c_int
@@ -202,7 +206,9 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     let ssl = unsafe { &mut *ssl_ptr };
     match ssl.stream {
         Some(_) => SslConstants::SslSuccess as c_int,
-        None => SslConstants::SslFailure as c_int,
+        None => {
+            SslConstants::SslFailure as c_int
+        },
     }
 }
 
