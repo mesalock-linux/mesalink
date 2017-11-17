@@ -185,6 +185,7 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
             },
         }
     } else {
+        mesalink_push_error(ErrorCode::General);
         SslConstants::SslFailure as c_int
     }
 }
@@ -207,6 +208,7 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     match ssl.stream {
         Some(_) => SslConstants::SslSuccess as c_int,
         None => {
+            mesalink_push_error(ErrorCode::General);
             SslConstants::SslFailure as c_int
         },
     }
@@ -224,7 +226,10 @@ pub extern "C" fn mesalink_SSL_read(
     let stream = ssl.stream.as_mut().unwrap();
     match stream.read(&mut buf) {
         Ok(count) => count as c_int,
-        Err(_) => SslConstants::SslFailure as c_int,
+        Err(_) => {
+            mesalink_push_error(ErrorCode::General);
+            SslConstants::SslFailure as c_int
+        },
     }
 }
 
@@ -240,7 +245,10 @@ pub extern "C" fn mesalink_SSL_write(
     let stream = ssl.stream.as_mut().unwrap();
     match stream.write(buf) {
         Ok(count) => count as c_int,
-        Err(_) => SslConstants::SslFailure as c_int,
+        Err(_) => {
+            mesalink_push_error(ErrorCode::General);
+            SslConstants::SslFailure as c_int
+        }
     }
 }
 

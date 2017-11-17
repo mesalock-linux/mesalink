@@ -34,6 +34,14 @@ enum ErrorCode {
     FAILED_TO_GET_CURRENT_TIME          = -413,
 };
 
+MESALINK_API char *mesalink_ERR_error_string(unsigned long e, char *buf);
+MESALINK_API void mesalink_ERR_error_string_n(unsigned long e, char *buf, size_t len);
+MESALINK_API const char *ERR_reason_error_string(unsigned long e);
+
+MESALINK_API unsigned long mesalink_ERR_get_error(void);
+MESALINK_API unsigned long mesalink_ERR_peek_last_error(void);
+MESALINK_API void mesalink_ERR_clear_error(void);
+
 #ifdef __cplusplus
 } /* extern C */
 #endif

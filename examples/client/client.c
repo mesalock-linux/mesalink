@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     ERR_load_crypto_strings();
     SSL_load_error_strings();
 
-    printf("Test error: %s\n", ERR_reason_error_string(GENERAL));
+    ERR_clear_error();
 
     method = TLSv1_2_client_method();
     if (method == NULL) {

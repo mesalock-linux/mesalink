@@ -11,11 +11,16 @@
  * This file is part of Mesalink.
  */
 
-use libc::{c_char, c_ulong};
+use libc::{c_char, c_ulong, size_t};
+use libc::strncpy;
 use std::ffi::CString;
 use std::cell::RefCell;
 use std::collections::VecDeque;
 
+const MAX_ERROR_SZ: size_t = 128;
+
+#[repr(C)]
+#[derive(Copy, Clone)]
 pub enum ErrorCode {
     InappropriateMessage = -401,
     InappropriateHandshakeMessage = -402,
@@ -61,6 +66,21 @@ pub extern "C" fn mesalink_ERR_load_error_strings() {
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_free_error_strings() {
     // compatibility only
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_ERR_error_string(errno: c_ulong, buf_ptr: *mut c_char) -> *const c_char {
+    mesalink_ERR_error_string_n(errno, buf_ptr, MAX_ERROR_SZ)
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_ERR_error_string_n(errno: c_ulong, buf_ptr: *mut c_char, buf_len: size_t) -> *const c_char {
+    let src_ptr = mesalink_ERR_reason_error_string(errno);
+    if buf_ptr.is_null() {
+        src_ptr
+    } else {
+        unsafe { strncpy(buf_ptr, src_ptr, buf_len) }
+    }
 }
 
 #[no_mangle]
@@ -116,24 +136,22 @@ pub fn mesalink_push_error(err: ErrorCode) {
 
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_get_error() -> c_ulong {
-    let error = ERROR_QUEUE.with( |f| {
-        f.borrow_mut().pop_front()
-    });
-    match error {
-        Some(errno) => errno as c_ulong,
-        None => 0, // No error in the queue
-    }
+    ERROR_QUEUE.with( |f| {
+        match f.borrow_mut().pop_front() {
+            Some(e) => e as c_ulong,
+            None => 0,
+        }
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_peek_last_error() -> c_ulong {
-    let error = ERROR_QUEUE.with( |f| {
-        f.borrow().front()
-    });
-    match error {
-        Some(errno) => errno as c_ulong,
-        None => 0, // No error in the queue
-    }
+    ERROR_QUEUE.with( |f| {
+        match f.borrow().front() {
+            Some(e) => *e as c_ulong,
+            None => 0,
+        }
+    })
 }
 
 #[no_mangle]

@@ -21,7 +21,6 @@ extern crate webpki;
 extern crate webpki_roots;
 
 #[cfg(feature = "error_strings")]
-#[macro_use]
-extern crate lazy_static;
+#[macro_use] extern crate lazy_static;
 
 pub mod ssl;
