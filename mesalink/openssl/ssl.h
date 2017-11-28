@@ -22,9 +22,10 @@
     extern "C" {
 #endif 
 
-typedef MESALINK_SSL    SSL;
 typedef MESALINK_METHOD SSL_METHOD;
 typedef MESALINK_CTX    SSL_CTX;
+typedef MESALINK_CIPHER CIPHER;
+typedef MESALINK_SSL    SSL;
 
 #define SSL_library_init            mesalink_library_init
 #define OpenSSL_add_ssl_algorithms  mesalink_add_ssl_algorithms
@@ -39,6 +40,8 @@ typedef MESALINK_CTX    SSL_CTX;
 #define SSL_CTX_new                 mesalink_CTX_new
 #define SSL_new                     mesalink_SSL_new
 #define SSL_set_tlsext_host_name    mesalink_SSL_set_tlsext_host_name
+#define SSL_get_SSL_CTX             mesalink_SSL_get_SSL_CTX
+#define SSL_set_SSL_CTX             mesalink_SSL_set_SSL_CTX
 #define SSL_set_fd                  mesalink_SSL_set_fd
 #define SSL_connect                 mesalink_SSL_connect
 #define SSL_write                   mesalink_SSL_write

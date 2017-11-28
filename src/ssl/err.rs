@@ -74,7 +74,11 @@ pub extern "C" fn mesalink_ERR_error_string(errno: c_ulong, buf_ptr: *mut c_char
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_ERR_error_string_n(errno: c_ulong, buf_ptr: *mut c_char, buf_len: size_t) -> *const c_char {
+pub extern "C" fn mesalink_ERR_error_string_n(
+    errno: c_ulong,
+    buf_ptr: *mut c_char,
+    buf_len: size_t,
+) -> *const c_char {
     let src_ptr = mesalink_ERR_reason_error_string(errno);
     if buf_ptr.is_null() {
         src_ptr
@@ -84,10 +88,10 @@ pub extern "C" fn mesalink_ERR_error_string_n(errno: c_ulong, buf_ptr: *mut c_ch
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_ERR_reason_error_string(_errno: c_ulong) -> *const c_char {
+pub extern "C" fn mesalink_ERR_reason_error_string(errno: c_ulong) -> *const c_char {
     match () {
         #[cfg(feature = "error_strings")]
-        () => match _errno {
+        () => match errno {
             x if x == ErrorCode::InappropriateMessage as c_ulong => {
                 INAPPROPRIATE_MESSAGE.as_ptr() as *const c_char
             }
@@ -129,34 +133,30 @@ pub extern "C" fn mesalink_ERR_reason_error_string(_errno: c_ulong) -> *const c_
 }
 
 pub fn mesalink_push_error(err: ErrorCode) {
-    ERROR_QUEUE.with( |f| {
+    ERROR_QUEUE.with(|f| {
         f.borrow_mut().push_back(err);
     });
 }
 
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_get_error() -> c_ulong {
-    ERROR_QUEUE.with( |f| {
-        match f.borrow_mut().pop_front() {
-            Some(e) => e as c_ulong,
-            None => 0,
-        }
+    ERROR_QUEUE.with(|f| match f.borrow_mut().pop_front() {
+        Some(e) => e as c_ulong,
+        None => 0,
     })
 }
 
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_peek_last_error() -> c_ulong {
-    ERROR_QUEUE.with( |f| {
-        match f.borrow().front() {
-            Some(e) => *e as c_ulong,
-            None => 0,
-        }
+    ERROR_QUEUE.with(|f| match f.borrow().front() {
+        Some(e) => *e as c_ulong,
+        None => 0,
     })
 }
 
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_clear_error() {
-    ERROR_QUEUE.with( |f| {
+    ERROR_QUEUE.with(|f| {
         f.borrow_mut().clear();
     });
 }

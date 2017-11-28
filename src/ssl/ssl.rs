@@ -20,11 +20,10 @@ use std::slice;
 use std::ptr;
 use libc::{c_char, c_int, c_uchar};
 
-use rustls::{ClientConfig, ProtocolVersion};
-use rustls::{ClientSession, Stream};
+use rustls::{ClientConfig, ClientSession, ProtocolVersion, Stream};
 use webpki::DNSNameRef;
 use webpki_roots::TLS_SERVER_ROOTS;
-use ::ssl::err::{ErrorCode, mesalink_push_error};
+use ssl::err::{mesalink_push_error, ErrorCode};
 
 const MAGIC: u32 = 0xc0d4c5a9;
 
@@ -44,8 +43,9 @@ pub struct MESALINK_CTX {
 pub struct MESALINK_SSL<'a> {
     magic: u32,
     context: &'a mut MESALINK_CTX,
-    session: Option<ClientSession>,
+    hostname: Option<&'a CStr>,
     socket: Option<TcpStream>,
+    session: Option<ClientSession>,
     stream: Option<Stream<'a, ClientSession, TcpStream>>,
 }
 
@@ -87,7 +87,7 @@ pub extern "C" fn mesalink_library_init() -> c_int {
 #[no_mangle]
 pub extern "C" fn mesalink_add_ssl_algorithms() -> c_int {
     /* compatibility only */
-    mesalink_library_init()
+    1
 }
 
 #[no_mangle]
@@ -155,6 +155,7 @@ pub extern "C" fn mesalink_SSL_new<'a>(ctx_ptr: *mut MESALINK_CTX) -> *mut MESAL
     let ssl = MESALINK_SSL {
         magic: MAGIC,
         context: ctx,
+        hostname: None,
         session: None,
         socket: None,
         stream: None,
@@ -169,25 +170,13 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
 ) -> c_int {
     sanitize_ptr_return_fail!(ssl_ptr);
     let ssl = unsafe { &mut *ssl_ptr };
-    let hostname = unsafe {
-        assert!(!hostname_ptr.is_null(), "Hostname is null");
-        CStr::from_ptr(hostname_ptr)
-    };
-    if let Ok(hostname_str) = hostname.to_str() {
-        match DNSNameRef::try_from_ascii_str(hostname_str) {
-            Ok(dnsname) => {
-                ssl.session = Some(ClientSession::new(&ssl.context.config, dnsname));
-                SslConstants::SslSuccess as c_int
-            }
-            Err(_) => {
-                mesalink_push_error(ErrorCode::General);
-                SslConstants::SslFailure as c_int
-            },
-        }
-    } else {
+    if hostname_ptr.is_null() {
         mesalink_push_error(ErrorCode::General);
-        SslConstants::SslFailure as c_int
+        return SslConstants::SslFailure as c_int;
     }
+    let hostname = unsafe { CStr::from_ptr(hostname_ptr) };
+    ssl.hostname = Some(hostname);
+    SslConstants::SslSuccess as c_int
 }
 
 #[no_mangle]
@@ -196,8 +185,6 @@ pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> 
     let ssl = unsafe { &mut *ssl_ptr };
     let socket = unsafe { TcpStream::from_raw_fd(fd) };
     ssl.socket = Some(socket);
-    let stream = Stream::new(ssl.session.as_mut().unwrap(), ssl.socket.as_mut().unwrap());
-    ssl.stream = Some(stream);
     SslConstants::SslSuccess as c_int
 }
 
@@ -205,13 +192,19 @@ pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> 
 pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     sanitize_ptr_return_fail!(ssl_ptr);
     let ssl = unsafe { &mut *ssl_ptr };
-    match ssl.stream {
-        Some(_) => SslConstants::SslSuccess as c_int,
-        None => {
-            mesalink_push_error(ErrorCode::General);
-            SslConstants::SslFailure as c_int
-        },
+    if let Some(hostname) = ssl.hostname {
+        if let Ok(hostname_str) = hostname.to_str() {
+            if let Ok(dnsname) = DNSNameRef::try_from_ascii_str(hostname_str) {
+                let session = ClientSession::new(&ssl.context.config, dnsname);
+                ssl.session = Some(session);
+                let stream = Stream::new(ssl.session.as_mut().unwrap(), ssl.socket.as_mut().unwrap());
+                ssl.stream = Some(stream);
+                return SslConstants::SslSuccess as c_int
+            }
+        }
     }
+    mesalink_push_error(ErrorCode::General);
+    SslConstants::SslFailure as c_int
 }
 
 #[no_mangle]
@@ -229,7 +222,7 @@ pub extern "C" fn mesalink_SSL_read(
         Err(_) => {
             mesalink_push_error(ErrorCode::General);
             SslConstants::SslFailure as c_int
-        },
+        }
     }
 }
 

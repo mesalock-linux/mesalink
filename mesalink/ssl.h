@@ -22,9 +22,10 @@
 //#include <mesalink/version.h>
 #include <mesalink/visibility.h>
 
-typedef struct MESALINK_SSL         MESALINK_SSL;
 typedef struct MESALINK_METHOD      MESALINK_METHOD;
 typedef struct MEASLINK_CTX         MESALINK_CTX;
+typedef struct MESALINK_CIPHER      MESALINK_CIPHER;
+typedef struct MESALINK_SSL         MESALINK_SSL;
 
 enum {
     SSL_FAILURE = 0,
@@ -53,6 +54,8 @@ MESALINK_API int            mesalink_SSL_set_fd(MESALINK_SSL*, int);
 MESALINK_API int            mesalink_SSL_connect(MESALINK_SSL*);
 MESALINK_API int            mesalink_SSL_write(MESALINK_SSL*, const void*, int);
 MESALINK_API int            mesalink_SSL_read(MESALINK_SSL*, void*, int);
+MESALINK_API MESALINK_CTX*  mesalink_SSL_get_SSL_CTX(const MESALINK_SSL*);
+MESALINK_API int            mesalink_SSL_set_SSL_CTX(MESALINK_SSL*);
 
 MESALINK_API void           mesalink_CTX_free(MESALINK_CTX*);
 MESALINK_API void           mesalink_SSL_free(MESALINK_SSL*);
