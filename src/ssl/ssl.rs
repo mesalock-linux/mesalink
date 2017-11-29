@@ -19,9 +19,8 @@ use std::os::unix::io::FromRawFd;
 use std::slice;
 use std::ptr;
 use libc::{c_char, c_int, c_uchar};
-
-use rustls::{ClientConfig, ClientSession, ProtocolVersion, Stream};
-use webpki::DNSNameRef;
+use rustls;
+use rustls::{Session, Stream};
 use webpki_roots::TLS_SERVER_ROOTS;
 use ssl::err::{mesalink_push_error, ErrorCode};
 
@@ -30,23 +29,24 @@ const MAGIC: u32 = 0xc0d4c5a9;
 #[repr(C)]
 pub struct MESALINK_METHOD {
     magic: u32,
-    tls_version: ProtocolVersion,
+    tls_version: rustls::ProtocolVersion,
 }
 
 #[repr(C)]
 pub struct MESALINK_CTX {
     magic: u32,
-    config: Arc<ClientConfig>,
+    client_config: Arc<rustls::ClientConfig>,
+    server_config: Arc<rustls::ServerConfig>,
 }
 
 #[repr(C)]
-pub struct MESALINK_SSL<'a> {
+pub struct MESALINK_SSL<'a, S: 'a + Session, T: 'a + Read + Write> {
     magic: u32,
     context: &'a mut MESALINK_CTX,
     hostname: Option<&'a CStr>,
     socket: Option<TcpStream>,
-    session: Option<ClientSession>,
-    stream: Option<Stream<'a, ClientSession, TcpStream>>,
+    session: Option<S>,
+    stream: Option<Stream<'a, S, T>>,
 }
 
 pub enum SslConstants {
@@ -117,7 +117,7 @@ pub extern "C" fn mesalink_TLSv1_1_client_method() -> *mut MESALINK_METHOD {
 pub extern "C" fn mesalink_TLSv1_2_client_method() -> *mut MESALINK_METHOD {
     let method = MESALINK_METHOD {
         magic: MAGIC,
-        tls_version: ProtocolVersion::TLSv1_2,
+        tls_version: rustls::ProtocolVersion::TLSv1_2,
     };
     Box::into_raw(Box::new(method))
 }
@@ -126,7 +126,7 @@ pub extern "C" fn mesalink_TLSv1_2_client_method() -> *mut MESALINK_METHOD {
 pub extern "C" fn mesalink_TLSv1_3_client_method() -> *mut MESALINK_METHOD {
     let method = MESALINK_METHOD {
         magic: MAGIC,
-        tls_version: ProtocolVersion::TLSv1_3,
+        tls_version: rustls::ProtocolVersion::TLSv1_3,
     };
     Box::into_raw(Box::new(method))
 }
@@ -135,37 +135,42 @@ pub extern "C" fn mesalink_TLSv1_3_client_method() -> *mut MESALINK_METHOD {
 pub extern "C" fn mesalink_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut MESALINK_CTX {
     sanitize_ptr_return_null!(method_ptr);
     let method = unsafe { &*method_ptr };
-    let mut client_config = ClientConfig::new();
+    let mut client_config = rustls::ClientConfig::new();
     client_config.versions = vec![method.tls_version];
     client_config
         .root_store
         .add_server_trust_anchors(&TLS_SERVER_ROOTS);
+    let mut server_config = rustls::ServerConfig::new();
+    server_config.versions = vec![method.tls_version];
     let context = MESALINK_CTX {
         magic: MAGIC,
-        config: Arc::new(client_config),
+        client_config: Arc::new(client_config),
+        server_config: Arc::new(server_config),
     };
     let _ = unsafe { Box::from_raw(method_ptr) };
     Box::into_raw(Box::new(context))
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_new<'a>(ctx_ptr: *mut MESALINK_CTX) -> *mut MESALINK_SSL<'a> {
+pub extern "C" fn mesalink_SSL_new<'a, S: Session, T: Read + Write>(
+    ctx_ptr: *mut MESALINK_CTX,
+) -> *mut MESALINK_SSL<'a, S, T> {
     sanitize_ptr_return_null!(ctx_ptr);
     let ctx = unsafe { &mut *ctx_ptr };
     let ssl = MESALINK_SSL {
         magic: MAGIC,
         context: ctx,
         hostname: None,
-        session: None,
         socket: None,
+        session: None,
         stream: None,
     };
     Box::into_raw(Box::new(ssl))
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
-    ssl_ptr: *mut MESALINK_SSL,
+pub extern "C" fn mesalink_SSL_set_tlsext_host_name<S: Session, T: Read + Write>(
+    ssl_ptr: *mut MESALINK_SSL<S, T>,
     hostname_ptr: *const c_char,
 ) -> c_int {
     sanitize_ptr_return_fail!(ssl_ptr);
@@ -180,7 +185,10 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> c_int {
+pub extern "C" fn mesalink_SSL_set_fd<S: Session, T: Read + Write>(
+    ssl_ptr: *mut MESALINK_SSL<S, T>,
+    fd: c_int,
+) -> c_int {
     sanitize_ptr_return_fail!(ssl_ptr);
     let ssl = unsafe { &mut *ssl_ptr };
     let socket = unsafe { TcpStream::from_raw_fd(fd) };
@@ -189,18 +197,18 @@ pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> 
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
+pub extern "C" fn mesalink_SSL_connect(
+    ssl_ptr: *mut MESALINK_SSL<rustls::ClientSession, TcpStream>,
+) -> c_int {
     sanitize_ptr_return_fail!(ssl_ptr);
     let ssl = unsafe { &mut *ssl_ptr };
     if let Some(hostname) = ssl.hostname {
         if let Ok(hostname_str) = hostname.to_str() {
-            if let Ok(dnsname) = DNSNameRef::try_from_ascii_str(hostname_str) {
-                let session = ClientSession::new(&ssl.context.config, dnsname);
-                ssl.session = Some(session);
-                let stream = Stream::new(ssl.session.as_mut().unwrap(), ssl.socket.as_mut().unwrap());
-                ssl.stream = Some(stream);
-                return SslConstants::SslSuccess as c_int
-            }
+            let session = rustls::ClientSession::new(&ssl.context.client_config, hostname_str);
+            ssl.session = Some(session);
+            let stream = Stream::new(ssl.session.as_mut().unwrap(), ssl.socket.as_mut().unwrap());
+            ssl.stream = Some(stream);
+            return SslConstants::SslSuccess as c_int;
         }
     }
     mesalink_push_error(ErrorCode::General);
@@ -208,8 +216,22 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_read(
-    ssl_ptr: *mut MESALINK_SSL,
+pub extern "C" fn mesalink_SSL_accept(
+    ssl_ptr: *mut MESALINK_SSL<rustls::ServerSession, TcpStream>,
+) -> c_int {
+    sanitize_ptr_return_fail!(ssl_ptr);
+    let ssl = unsafe { &mut *ssl_ptr };
+
+    let session = rustls::ServerSession::new(&ssl.context.server_config);
+    ssl.session = Some(session);
+    let stream = Stream::new(ssl.session.as_mut().unwrap(), ssl.socket.as_mut().unwrap());
+    ssl.stream = Some(stream);
+    SslConstants::SslSuccess as c_int
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_read<S: Session, T: Read + Write>(
+    ssl_ptr: *mut MESALINK_SSL<S, T>,
     buf_ptr: *mut c_uchar,
     buf_len: c_int,
 ) -> c_int {
@@ -227,8 +249,8 @@ pub extern "C" fn mesalink_SSL_read(
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_write(
-    ssl_ptr: *mut MESALINK_SSL,
+pub extern "C" fn mesalink_SSL_write<S: Session, T: Read + Write>(
+    ssl_ptr: *mut MESALINK_SSL<S, T>,
     buf_ptr: *const c_uchar,
     buf_len: c_int,
 ) -> c_int {
@@ -251,6 +273,6 @@ pub extern "C" fn mesalink_CTX_free(ctx_ptr: *mut MESALINK_CTX) {
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_free(ssl_ptr: *mut MESALINK_SSL) {
+pub extern "C" fn mesalink_SSL_free<S: Session, T: Read + Write>(ssl_ptr: *mut MESALINK_SSL<S, T>) {
     let _ = unsafe { Box::from_raw(ssl_ptr) };
 }
