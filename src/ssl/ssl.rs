@@ -271,35 +271,26 @@ fn complete_io(
     let mut eof = false;
     let mut wrlen = 0;
     let mut rdlen = 0;
-
     loop {
         while session.wants_write() {
             wrlen += session.write_tls(io)?;
         }
-
         if !until_handshaked && wrlen > 0 {
             return Ok((rdlen, wrlen));
         }
-
         if !eof && session.wants_read() {
             match session.read_tls(io)? {
                 0 => eof = true,
                 n => rdlen += n,
             }
         }
-
         match session.process_new_packets() {
             Ok(_) => {}
             Err(e) => {
-                // In case we have an alert to send describing this error,
-                // try a last-gasp write -- but don't predate the primary
-                // error.
                 let _ignored = session.write_tls(io);
-
                 return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, e));
             }
         };
-
         match (eof, until_handshaked, session.is_handshaking()) {
             (_, true, false) => return Ok((rdlen, wrlen)),
             (_, false, _) => return Ok((rdlen, wrlen)),
@@ -316,7 +307,6 @@ fn io_read(
     sock: &mut TcpStream,
     buf: &mut [u8],
 ) -> Result<usize, std::io::Error> {
-    println!("Entering mesalink_SSL_read");
     if session.is_handshaking() {
         let _ = complete_io(session, sock)?;
     }
@@ -326,7 +316,9 @@ fn io_read(
     if session.wants_read() {
         let _ = complete_io(session, sock)?;
     }
-    session.read(buf)
+    let len = session.read(buf)?;
+    let _ = complete_io(session, sock)?;
+    Ok(len)
 }
 
 fn io_write(
@@ -334,7 +326,6 @@ fn io_write(
     sock: &mut TcpStream,
     buf: &[u8],
 ) -> Result<usize, std::io::Error> {
-    println!("Entering mesalink_SSL_write");
     if session.is_handshaking() {
         let _ = complete_io(session, sock)?;
     }

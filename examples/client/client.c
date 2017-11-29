@@ -27,8 +27,8 @@ int main(int argc, char *argv[]) {
     int sockfd;
     struct hostent *hp;
     struct sockaddr_in addr;
-    char sendbuf[1024] = {0};
-    char recvbuf[1024] = {0};
+    char sendbuf[4096] = {0};
+    char recvbuf[4096] = {0};
     const char *hostname;
     const char *request = "GET / HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nAccept-Encoding: identity\r\n\r\n";
 
@@ -90,17 +90,16 @@ int main(int argc, char *argv[]) {
         printf("[-] Socket not connected");
         return -1;
     } else {
-        int sendlen, recvlen, total_recv_len;
+        int sendlen = -1, recvlen = -1, total_recv_len = 0;
         sprintf(sendbuf, request, hostname);
         //printf("[+] Connected with %s cipher suites\n", mesalink_get_cipher(ssl));
         sendlen = SSL_write(ssl, sendbuf, strlen(sendbuf));
         printf("[+] Sent %d bytes\n\n%s\n", sendlen, sendbuf);
-        do {
-            recvlen = SSL_read(ssl, recvbuf, sizeof(recvbuf));
-            recvbuf[recvlen] = 0;
+        while ((recvlen = SSL_read(ssl, recvbuf, sizeof(recvbuf) - 1)) > 0) {
+            recvbuf[recvlen] = 0x00;
             total_recv_len += strlen(recvbuf);
             printf("%s", recvbuf);
-        } while (recvlen > 0);
+        };
         printf("\n[+] Received %d bytes\n", total_recv_len);
         SSL_free(ssl);
     }
