@@ -13,7 +13,6 @@
 
 use std;
 use std::sync::Arc;
-use std::any::Any;
 use std::net::TcpStream;
 use std::io::{Read, Write};
 use std::os::unix::io::FromRawFd;
@@ -222,11 +221,11 @@ pub extern "C" fn mesalink_SSL_read(
     let ssl = unsafe { &mut *ssl_ptr };
     let sock = ssl.socket.as_mut().unwrap();
     let mut buf = unsafe { std::slice::from_raw_parts_mut(buf_ptr, buf_len as usize) };
-    let session = ssl.session.as_mut().unwrap();
-    let any_session: &mut Any = session;
+    let session = ssl.session.as_mut();
     let ret: Result<usize, std::io::Error> =
-        match any_session.downcast_mut::<rustls::ClientSession>() {
+        match session {
             Some(s) => {
+                println!("Entering mesalink_SSL_read");
                 if s.is_handshaking() {
                     let _ = s.complete_io(sock).unwrap();
                 }
@@ -238,7 +237,10 @@ pub extern "C" fn mesalink_SSL_read(
                 }
                 s.read(&mut buf)
             }
-            None => Ok(0),
+            None => {
+                println!("mesalink_SSL_read: Failed to cast to clientsession");
+                Ok(0)
+            }
         };
     match ret {
         Ok(count) => count as c_int,
@@ -259,11 +261,11 @@ pub extern "C" fn mesalink_SSL_write(
     let ssl = unsafe { &mut *ssl_ptr };
     let sock = ssl.socket.as_mut().unwrap();
     let buf = unsafe { std::slice::from_raw_parts(buf_ptr, buf_len as usize) };
-    let session = ssl.session.as_mut().unwrap();
-    let any_session: &mut Any = session;
+    let session = ssl.session.as_mut();
     let ret: Result<usize, std::io::Error> =
-        match any_session.downcast_mut::<rustls::ClientSession>() {
+        match session {
             Some(s) => {
+                println!("Entering mesalink_SSL_write");
                 if s.is_handshaking() {
                     let _ = s.complete_io(sock).unwrap();
                 }
@@ -274,7 +276,10 @@ pub extern "C" fn mesalink_SSL_write(
                 let _ = s.complete_io(sock).unwrap();
                 Ok(len)
             }
-            None => Ok(0),
+            None => {
+                println!("mesalink_SSL_write: Failed to cast to clientsession");
+                Ok(0)
+            },
         };
     match ret {
         Ok(count) => count as c_int,
