@@ -13,8 +13,8 @@
 
 use std;
 use std::sync::Arc;
+use std::ops::DerefMut;
 use std::net::TcpStream;
-use std::io::{Read, Write};
 use std::os::unix::io::FromRawFd;
 use libc::{c_char, c_int, c_uchar};
 use rustls;
@@ -220,28 +220,9 @@ pub extern "C" fn mesalink_SSL_read(
     sanitize_ptr_return_fail!(ssl_ptr);
     let ssl = unsafe { &mut *ssl_ptr };
     let sock = ssl.socket.as_mut().unwrap();
-    let mut buf = unsafe { std::slice::from_raw_parts_mut(buf_ptr, buf_len as usize) };
-    let session = ssl.session.as_mut();
-    let ret: Result<usize, std::io::Error> =
-        match session {
-            Some(s) => {
-                println!("Entering mesalink_SSL_read");
-                if s.is_handshaking() {
-                    let _ = s.complete_io(sock).unwrap();
-                }
-                if s.wants_write() {
-                    let _ = s.complete_io(sock).unwrap();
-                }
-                if s.wants_read() {
-                    let _ = s.complete_io(sock);
-                }
-                s.read(&mut buf)
-            }
-            None => {
-                println!("mesalink_SSL_read: Failed to cast to clientsession");
-                Ok(0)
-            }
-        };
+    let buf = unsafe { std::slice::from_raw_parts_mut(buf_ptr, buf_len as usize) };
+    let session = ssl.session.as_mut().unwrap();
+    let ret = io_read(session.deref_mut(), sock, buf);
     match ret {
         Ok(count) => count as c_int,
         Err(_) => {
@@ -261,26 +242,8 @@ pub extern "C" fn mesalink_SSL_write(
     let ssl = unsafe { &mut *ssl_ptr };
     let sock = ssl.socket.as_mut().unwrap();
     let buf = unsafe { std::slice::from_raw_parts(buf_ptr, buf_len as usize) };
-    let session = ssl.session.as_mut();
-    let ret: Result<usize, std::io::Error> =
-        match session {
-            Some(s) => {
-                println!("Entering mesalink_SSL_write");
-                if s.is_handshaking() {
-                    let _ = s.complete_io(sock).unwrap();
-                }
-                if s.wants_write() {
-                    let _ = s.complete_io(sock).unwrap();
-                }
-                let len = s.write(buf).unwrap();
-                let _ = s.complete_io(sock).unwrap();
-                Ok(len)
-            }
-            None => {
-                println!("mesalink_SSL_write: Failed to cast to clientsession");
-                Ok(0)
-            },
-        };
+    let session = ssl.session.as_mut().unwrap();
+    let ret = io_write(session.deref_mut(), sock, buf);
     match ret {
         Ok(count) => count as c_int,
         Err(_) => {
@@ -298,4 +261,87 @@ pub extern "C" fn mesalink_CTX_free(ctx_ptr: *mut MESALINK_CTX) {
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_free(ssl_ptr: *mut MESALINK_SSL) {
     let _ = unsafe { Box::from_raw(ssl_ptr) };
+}
+
+fn complete_io(
+    session: &mut Session,
+    io: &mut TcpStream,
+) -> Result<(usize, usize), std::io::Error> {
+    let until_handshaked = session.is_handshaking();
+    let mut eof = false;
+    let mut wrlen = 0;
+    let mut rdlen = 0;
+
+    loop {
+        while session.wants_write() {
+            wrlen += session.write_tls(io)?;
+        }
+
+        if !until_handshaked && wrlen > 0 {
+            return Ok((rdlen, wrlen));
+        }
+
+        if !eof && session.wants_read() {
+            match session.read_tls(io)? {
+                0 => eof = true,
+                n => rdlen += n,
+            }
+        }
+
+        match session.process_new_packets() {
+            Ok(_) => {}
+            Err(e) => {
+                // In case we have an alert to send describing this error,
+                // try a last-gasp write -- but don't predate the primary
+                // error.
+                let _ignored = session.write_tls(io);
+
+                return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, e));
+            }
+        };
+
+        match (eof, until_handshaked, session.is_handshaking()) {
+            (_, true, false) => return Ok((rdlen, wrlen)),
+            (_, false, _) => return Ok((rdlen, wrlen)),
+            (true, true, true) => {
+                return Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof))
+            }
+            (..) => (),
+        }
+    }
+}
+
+fn io_read(
+    session: &mut Session,
+    sock: &mut TcpStream,
+    buf: &mut [u8],
+) -> Result<usize, std::io::Error> {
+    println!("Entering mesalink_SSL_read");
+    if session.is_handshaking() {
+        let _ = complete_io(session, sock)?;
+    }
+    if session.wants_write() {
+        let _ = complete_io(session, sock)?;
+    }
+    if session.wants_read() {
+        let _ = complete_io(session, sock)?;
+    }
+    session.read(buf)
+}
+
+fn io_write(
+    session: &mut Session,
+    sock: &mut TcpStream,
+    buf: &[u8],
+) -> Result<usize, std::io::Error> {
+    println!("Entering mesalink_SSL_write");
+    if session.is_handshaking() {
+        let _ = complete_io(session, sock)?;
+    }
+    if session.wants_write() {
+        let _ = complete_io(session, sock)?;
+    }
+    let len = session.write(buf)?;
+    let _ = complete_io(session, sock)?;
+    Ok(len)
 }
