@@ -12,7 +12,7 @@
  */
 
 use libc::{c_char, c_ulong, size_t};
-use libc::strncpy;
+use std;
 use std::ffi::CString;
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -80,10 +80,14 @@ pub extern "C" fn mesalink_ERR_error_string_n(
     buf_len: size_t,
 ) -> *const c_char {
     let src_ptr = mesalink_ERR_reason_error_string(errno);
-    if buf_ptr.is_null() {
-        src_ptr
+    if !buf_ptr.is_null() {
+        unsafe {
+            let size: usize = buf_len;
+            std::ptr::copy_nonoverlapping(src_ptr, buf_ptr, size);
+            buf_ptr
+        }
     } else {
-        unsafe { strncpy(buf_ptr, src_ptr, buf_len) }
+        src_ptr
     }
 }
 
