@@ -197,6 +197,31 @@ pub extern "C" fn mesalink_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut MES
 }
 
 #[no_mangle]
+pub extern "C" fn mesalnk_SSL_CTX_use_certificate_file(
+    ctx_ptr: *mut MESALINK_CTX,
+    _filename: *const c_char,
+    _format: c_int,
+) -> c_int {
+    sanitize_ptr_return_fail!(ctx_ptr);
+    let _ctx = unsafe { &mut *ctx_ptr };
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
+    _ctx_ptr: *mut MESALINK_CTX,
+    _filename: *const c_char,
+    _format: c_int,
+) -> c_int {
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_CTX_check_private_key(_ctx_ptr: *mut MESALINK_CTX) -> c_int {
+    0
+}
+
+#[no_mangle]
 pub extern "C" fn mesalink_SSL_new<'a>(ctx_ptr: *mut MESALINK_CTX) -> *mut MESALINK_SSL<'a> {
     sanitize_ptr_return_null!(ctx_ptr);
     let ctx = unsafe { &mut *ctx_ptr };

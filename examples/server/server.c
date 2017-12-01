@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    /*if (SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM) <= 0) {
+    if (SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM) <= 0) {
         fprintf(stderr, "[-] Failed to load cetificate\n");
         //ERR_print_errors_fp(stderr);
         return -1;
@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
     if (!SSL_CTX_check_private_key(ctx)) {
         fprintf(stderr, "[-] Certificate and private key mismatch\n");
         return -1;
-    }*/
+    }
 
     sockfd = socket(PF_INET, SOCK_STREAM, 0);
     memset(&addr, 0, sizeof(addr));
