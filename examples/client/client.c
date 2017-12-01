@@ -1,4 +1,4 @@
-/* ssh.h
+/* client.c
  *                            _ _       _    
  *                           | (_)     | |   
  *  _ __ ___   ___  ___  __ _| |_ _ __ | | __
@@ -23,12 +23,11 @@
 #include <mesalink/openssl/err.h>
 
 int main(int argc, char *argv[]) {
-    int ret;
     int sockfd;
     struct hostent *hp;
     struct sockaddr_in addr;
-    char sendbuf[4096] = {0};
-    char recvbuf[4096] = {0};
+    char sendbuf[1024] = {0};
+    char recvbuf[1024] = {0};
     const char *hostname;
     const char *request = "GET / HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nAccept-Encoding: identity\r\n\r\n";
 
@@ -38,7 +37,7 @@ int main(int argc, char *argv[]) {
 
     if (argc != 2) {
         printf("Usage: %s <hostname>\n", argv[0]);
-        return 0;
+        exit(0);
     }
     hostname = argv[1];
 
@@ -46,21 +45,20 @@ int main(int argc, char *argv[]) {
     ERR_load_crypto_strings();
     SSL_load_error_strings();
 
-    ERR_clear_error();
-
     method = TLSv1_2_client_method();
     if (method == NULL) {
-        printf("[-] Error: method failed to create\n");
+        sprintf(stderr, "[-] Method is NULL\n");
         return -1;
     }
     ctx = SSL_CTX_new(method);
     if (ctx == NULL) {
-        printf("[-] Error: context failed to create\n");
+        sprintf(stderr, "[-] Context failed to create\n");
+        ERR_print_errors_fp(stderr);
         return -1;
     }
 
     if ((hp = gethostbyname(hostname)) == NULL) {
-        printf("[-] Gethostname error\n");
+        sprintf(stderr, "[-] Gethostname error\n");
         return -1;
     }
     memset(&addr, 0, sizeof(addr));
@@ -69,25 +67,30 @@ int main(int argc, char *argv[]) {
     addr.sin_port = htons(443);
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (-1 == connect(sockfd, (struct sockaddr *) &addr, sizeof(addr))) {
-        printf("[-] Connect error\n");
+    if (connect(sockfd, (struct sockaddr *) &addr, sizeof(addr)) != 0) {
+        sprintf(stderr, "[-] Connect error\n");
         return -1;
     }
     ssl = SSL_new(ctx);
     if (ssl == NULL) {
-        printf("[-] SSL creation failed\n");
+        sprintf(stderr, "[-] SSL creation failed\n");
+        ERR_print_errors_fp(stderr);
+        return -1;
     }
     if (SSL_set_tlsext_host_name(ssl, hostname) < 0) {
-        printf("[-] SSL set hostname failed\n");
+        sprintf(stderr, "[-] SSL set hostname failed\n");
+        ERR_print_errors_fp(stderr);
         return -1;
     }
 
     if (SSL_set_fd(ssl, sockfd) != SSL_SUCCESS) {
-        printf("[-] SSL set fd failed\n");
+        sprintf(stderr, "[-] SSL set fd failed\n");
+        ERR_print_errors_fp(stderr);
         return -1;
     }
     if (SSL_connect(ssl) != SSL_SUCCESS) {
-        printf("[-] Socket not connected");
+        sprintf(stderr, "[-] Socket not connected");
+        ERR_print_errors_fp(stderr);
         return -1;
     } else {
         int sendlen = -1, recvlen = -1, total_recv_len = 0;
@@ -96,7 +99,7 @@ int main(int argc, char *argv[]) {
         sendlen = SSL_write(ssl, sendbuf, strlen(sendbuf));
         printf("[+] Sent %d bytes\n\n%s\n", sendlen, sendbuf);
         while ((recvlen = SSL_read(ssl, recvbuf, sizeof(recvbuf) - 1)) > 0) {
-            recvbuf[recvlen] = 0x00;
+            recvbuf[recvlen] = 0;
             total_recv_len += strlen(recvbuf);
             printf("%s", recvbuf);
         };
