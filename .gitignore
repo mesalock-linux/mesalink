@@ -13,7 +13,7 @@ config.in
 config.log
 config.status
 configure
-examples/client/.dirstamp
+examples/*/.dirstamp
 libtool
 m4/
 stamp-h1

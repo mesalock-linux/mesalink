@@ -1,0 +1,4 @@
+noinst_PROGRAMS += examples/server/server
+examples_server_server_SOURCES = examples/server/server.c
+examples_server_server_LDADD = $(abs_builddir)/target/release/libmesalink.la
+examples_server_server_DEPENDENCIES = target/release/libmesalink.la
