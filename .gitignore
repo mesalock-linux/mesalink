@@ -4,6 +4,7 @@ Cargo.lock
 .DS_Store
 **/*.o
 examples/client/client
+examples/server/server
 Makefile
 Makefile.in
 aclocal.m4

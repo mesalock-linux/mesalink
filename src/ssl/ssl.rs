@@ -15,7 +15,7 @@ use std;
 use std::sync::Arc;
 use std::ops::DerefMut;
 use std::net::TcpStream;
-use std::os::unix::io::FromRawFd;
+use std::os::unix::io::{AsRawFd, FromRawFd};
 use libc::{c_char, c_int, c_uchar};
 use rustls;
 use rustls::Session;
@@ -99,6 +99,12 @@ pub extern "C" fn mesalink_SSLv3_client_method() -> *const MESALINK_METHOD {
 }
 
 #[no_mangle]
+pub extern "C" fn mesalink_SSLv23_client_method() -> *const MESALINK_METHOD {
+    let p: *const MESALINK_METHOD = std::ptr::null();
+    p
+}
+
+#[no_mangle]
 pub extern "C" fn mesalink_TLSv1_client_method() -> *const MESALINK_METHOD {
     let p: *const MESALINK_METHOD = std::ptr::null();
     p
@@ -121,6 +127,48 @@ pub extern "C" fn mesalink_TLSv1_2_client_method() -> *const MESALINK_METHOD {
 
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_3_client_method() -> *const MESALINK_METHOD {
+    let method = MESALINK_METHOD {
+        magic: MAGIC,
+        tls_version: rustls::ProtocolVersion::TLSv1_3,
+    };
+    Box::into_raw(Box::new(method))
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_SSLv3_server_method() -> *const MESALINK_METHOD {
+    let p: *const MESALINK_METHOD = std::ptr::null();
+    p
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_SSLv23_server_method() -> *const MESALINK_METHOD {
+    let p: *const MESALINK_METHOD = std::ptr::null();
+    p
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_TLSv1_server_method() -> *const MESALINK_METHOD {
+    let p: *const MESALINK_METHOD = std::ptr::null();
+    p
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_TLSv1_1_server_method() -> *const MESALINK_METHOD {
+    let p: *const MESALINK_METHOD = std::ptr::null();
+    p
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_TLSv1_2_server_method() -> *const MESALINK_METHOD {
+    let method = MESALINK_METHOD {
+        magic: MAGIC,
+        tls_version: rustls::ProtocolVersion::TLSv1_2,
+    };
+    Box::into_raw(Box::new(method))
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_TLSv1_3_server_method() -> *const MESALINK_METHOD {
     let method = MESALINK_METHOD {
         magic: MAGIC,
         tls_version: rustls::ProtocolVersion::TLSv1_3,
@@ -185,6 +233,16 @@ pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> 
     let socket = unsafe { TcpStream::from_raw_fd(fd) };
     ssl.socket = Some(socket);
     SslConstants::SslSuccess as c_int
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_get_fd(ssl_ptr: *mut MESALINK_SSL) -> c_int {
+    sanitize_ptr_return_fail!(ssl_ptr);
+    let ssl = unsafe { &mut *ssl_ptr };
+    match ssl.socket {
+        Some(ref socket) => socket.as_raw_fd(),
+        None => SslConstants::SslFailure as c_int,
+    }
 }
 
 #[no_mangle]

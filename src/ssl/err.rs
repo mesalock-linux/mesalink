@@ -11,8 +11,7 @@
  * This file is part of Mesalink.
  */
 
-use libc::{c_char, c_ulong, size_t};
-use std;
+use libc::{c_char, c_ulong, size_t, strncpy};
 use std::ffi::CString;
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -81,11 +80,7 @@ pub extern "C" fn mesalink_ERR_error_string_n(
 ) -> *const c_char {
     let src_ptr = mesalink_ERR_reason_error_string(errno);
     if !buf_ptr.is_null() {
-        unsafe {
-            let size: usize = buf_len;
-            std::ptr::copy_nonoverlapping(src_ptr, buf_ptr, size);
-            buf_ptr
-        }
+        unsafe { strncpy(buf_ptr, src_ptr, buf_len) }
     } else {
         src_ptr
     }

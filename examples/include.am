@@ -1,2 +1,2 @@
 include examples/client/include.am
-
+include examples/server/include.am
