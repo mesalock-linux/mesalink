@@ -14,6 +14,7 @@
  /* This example demonstrates the OpenSSL compatibility layer */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -31,7 +32,7 @@ int main(int argc, char *argv[]) {
     const char *hostname;
     const char *request = "GET / HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nAccept-Encoding: identity\r\n\r\n";
 
-    SSL_METHOD *method;
+    const SSL_METHOD *method;
     SSL_CTX *ctx;
     SSL *ssl;
 
@@ -47,18 +48,18 @@ int main(int argc, char *argv[]) {
 
     method = TLSv1_2_client_method();
     if (method == NULL) {
-        sprintf(stderr, "[-] Method is NULL\n");
+        fprintf(stderr, "[-] Method is NULL\n");
         return -1;
     }
     ctx = SSL_CTX_new(method);
     if (ctx == NULL) {
-        sprintf(stderr, "[-] Context failed to create\n");
-        ERR_print_errors_fp(stderr);
+        fprintf(stderr, "[-] Context failed to create\n");
+        //ERR_print_errors_fp(stderr);
         return -1;
     }
 
     if ((hp = gethostbyname(hostname)) == NULL) {
-        sprintf(stderr, "[-] Gethostname error\n");
+        fprintf(stderr, "[-] Gethostname error\n");
         return -1;
     }
     memset(&addr, 0, sizeof(addr));
@@ -68,29 +69,29 @@ int main(int argc, char *argv[]) {
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (connect(sockfd, (struct sockaddr *) &addr, sizeof(addr)) != 0) {
-        sprintf(stderr, "[-] Connect error\n");
+        fprintf(stderr, "[-] Connect error\n");
         return -1;
     }
     ssl = SSL_new(ctx);
     if (ssl == NULL) {
-        sprintf(stderr, "[-] SSL creation failed\n");
-        ERR_print_errors_fp(stderr);
+        fprintf(stderr, "[-] SSL creation failed\n");
+        //ERR_print_errors_fp(stderr);
         return -1;
     }
     if (SSL_set_tlsext_host_name(ssl, hostname) < 0) {
-        sprintf(stderr, "[-] SSL set hostname failed\n");
-        ERR_print_errors_fp(stderr);
+        fprintf(stderr, "[-] SSL set hostname failed\n");
+        //ERR_print_errors_fp(stderr);
         return -1;
     }
 
     if (SSL_set_fd(ssl, sockfd) != SSL_SUCCESS) {
-        sprintf(stderr, "[-] SSL set fd failed\n");
-        ERR_print_errors_fp(stderr);
+        fprintf(stderr, "[-] SSL set fd failed\n");
+        //ERR_print_errors_fp(stderr);
         return -1;
     }
     if (SSL_connect(ssl) != SSL_SUCCESS) {
-        sprintf(stderr, "[-] Socket not connected");
-        ERR_print_errors_fp(stderr);
+        fprintf(stderr, "[-] Socket not connected");
+        //ERR_print_errors_fp(stderr);
         return -1;
     } else {
         int sendlen = -1, recvlen = -1, total_recv_len = 0;

@@ -93,25 +93,25 @@ pub extern "C" fn mesalink_SSL_load_error_strings() {
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_SSLv3_client_method() -> *mut MESALINK_METHOD {
-    let p: *mut MESALINK_METHOD = std::ptr::null_mut();
+pub extern "C" fn mesalink_SSLv3_client_method() -> *const MESALINK_METHOD {
+    let p: *const MESALINK_METHOD = std::ptr::null();
     p
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_TLSv1_client_method() -> *mut MESALINK_METHOD {
-    let p: *mut MESALINK_METHOD = std::ptr::null_mut();
+pub extern "C" fn mesalink_TLSv1_client_method() -> *const MESALINK_METHOD {
+    let p: *const MESALINK_METHOD = std::ptr::null();
     p
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_TLSv1_1_client_method() -> *mut MESALINK_METHOD {
-    let p: *mut MESALINK_METHOD = std::ptr::null_mut();
+pub extern "C" fn mesalink_TLSv1_1_client_method() -> *const MESALINK_METHOD {
+    let p: *const MESALINK_METHOD = std::ptr::null();
     p
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_TLSv1_2_client_method() -> *mut MESALINK_METHOD {
+pub extern "C" fn mesalink_TLSv1_2_client_method() -> *const MESALINK_METHOD {
     let method = MESALINK_METHOD {
         magic: MAGIC,
         tls_version: rustls::ProtocolVersion::TLSv1_2,
@@ -120,7 +120,7 @@ pub extern "C" fn mesalink_TLSv1_2_client_method() -> *mut MESALINK_METHOD {
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_TLSv1_3_client_method() -> *mut MESALINK_METHOD {
+pub extern "C" fn mesalink_TLSv1_3_client_method() -> *const MESALINK_METHOD {
     let method = MESALINK_METHOD {
         magic: MAGIC,
         tls_version: rustls::ProtocolVersion::TLSv1_3,
