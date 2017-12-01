@@ -22,6 +22,8 @@
 #include <mesalink/openssl/ssl.h>
 #include <mesalink/openssl/err.h>
 
+#define SSL_SUCCESS     1
+
 int main(int argc, char *argv[]) {
     int sockfd, port;
     struct sockaddr_in addr;
@@ -45,12 +47,12 @@ int main(int argc, char *argv[]) {
     ERR_load_crypto_strings();
     SSL_load_error_strings();
 
-    method = SSLv23_server_method();
+    method = TLSv1_2_server_method();
     if (method == NULL) {
         fprintf(stderr, "[-] Method is NULL\n");
         return -1;
     }
-    ctx = SSL_CTX_new(method);            /* create new context from method */
+    ctx = SSL_CTX_new(method);
     if (ctx == NULL) {
         fprintf(stderr, "[-] Context failed to create\n");
         //ERR_print_errors_fp(stderr);
@@ -92,7 +94,7 @@ int main(int argc, char *argv[]) {
         int client_sockfd = accept(sockfd, (struct sockaddr *) &addr, &len);
         ssl = SSL_new(ctx);
         SSL_set_fd(ssl, client_sockfd);
-        if (SSL_accept(ssl) == 1) {
+        if (SSL_accept(ssl) == SSL_SUCCESS) {
             int recvlen = -1;
             while ((recvlen = SSL_read(ssl, recvbuf, sizeof(recvbuf) - 1)) > 0) {
                 recvbuf[recvlen] = 0;

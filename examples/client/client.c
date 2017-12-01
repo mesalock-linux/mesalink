@@ -23,6 +23,8 @@
 #include <mesalink/openssl/ssl.h>
 #include <mesalink/openssl/err.h>
 
+#define SSL_SUCCESS     1
+
 int main(int argc, char *argv[]) {
     int sockfd;
     struct hostent *hp;
@@ -78,7 +80,7 @@ int main(int argc, char *argv[]) {
         //ERR_print_errors_fp(stderr);
         return -1;
     }
-    if (SSL_set_tlsext_host_name(ssl, hostname) < 0) {
+    if (SSL_set_tlsext_host_name(ssl, hostname) != SSL_SUCCESS) {
         fprintf(stderr, "[-] SSL set hostname failed\n");
         //ERR_print_errors_fp(stderr);
         return -1;

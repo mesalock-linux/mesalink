@@ -27,11 +27,6 @@ typedef struct MEASLINK_CTX         MESALINK_CTX;
 typedef struct MESALINK_CIPHER      MESALINK_CIPHER;
 typedef struct MESALINK_SSL         MESALINK_SSL;
 
-enum {
-    SSL_FAILURE = 0,
-    SSL_SUCCESS = 1
-};
-
 MESALINK_API int            mesalink_library_init();
 MESALINK_API int            mesalink_add_ssl_algorithms();
 MESALINK_API void           mesalink_SSL_load_error_strings();
