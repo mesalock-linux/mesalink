@@ -33,8 +33,9 @@ pub struct MESALINK_METHOD {
 #[repr(C)]
 pub struct MESALINK_CTX {
     magic: u32,
-    client_config: Arc<rustls::ClientConfig>,
-    server_config: Arc<rustls::ServerConfig>,
+    methods: Option<Vec<rustls::ProtocolVersion>>,
+    certificates: Option<Vec<rustls::Certificate>>,
+    private_key: Option<rustls::PrivateKey>,
 }
 
 #[repr(C)]
@@ -49,6 +50,12 @@ pub struct MESALINK_SSL<'a> {
 pub enum SslConstants {
     SslFailure = 0,
     SslSuccess = 1,
+}
+
+pub enum Filetypes {
+    FiletypePEM = 1,
+    FiletypeASN = 2,
+    FiletypeRaw = 3,
 }
 
 macro_rules! sanitize_ptr_return_null {
@@ -78,13 +85,13 @@ macro_rules! sanitize_ptr_return_fail {
 #[no_mangle]
 pub extern "C" fn mesalink_library_init() -> c_int {
     /* compatibility only */
-    1
+    SslConstants::SslSuccess as c_int
 }
 
 #[no_mangle]
 pub extern "C" fn mesalink_add_ssl_algorithms() -> c_int {
     /* compatibility only */
-    1
+    SslConstants::SslSuccess as c_int
 }
 
 #[no_mangle]
@@ -180,40 +187,82 @@ pub extern "C" fn mesalink_TLSv1_3_server_method() -> *const MESALINK_METHOD {
 pub extern "C" fn mesalink_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut MESALINK_CTX {
     sanitize_ptr_return_null!(method_ptr);
     let method = unsafe { &*method_ptr };
-    let mut client_config = rustls::ClientConfig::new();
-    client_config.versions = vec![method.tls_version];
-    client_config
-        .root_store
-        .add_server_trust_anchors(&TLS_SERVER_ROOTS);
-    let mut server_config = rustls::ServerConfig::new();
-    server_config.versions = vec![method.tls_version];
     let context = MESALINK_CTX {
         magic: MAGIC,
-        client_config: Arc::new(client_config),
-        server_config: Arc::new(server_config),
+        methods: Some(vec![method.tls_version]),
+        certificates: None,
+        private_key: None,
     };
-    let _ = unsafe { Box::from_raw(method_ptr) };
+    let _ = unsafe { Box::from_raw(method_ptr) }; // Always free the method object
     Box::into_raw(Box::new(context))
 }
 
 #[no_mangle]
-pub extern "C" fn mesalnk_SSL_CTX_use_certificate_file(
+pub extern "C" fn mesalink_SSL_CTX_use_certificate_file(
     ctx_ptr: *mut MESALINK_CTX,
-    _filename: *const c_char,
+    filename_ptr: *const c_char,
     _format: c_int,
 ) -> c_int {
+    println!("Entering mesalink_SSL_CTX_use_certificate_file");
     sanitize_ptr_return_fail!(ctx_ptr);
-    let _ctx = unsafe { &mut *ctx_ptr };
-    0
+    let ctx = unsafe { &mut *ctx_ptr };
+    let filename_cstr = unsafe { std::ffi::CStr::from_ptr(filename_ptr) };
+    if let Ok(filename) = filename_cstr.to_str() {
+        match std::fs::File::open(filename) {
+            Ok(f) => {
+                let mut reader = std::io::BufReader::new(f);
+                let certs = rustls::internal::pemfile::certs(&mut reader).unwrap();
+                ctx.certificates = Some(certs);
+            }
+            Err(_) => {
+                mesalink_push_error(ErrorCode::General);
+                return SslConstants::SslFailure as c_int;
+            }
+        }
+    }
+    println!("Exiting mesalink_SSL_CTX_use_certificate_file");
+    SslConstants::SslSuccess as c_int
 }
 
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
-    _ctx_ptr: *mut MESALINK_CTX,
-    _filename: *const c_char,
+    ctx_ptr: *mut MESALINK_CTX,
+    filename_ptr: *const c_char,
     _format: c_int,
 ) -> c_int {
-    0
+    println!("Entering mesalink_SSL_CTX_use_PrivateKey_file");
+    sanitize_ptr_return_fail!(ctx_ptr);
+    let ctx = unsafe { &mut *ctx_ptr };
+    let filename_cstr = unsafe { std::ffi::CStr::from_ptr(filename_ptr) };
+    if let Ok(filename) = filename_cstr.to_str() {
+        let rsa_keys = match std::fs::File::open(filename) {
+            Ok(f) => {
+                let mut reader = std::io::BufReader::new(f);
+                rustls::internal::pemfile::rsa_private_keys(&mut reader).unwrap()
+            }
+            Err(_) => {
+                mesalink_push_error(ErrorCode::General);
+                return SslConstants::SslFailure as c_int;
+            }
+        };
+        let pk8_keys = match std::fs::File::open(filename) {
+            Ok(f) => {
+                let mut reader = std::io::BufReader::new(f);
+                rustls::internal::pemfile::pkcs8_private_keys(&mut reader).unwrap()
+            }
+            Err(_) => {
+                mesalink_push_error(ErrorCode::General);
+                return SslConstants::SslFailure as c_int;
+            }
+        };
+        if !pk8_keys.is_empty() {
+            ctx.private_key = Some(pk8_keys[0].clone());
+        } else {
+            ctx.private_key = Some(rsa_keys[0].clone())
+        }
+    }
+    println!("Exiting mesalink_SSL_CTX_use_PrivateKey_file");
+    SslConstants::SslSuccess as c_int
 }
 
 #[no_mangle]
@@ -276,7 +325,12 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     let ssl = unsafe { &mut *ssl_ptr };
     if let Some(hostname) = ssl.hostname {
         if let Ok(hostname_str) = hostname.to_str() {
-            let session = rustls::ClientSession::new(&ssl.context.client_config, hostname_str);
+            let mut client_config = rustls::ClientConfig::new();
+            client_config.versions = ssl.context.methods.clone().unwrap();
+            client_config
+                .root_store
+                .add_server_trust_anchors(&TLS_SERVER_ROOTS);
+            let session = rustls::ClientSession::new(&Arc::new(client_config), hostname_str);
             ssl.session = Some(Box::new(session));
             return SslConstants::SslSuccess as c_int;
         }
@@ -287,10 +341,20 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
+    println!("Entering mesalink_SSL_accept");
     sanitize_ptr_return_fail!(ssl_ptr);
     let ssl = unsafe { &mut *ssl_ptr };
-    let session = rustls::ServerSession::new(&ssl.context.server_config);
+    let mut server_config = rustls::ServerConfig::new();
+    match (&ssl.context.certificates, &ssl.context.private_key) {
+        (&Some(ref certs), &Some(ref key)) => {
+            println!("Setting certificate and signing key");
+            server_config.set_single_cert(certs.clone(), key.clone());
+        }
+        _ => (),
+    }
+    let session = rustls::ServerSession::new(&Arc::new(server_config));
     ssl.session = Some(Box::new(session));
+    println!("Existing mesalink_SSL_accept");
     SslConstants::SslSuccess as c_int
 }
 

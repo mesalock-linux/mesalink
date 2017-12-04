@@ -51,7 +51,7 @@ MESALINK_API MESALINK_METHOD *mesalink_TLSv1_2_server_method();
 MESALINK_API MESALINK_METHOD *mesalink_TLSv1_3_server_method();
 
 MESALINK_API MESALINK_CTX*  mesalink_CTX_new(const MESALINK_METHOD*);
-MESALINK_API int            mesalnk_SSL_CTX_use_certificate_file(MESALINK_CTX*, const char*, int);
+MESALINK_API int            mesalink_SSL_CTX_use_certificate_file(MESALINK_CTX*, const char*, int);
 MESALINK_API int            mesalink_SSL_CTX_use_PrivateKey_file(MESALINK_CTX*, const char*, int);
 MESALINK_API int            mesalink_SSL_CTX_check_private_key(const MESALINK_CTX*);
 

@@ -22,8 +22,6 @@
 #include <mesalink/openssl/ssl.h>
 #include <mesalink/openssl/err.h>
 
-#define SSL_SUCCESS     1
-
 int main(int argc, char *argv[]) {
     int sockfd, port;
     struct sockaddr_in addr;
@@ -69,10 +67,10 @@ int main(int argc, char *argv[]) {
         //ERR_print_errors_fp(stderr);
         return -1;
     }
-    if (!SSL_CTX_check_private_key(ctx)) {
+    /*if (!SSL_CTX_check_private_key(ctx)) {
         fprintf(stderr, "[-] Certificate and private key mismatch\n");
         return -1;
-    }
+    }*/
 
     sockfd = socket(PF_INET, SOCK_STREAM, 0);
     memset(&addr, 0, sizeof(addr));
@@ -87,14 +85,22 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "[-] Listen error\n");
         return -1;
     }
-
     while (1) {
         SSL *ssl;
         unsigned int len = sizeof(addr);
         int client_sockfd = accept(sockfd, (struct sockaddr *) &addr, &len);
         ssl = SSL_new(ctx);
-        SSL_set_fd(ssl, client_sockfd);
-        if (SSL_accept(ssl) == SSL_SUCCESS) {
+        if (ssl == NULL) {
+            fprintf(stderr, "[-] SSL creation failed\n");
+            //ERR_print_errors_fp(stderr);
+            return -1;
+        }
+        if (SSL_set_fd(ssl, client_sockfd) != SUCCESS) {
+            fprintf(stderr, "[-] SSL set fd failed\n");
+            //ERR_print_errors_fp(stderr);
+            return -1;
+        }
+        if (SSL_accept(ssl) == SUCCESS) {
             int recvlen = -1;
             while ((recvlen = SSL_read(ssl, recvbuf, sizeof(recvbuf) - 1)) > 0) {
                 recvbuf[recvlen] = 0;

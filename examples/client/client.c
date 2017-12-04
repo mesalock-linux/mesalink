@@ -80,18 +80,18 @@ int main(int argc, char *argv[]) {
         //ERR_print_errors_fp(stderr);
         return -1;
     }
-    if (SSL_set_tlsext_host_name(ssl, hostname) != SSL_SUCCESS) {
+    if (SSL_set_tlsext_host_name(ssl, hostname) != SUCCESS) {
         fprintf(stderr, "[-] SSL set hostname failed\n");
         //ERR_print_errors_fp(stderr);
         return -1;
     }
 
-    if (SSL_set_fd(ssl, sockfd) != SSL_SUCCESS) {
+    if (SSL_set_fd(ssl, sockfd) != SUCCESS) {
         fprintf(stderr, "[-] SSL set fd failed\n");
         //ERR_print_errors_fp(stderr);
         return -1;
     }
-    if (SSL_connect(ssl) != SSL_SUCCESS) {
+    if (SSL_connect(ssl) != SUCCESS) {
         fprintf(stderr, "[-] Socket not connected");
         //ERR_print_errors_fp(stderr);
         return -1;

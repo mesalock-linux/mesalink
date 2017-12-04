@@ -46,7 +46,7 @@ typedef MESALINK_SSL    SSL;
 #define TLSv1_3_server_method           mesalink_TLSv1_3_server_method
 
 #define SSL_CTX_new                     mesalink_CTX_new
-#define SSL_CTX_use_certificate_file    mesalnk_SSL_CTX_use_certificate_file
+#define SSL_CTX_use_certificate_file    mesalink_SSL_CTX_use_certificate_file
 #define SSL_CTX_use_PrivateKey_file     mesalink_SSL_CTX_use_PrivateKey_file
 #define SSL_CTX_check_private_key       mesalink_SSL_CTX_check_private_key
 
@@ -56,13 +56,25 @@ typedef MESALINK_SSL    SSL;
 #define SSL_set_SSL_CTX                 mesalink_SSL_set_SSL_CTX
 #define SSL_set_fd                      mesalink_SSL_set_fd
 #define SSL_get_fd                      mesalink_SSL_get_fd
-#define SSL_connect                 mesalink_SSL_connect
-#define SSL_accept                  mesalink_SSL_accept
-#define SSL_write                   mesalink_SSL_write
-#define SSL_read                    mesalink_SSL_read
+#define SSL_connect                     mesalink_SSL_connect
+#define SSL_accept                      mesalink_SSL_accept
+#define SSL_write                       mesalink_SSL_write
+#define SSL_read                        mesalink_SSL_read
 
-#define SSL_CTX_free                mesalink_CTX_free
-#define SSL_free                    mesalink_SSL_free
+#define SSL_CTX_free                    mesalink_CTX_free
+#define SSL_free                        mesalink_SSL_free
+
+enum { /* ssl constants */
+    ERROR_NONE              =   0,
+    FAILURE                 =   0,
+    SUCCESS                 =   1,
+    SHUTDOWN_NOT_DONE       =   2,
+
+    SSL_FILETYPE_PEM        =   1,
+    SSL_FILETYPE_ASN1       =   2,
+    SSL_FILETYPE_DEFAULT    =   2,
+    SSL_FILETYPE_RAW        =   3,
+};
 
 #ifdef __cplusplus
     } /* extern C */
