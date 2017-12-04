@@ -14,6 +14,7 @@
 use std;
 use std::sync::Arc;
 use std::ops::DerefMut;
+use std::io::Write;
 use std::net::TcpStream;
 use std::os::unix::io::{AsRawFd, FromRawFd};
 use libc::{c_char, c_int, c_uchar};
@@ -203,7 +204,6 @@ pub extern "C" fn mesalink_SSL_CTX_use_certificate_file(
     filename_ptr: *const c_char,
     _format: c_int,
 ) -> c_int {
-    println!("Entering mesalink_SSL_CTX_use_certificate_file");
     sanitize_ptr_return_fail!(ctx_ptr);
     let ctx = unsafe { &mut *ctx_ptr };
     let filename_cstr = unsafe { std::ffi::CStr::from_ptr(filename_ptr) };
@@ -220,7 +220,6 @@ pub extern "C" fn mesalink_SSL_CTX_use_certificate_file(
             }
         }
     }
-    println!("Exiting mesalink_SSL_CTX_use_certificate_file");
     SslConstants::SslSuccess as c_int
 }
 
@@ -230,7 +229,6 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
     filename_ptr: *const c_char,
     _format: c_int,
 ) -> c_int {
-    println!("Entering mesalink_SSL_CTX_use_PrivateKey_file");
     sanitize_ptr_return_fail!(ctx_ptr);
     let ctx = unsafe { &mut *ctx_ptr };
     let filename_cstr = unsafe { std::ffi::CStr::from_ptr(filename_ptr) };
@@ -261,7 +259,6 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
             ctx.private_key = Some(rsa_keys[0].clone())
         }
     }
-    println!("Exiting mesalink_SSL_CTX_use_PrivateKey_file");
     SslConstants::SslSuccess as c_int
 }
 
@@ -341,20 +338,17 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
-    println!("Entering mesalink_SSL_accept");
     sanitize_ptr_return_fail!(ssl_ptr);
     let ssl = unsafe { &mut *ssl_ptr };
     let mut server_config = rustls::ServerConfig::new();
     match (&ssl.context.certificates, &ssl.context.private_key) {
         (&Some(ref certs), &Some(ref key)) => {
-            println!("Setting certificate and signing key");
             server_config.set_single_cert(certs.clone(), key.clone());
         }
         _ => (),
     }
     let session = rustls::ServerSession::new(&Arc::new(server_config));
     ssl.session = Some(Box::new(session));
-    println!("Existing mesalink_SSL_accept");
     SslConstants::SslSuccess as c_int
 }
 
@@ -372,7 +366,8 @@ pub extern "C" fn mesalink_SSL_read(
     let ret = io_read(session.deref_mut(), sock, buf);
     match ret {
         Ok(count) => count as c_int,
-        Err(_) => {
+        Err(e) => {
+            writeln!(&mut std::io::stderr(), "mesalink_SSL_read error: {:?}", e).unwrap();
             mesalink_push_error(ErrorCode::General);
             SslConstants::SslFailure as c_int
         }
@@ -393,7 +388,8 @@ pub extern "C" fn mesalink_SSL_write(
     let ret = io_write(session.deref_mut(), sock, buf);
     match ret {
         Ok(count) => count as c_int,
-        Err(_) => {
+        Err(e) => {
+            writeln!(&mut std::io::stderr(), "mesalink_SSL_write error: {:?}", e).unwrap();
             mesalink_push_error(ErrorCode::General);
             SslConstants::SslFailure as c_int
         }
@@ -464,7 +460,7 @@ fn io_read(
         let _ = complete_io(session, sock)?;
     }
     let len = session.read(buf)?;
-    let _ = complete_io(session, sock)?;
+    //let _ = complete_io(session, sock)?;
     Ok(len)
 }
 
