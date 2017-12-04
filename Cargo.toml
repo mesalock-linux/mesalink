@@ -1,6 +1,6 @@
 [package]
 name = "mesalink"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["Yiming Jing <jingyiming@baidu.com>"]
 description = "Mesalink is an OpenSSL-compatible TLS library based on Rustls and Ring"
 build = "build.rs"

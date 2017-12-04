@@ -14,6 +14,7 @@ include examples/include.am
 
 maintainer-clean-local:
 	-cargo clean
+	-rm -rf target
 	-rm Makefile.in
 	-rm Makefile
 	-rm aclocal.m4
