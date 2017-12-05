@@ -20,32 +20,33 @@ use std::os::unix::io::{AsRawFd, FromRawFd};
 use libc::{c_char, c_int, c_uchar};
 use rustls;
 use rustls::Session;
+use ring;
+use ring::rand::SecureRandom;
 use webpki;
-use rand::Rng;
-use rand;
 use webpki_roots::TLS_SERVER_ROOTS;
 use ssl::err::{mesalink_push_error, ErrorCode};
 
 lazy_static! {
-    static ref MAGIC: u32 = {
-        let mut rng = rand::thread_rng();
-        if rng.gen() {
-            rng.gen::<u32>()
+    static ref MAGIC: [u8; 4] = {
+        let mut number = [0u8; 4];
+        let rng = ring::rand::SystemRandom::new();
+        if rng.fill(&mut number).is_ok() {
+            number
         } else {
-            0xc0d4c5a9
+            [0xc0, 0xd4, 0xc5, 0x09]
         }
     };
 }
 
 #[repr(C)]
 pub struct MESALINK_METHOD {
-    magic: u32,
+    magic: [u8; 4],
     tls_version: rustls::ProtocolVersion,
 }
 
 #[repr(C)]
 pub struct MESALINK_CTX {
-    magic: u32,
+    magic: [u8; 4],
     methods: Option<Vec<rustls::ProtocolVersion>>,
     certificates: Option<Vec<rustls::Certificate>>,
     private_key: Option<rustls::PrivateKey>,
@@ -53,7 +54,7 @@ pub struct MESALINK_CTX {
 
 #[repr(C)]
 pub struct MESALINK_SSL<'a> {
-    magic: u32,
+    magic: [u8; 4],
     context: &'a mut MESALINK_CTX,
     hostname: Option<&'a std::ffi::CStr>,
     socket: Option<TcpStream>,
@@ -77,10 +78,11 @@ macro_rules! sanitize_ptr_return_null {
             return std::ptr::null_mut();
         }
         let obj = unsafe { &* $ptr_var };
-        let magic: u32 = *MAGIC;
+        let magic = *MAGIC;
         if obj.magic != magic {
             return std::ptr::null_mut();
         }
+        println!("MAGIC: {:?}", *MAGIC);
     }
 }
 
@@ -90,10 +92,11 @@ macro_rules! sanitize_ptr_return_fail {
             return SslConstants::SslFailure as c_int;
         }
         let obj = unsafe { &*$ptr_var };
-        let magic: u32 = *MAGIC;
+        let magic = *MAGIC;
         if obj.magic != magic {
             return SslConstants::SslFailure as c_int;
         }
+        println!("MAGIC: {:?}", *MAGIC);
     }
 }
 
@@ -490,7 +493,7 @@ fn io_read(
         let _ = complete_io(session, sock)?;
     }
     let len = session.read(buf)?;
-    //let _ = complete_io(session, sock)?;
+    let _ = complete_io(session, sock)?;
     Ok(len)
 }
 
