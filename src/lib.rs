@@ -17,6 +17,7 @@
 
 extern crate libc;
 extern crate rustls;
+extern crate webpki;
 extern crate webpki_roots;
 
 #[cfg(feature = "error_strings")]

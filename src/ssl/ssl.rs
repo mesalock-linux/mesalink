@@ -20,6 +20,7 @@ use std::os::unix::io::{AsRawFd, FromRawFd};
 use libc::{c_char, c_int, c_uchar};
 use rustls;
 use rustls::Session;
+use webpki;
 use webpki_roots::TLS_SERVER_ROOTS;
 use ssl::err::{mesalink_push_error, ErrorCode};
 
@@ -263,8 +264,23 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_CTX_check_private_key(_ctx_ptr: *mut MESALINK_CTX) -> c_int {
-    0
+pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX) -> c_int {
+    sanitize_ptr_return_fail!(ctx_ptr);
+    let ctx = unsafe { &mut *ctx_ptr };
+    match (&ctx.certificates, &ctx.private_key) {
+        (&Some(ref certs), &Some(ref key)) => {
+            if let Ok(rsa_key) = rustls::sign::RSASigningKey::new(key) {
+                let certified_key =
+                    rustls::sign::CertifiedKey::new(certs.clone(), Arc::new(Box::new(rsa_key)));
+                if certified_key.cross_check_end_entity_cert(None).is_ok() {
+                    return SslConstants::SslSuccess as c_int;
+                }
+            }
+        }
+        _ => (),
+    }
+    mesalink_push_error(ErrorCode::General);
+    SslConstants::SslFailure as c_int
 }
 
 #[no_mangle]
@@ -327,7 +343,8 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
             client_config
                 .root_store
                 .add_server_trust_anchors(&TLS_SERVER_ROOTS);
-            let session = rustls::ClientSession::new(&Arc::new(client_config), hostname_str);
+            let dns_name = webpki::DNSNameRef::try_from_ascii_str(hostname_str).unwrap();
+            let session = rustls::ClientSession::new(&Arc::new(client_config), dns_name);
             ssl.session = Some(Box::new(session));
             return SslConstants::SslSuccess as c_int;
         }
@@ -340,7 +357,7 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     sanitize_ptr_return_fail!(ssl_ptr);
     let ssl = unsafe { &mut *ssl_ptr };
-    let mut server_config = rustls::ServerConfig::new();
+    let mut server_config = rustls::ServerConfig::new(rustls::NoClientAuth::new());
     match (&ssl.context.certificates, &ssl.context.private_key) {
         (&Some(ref certs), &Some(ref key)) => {
             server_config.set_single_cert(certs.clone(), key.clone());

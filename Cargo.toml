@@ -15,7 +15,8 @@ error_strings = []
 tls13_draft = []
 
 [dependencies]
-rustls = "0.11.0"
-webpki-roots = "0.13.0"
+rustls = {git = "https://github.com/ctz/rustls", rev = "f22c9ba"}
+webpki = { git = "https://github.com/briansmith/webpki" }
+webpki-roots = { git = "https://github.com/briansmith/webpki-roots", branch = "webpki-github" }
 libc = "0.2"
 lazy_static = "0.2.*"

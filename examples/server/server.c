@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
     char recvbuf[1024] = {0};
     const char* cert_file;
     const char* key_file;
-    const char* response = "HTTP/1.0 200 OK\r\nConnection: close\r\n\r\n<html><body><pre>Hello from Mesalink server</pre></body></html>\r\n";
+    const char* response = "HTTP/1.0 200 OK\r\nConnection: close\r\n\r\n<html><body><pre>Hello from MesaLink server</pre></body></html>\r\n";
 
     const SSL_METHOD *method;
     SSL_CTX *ctx;
@@ -67,10 +67,11 @@ int main(int argc, char *argv[]) {
         //ERR_print_errors_fp(stderr);
         return -1;
     }
-    /*if (!SSL_CTX_check_private_key(ctx)) {
+    if (!SSL_CTX_check_private_key(ctx)) {
         fprintf(stderr, "[-] Certificate and private key mismatch\n");
+        //ERR_print_errors_fp(stderr);
         return -1;
-    }*/
+    }
 
     sockfd = socket(PF_INET, SOCK_STREAM, 0);
     memset(&addr, 0, sizeof(addr));
