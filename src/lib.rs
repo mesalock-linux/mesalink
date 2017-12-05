@@ -19,6 +19,7 @@ extern crate libc;
 extern crate rustls;
 extern crate webpki;
 extern crate webpki_roots;
+extern crate rand;
 
 #[cfg(feature = "error_strings")]
 #[macro_use] extern crate lazy_static;
