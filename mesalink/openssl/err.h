@@ -14,13 +14,13 @@
 #include <mesalink/ssl.h>
 #include <mesalink/err.h>
 
-#define ERR_load_crypto_strings         mesalink_ERR_load_error_strings
-#define ERR_free_strings                mesalink_ERR_free_error_strings
+#define ERR_load_crypto_strings mesalink_ERR_load_error_strings
+#define ERR_free_strings mesalink_ERR_free_error_strings
 
-#define ERR_error_string                mesalink_ERR_error_string
-#define ERR_error_string_n              mesalink_ERR_error_string_n
-#define ERR_reason_error_string         mesalink_ERR_reason_error_string
+#define ERR_error_string mesalink_ERR_error_string
+#define ERR_error_string_n mesalink_ERR_error_string_n
+#define ERR_reason_error_string mesalink_ERR_reason_error_string
 
-#define ERR_get_error                   mesalink_ERR_get_error
-#define ERR_peek_last_error             mesalink_ERR_peek_last_error
-#define ERR_clear_error                 mesalink_ERR_clear_error
+#define ERR_get_error mesalink_ERR_get_error
+#define ERR_peek_last_error mesalink_ERR_peek_last_error
+#define ERR_clear_error mesalink_ERR_clear_error

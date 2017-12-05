@@ -11,12 +11,12 @@
  * This file is part of Mesalink.
  */
 
- /* Visibility control macros */
+/* Visibility control macros */
 
 #ifndef MESALINK_VISIBILITY_H
 #define MESALINK_VISIBILITY_H
 
-#define MESALINK_API __attribute__ ((visibility("default")))
-#define MESALINK_LOCAL __attribute__ ((visiblity("hidden")))
+#define MESALINK_API __attribute__((visibility("default")))
+#define MESALINK_LOCAL __attribute__((visiblity("hidden")))
 
 #endif /* MESALINK_VISIBILITY_H */

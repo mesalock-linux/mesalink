@@ -11,7 +11,7 @@
  * This file is part of Mesalink.
  */
 
- /* This example demonstrates the OpenSSL compatibility layer */
+/* This example demonstrates the OpenSSL compatibility layer */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,18 +22,20 @@
 #include <mesalink/openssl/ssl.h>
 #include <mesalink/openssl/err.h>
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     int sockfd, port;
     struct sockaddr_in addr;
     char recvbuf[1024] = {0};
-    const char* cert_file;
-    const char* key_file;
-    const char* response = "HTTP/1.0 200 OK\r\nConnection: close\r\n\r\n<html><body><pre>Hello from MesaLink server</pre></body></html>\r\n";
+    const char *cert_file;
+    const char *key_file;
+    const char *response = "HTTP/1.0 200 OK\r\nConnection: close\r\n\r\n<html><body><pre>Hello from MesaLink server</pre></body></html>\r\n";
 
     const SSL_METHOD *method;
     SSL_CTX *ctx;
 
-    if (argc != 4) {
+    if (argc != 4)
+    {
         printf("Usage: %s <portnum> <cert_file> <private_key_file>\n", argv[0]);
         exit(0);
     }
@@ -46,28 +48,33 @@ int main(int argc, char *argv[]) {
     SSL_load_error_strings();
 
     method = TLSv1_2_server_method();
-    if (method == NULL) {
+    if (method == NULL)
+    {
         fprintf(stderr, "[-] Method is NULL\n");
         return -1;
     }
     ctx = SSL_CTX_new(method);
-    if (ctx == NULL) {
+    if (ctx == NULL)
+    {
         fprintf(stderr, "[-] Context failed to create\n");
         //ERR_print_errors_fp(stderr);
         return -1;
     }
 
-    if (SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM) <= 0) {
+    if (SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM) <= 0)
+    {
         fprintf(stderr, "[-] Failed to load cetificate\n");
         //ERR_print_errors_fp(stderr);
         return -1;
     }
-    if (SSL_CTX_use_PrivateKey_file(ctx, key_file, SSL_FILETYPE_PEM) <= 0) {
+    if (SSL_CTX_use_PrivateKey_file(ctx, key_file, SSL_FILETYPE_PEM) <= 0)
+    {
         fprintf(stderr, "[-] Failed to load private key\n");
         //ERR_print_errors_fp(stderr);
         return -1;
     }
-    if (!SSL_CTX_check_private_key(ctx)) {
+    if (!SSL_CTX_check_private_key(ctx))
+    {
         fprintf(stderr, "[-] Certificate and private key mismatch\n");
         //ERR_print_errors_fp(stderr);
         return -1;
@@ -78,37 +85,46 @@ int main(int argc, char *argv[]) {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = INADDR_ANY;
-    if (bind(sockfd, (struct sockaddr *) &addr, sizeof(addr)) != 0) {
+    if (bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) != 0)
+    {
         fprintf(stderr, "[-] Accept error\n");
         return -1;
     }
-    if (listen(sockfd, 10) != 0) {
+    if (listen(sockfd, 10) != 0)
+    {
         fprintf(stderr, "[-] Listen error\n");
         return -1;
     }
-    while (1) {
+    while (1)
+    {
         SSL *ssl;
         unsigned int len = sizeof(addr);
-        int client_sockfd = accept(sockfd, (struct sockaddr *) &addr, &len);
+        int client_sockfd = accept(sockfd, (struct sockaddr *)&addr, &len);
         ssl = SSL_new(ctx);
-        if (ssl == NULL) {
+        if (ssl == NULL)
+        {
             fprintf(stderr, "[-] SSL creation failed\n");
             //ERR_print_errors_fp(stderr);
             return -1;
         }
-        if (SSL_set_fd(ssl, client_sockfd) != SUCCESS) {
+        if (SSL_set_fd(ssl, client_sockfd) != SUCCESS)
+        {
             fprintf(stderr, "[-] SSL set fd failed\n");
             //ERR_print_errors_fp(stderr);
             return -1;
         }
-        if (SSL_accept(ssl) == SUCCESS) {
+        if (SSL_accept(ssl) == SUCCESS)
+        {
             int recvlen = -1;
-            while ((recvlen = SSL_read(ssl, recvbuf, sizeof(recvbuf) - 1)) > 0) {
+            while ((recvlen = SSL_read(ssl, recvbuf, sizeof(recvbuf) - 1)) > 0)
+            {
                 recvbuf[recvlen] = 0;
                 printf("[+] Received:\n%s", recvbuf);
                 SSL_write(ssl, response, strlen(response));
             }
-        } else {
+        }
+        else
+        {
             fprintf(stderr, "[-] Socket not accepted");
             //ERR_print_errors_fp(stderr);
         }
