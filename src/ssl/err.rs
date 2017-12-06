@@ -21,19 +21,20 @@ use thread_id;
 #[derive(Copy, Clone)]
 pub enum ErrorCode {
     NoError = 0,
-    InappropriateMessage = 401,
-    InappropriateHandshakeMessage = 402,
-    CorruptMessage = 403,
-    CorruptMessagePayload = 404,
-    NoCertificatesPresented = 405,
-    DecryptError = 406,
-    PeerIncompatibleError = 407,
-    PeerMisbehavedError = 408,
-    AlertReceived = 409,
-    WebPKIError = 410,
-    InvalidSCT = 411,
-    General = 412,
-    FailedToGetCurrentTime = 413,
+    BadFileName = 0x201,
+    InappropriateMessage = 0x401,
+    InappropriateHandshakeMessage,
+    CorruptMessage,
+    CorruptMessagePayload,
+    NoCertificatesPresented,
+    DecryptError ,
+    PeerIncompatibleError,
+    PeerMisbehavedError,
+    AlertReceived,
+    WebPKIError,
+    InvalidSCT,
+    General,
+    FailedToGetCurrentTime,
     __Nonexhaustive = 999,
 }
 
@@ -46,6 +47,7 @@ impl ErrorCode {
     fn as_str(&self) -> &'static str {
         match *self {
             ErrorCode::NoError => "No error in queue",
+            ErrorCode::BadFileName => "Bad file name",
             ErrorCode::InappropriateMessage => "Inappropriate message",
             ErrorCode::InappropriateHandshakeMessage => "Inappropriate handshake message",
             ErrorCode::CorruptMessage => "Corrupt message",
@@ -69,10 +71,24 @@ impl ErrorCode {
     }
 }
 
+impl From<u32> for ErrorCode {
+    fn from(e: u32) -> ErrorCode {
+        unsafe { std::mem::transmute::<u32, ErrorCode>(e) }
+    }
+}
+
 impl From<c_ulong> for ErrorCode {
-    fn from(t: c_ulong) -> ErrorCode {
-        let t = t as u32;
-        unsafe { std::mem::transmute(t) }
+    fn from(e: c_ulong) -> ErrorCode {
+        let e = e as u32;
+        ErrorCode::from(e)
+    }
+}
+
+impl From<std::io::Error> for ErrorCode {
+    fn from(e: std::io::Error) -> ErrorCode {
+        let errno: u8 = unsafe { std::mem::transmute::<std::io::ErrorKind, u8>(e.kind()) };
+        let base: u32 = 0x300;
+        ErrorCode::from(base + errno as u32)
     }
 }
 

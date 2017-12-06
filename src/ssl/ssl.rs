@@ -300,14 +300,17 @@ pub extern "C" fn mesalink_SSL_CTX_use_certificate_file(
                 let mut reader = std::io::BufReader::new(f);
                 let certs = rustls::internal::pemfile::certs(&mut reader).unwrap();
                 ctx.certificates = Some(certs);
+                return SslConstants::SslSuccess as c_int;
             }
             Err(_) => {
                 mesalink_push_error(ErrorCode::General);
                 return SslConstants::SslFailure as c_int;
             }
         }
+    } else {
+        mesalink_push_error(ErrorCode::BadFileName);
+        SslConstants::SslFailure as c_int
     }
-    SslConstants::SslSuccess as c_int
 }
 
 #[no_mangle]
@@ -345,8 +348,11 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
         } else {
             ctx.private_key = Some(rsa_keys[0].clone())
         }
+        return SslConstants::SslSuccess as c_int;
+    } else {
+        mesalink_push_error(ErrorCode::BadFileName);
+        SslConstants::SslFailure as c_int
     }
-    SslConstants::SslSuccess as c_int
 }
 
 #[no_mangle]
