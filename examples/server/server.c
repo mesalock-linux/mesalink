@@ -57,26 +57,26 @@ int main(int argc, char *argv[])
     if (ctx == NULL)
     {
         fprintf(stderr, "[-] Context failed to create\n");
-        //ERR_print_errors_fp(stderr);
+        ERR_print_errors_fp(stderr);
         return -1;
     }
 
     if (SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM) <= 0)
     {
         fprintf(stderr, "[-] Failed to load cetificate\n");
-        //ERR_print_errors_fp(stderr);
+        ERR_print_errors_fp(stderr);
         return -1;
     }
     if (SSL_CTX_use_PrivateKey_file(ctx, key_file, SSL_FILETYPE_PEM) <= 0)
     {
         fprintf(stderr, "[-] Failed to load private key\n");
-        //ERR_print_errors_fp(stderr);
+        ERR_print_errors_fp(stderr);
         return -1;
     }
     if (!SSL_CTX_check_private_key(ctx))
     {
         fprintf(stderr, "[-] Certificate and private key mismatch\n");
-        //ERR_print_errors_fp(stderr);
+        ERR_print_errors_fp(stderr);
         return -1;
     }
 
@@ -104,13 +104,13 @@ int main(int argc, char *argv[])
         if (ssl == NULL)
         {
             fprintf(stderr, "[-] SSL creation failed\n");
-            //ERR_print_errors_fp(stderr);
+            ERR_print_errors_fp(stderr);
             return -1;
         }
         if (SSL_set_fd(ssl, client_sockfd) != SUCCESS)
         {
             fprintf(stderr, "[-] SSL set fd failed\n");
-            //ERR_print_errors_fp(stderr);
+            ERR_print_errors_fp(stderr);
             return -1;
         }
         if (SSL_accept(ssl) == SUCCESS)
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
         else
         {
             fprintf(stderr, "[-] Socket not accepted");
-            //ERR_print_errors_fp(stderr);
+            ERR_print_errors_fp(stderr);
         }
         client_sockfd = SSL_get_fd(ssl);
         SSL_free(ssl);

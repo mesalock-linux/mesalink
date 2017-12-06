@@ -11,12 +11,11 @@
  * This file is part of Mesalink.
  */
 
-use libc::{c_char, c_ulong, size_t, strncpy};
+use libc::{self, c_char, c_ulong, size_t};
 use std;
 use std::cell::RefCell;
 use std::collections::VecDeque;
-
-const MAX_ERROR_SZ: size_t = 128;
+use thread_id;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -69,7 +68,7 @@ impl ErrorCode {
 }
 
 impl From<c_ulong> for ErrorCode {
-    fn from(t:c_ulong) -> ErrorCode {
+    fn from(t: c_ulong) -> ErrorCode {
         let t = t as u32;
         assert!(t <= 999);
         unsafe { std::mem::transmute(t) }
@@ -87,11 +86,6 @@ pub extern "C" fn mesalink_ERR_free_error_strings() {
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_ERR_error_string(errno: c_ulong, buf_ptr: *mut c_char) -> *const c_char {
-    mesalink_ERR_error_string_n(errno, buf_ptr, MAX_ERROR_SZ)
-}
-
-#[no_mangle]
 pub extern "C" fn mesalink_ERR_error_string_n(
     errno: c_ulong,
     buf_ptr: *mut c_char,
@@ -99,7 +93,7 @@ pub extern "C" fn mesalink_ERR_error_string_n(
 ) -> *const c_char {
     let src_ptr = mesalink_ERR_reason_error_string(errno);
     if !buf_ptr.is_null() {
-        unsafe { strncpy(buf_ptr, src_ptr, buf_len) }
+        unsafe { libc::strncpy(buf_ptr, src_ptr, buf_len) }
     } else {
         src_ptr
     }
@@ -138,4 +132,20 @@ pub extern "C" fn mesalink_ERR_clear_error() {
     ERROR_QUEUE.with(|f| {
         f.borrow_mut().clear();
     });
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
+    let tid = thread_id::get();
+    let error_code = mesalink_ERR_peek_last_error();
+    let message = mesalink_ERR_reason_error_string(error_code);
+    let _ = unsafe {
+        libc::fprintf(
+            fp,
+            "[thread: %d]:%d:%s\n".as_ptr() as *const c_char,
+            tid,
+            error_code,
+            message,
+        )
+    };
 }
