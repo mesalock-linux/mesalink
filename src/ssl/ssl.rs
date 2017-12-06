@@ -24,9 +24,10 @@ use webpki;
 use webpki_roots::TLS_SERVER_ROOTS;
 use ssl::err::{mesalink_push_error, ErrorCode};
 
+const MAGIC_SIZE: usize = 4;
 lazy_static! {
-    static ref MAGIC: [u8; 4] = {
-        let mut number = [0u8; 4];
+    static ref MAGIC: [u8; MAGIC_SIZE] = {
+        let mut number = [0u8; MAGIC_SIZE];
         let rng = ring::rand::SystemRandom::new();
         if rng.fill(&mut number).is_ok() {
             number
@@ -38,13 +39,13 @@ lazy_static! {
 
 #[repr(C)]
 pub struct MESALINK_METHOD {
-    magic: [u8; 4],
+    magic: [u8; MAGIC_SIZE],
     tls_version: rustls::ProtocolVersion,
 }
 
 #[repr(C)]
 pub struct MESALINK_CTX {
-    magic: [u8; 4],
+    magic: [u8; MAGIC_SIZE],
     methods: Option<Vec<rustls::ProtocolVersion>>,
     certificates: Option<Vec<rustls::Certificate>>,
     private_key: Option<rustls::PrivateKey>,
@@ -52,7 +53,7 @@ pub struct MESALINK_CTX {
 
 #[repr(C)]
 pub struct MESALINK_SSL<'a> {
-    magic: [u8; 4],
+    magic: [u8; MAGIC_SIZE],
     context: &'a mut MESALINK_CTX,
     hostname: Option<&'a std::ffi::CStr>,
     io: Option<TcpStream>,
@@ -82,7 +83,6 @@ impl<'a> Read for MESALINK_SSL<'a> {
                                     // ignore result to avoid masking original error
                                     let _ = session.write_tls(&mut io);
                                 }
-
                                 return Err(std::io::Error::new(std::io::ErrorKind::Other, err));
                             }
                         }
@@ -105,13 +105,12 @@ impl<'a> Write for MESALINK_SSL<'a> {
         Ok(len)
     }
 
-    #[inline]
     fn flush(&mut self) -> std::io::Result<()> {
         let session = self.session.as_mut().unwrap();
         let mut io = self.io.as_mut().unwrap();
-        let rc = session.flush();
+        let ret = session.flush();
         let _ = session.write_tls(&mut io)?;
-        rc
+        ret
     }
 }
 

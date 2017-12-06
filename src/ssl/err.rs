@@ -12,7 +12,7 @@
  */
 
 use libc::{c_char, c_ulong, size_t, strncpy};
-use std::ffi::CString;
+use std;
 use std::cell::RefCell;
 use std::collections::VecDeque;
 
@@ -21,40 +21,59 @@ const MAX_ERROR_SZ: size_t = 128;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub enum ErrorCode {
-    InappropriateMessage = -401,
-    InappropriateHandshakeMessage = -402,
-    CorruptMessage = -403,
-    CorruptMessagePayload = -404,
-    NoCertificatesPresented = -405,
-    DecryptError = -406,
-    PeerIncompatibleError = -407,
-    PeerMisbehavedError = -408,
-    AlertReceived = -409,
-    WebPKIError = -410,
-    InvalidSCT = -411,
-    General = -412,
-    FailedToGetCurrentTime = -413,
+    InappropriateMessage = 401,
+    InappropriateHandshakeMessage = 402,
+    CorruptMessage = 403,
+    CorruptMessagePayload = 404,
+    NoCertificatesPresented = 405,
+    DecryptError = 406,
+    PeerIncompatibleError = 407,
+    PeerMisbehavedError = 408,
+    AlertReceived = 409,
+    WebPKIError = 410,
+    InvalidSCT = 411,
+    General = 412,
+    FailedToGetCurrentTime = 413,
+    __Nonexhaustive = 999,
 }
 
 thread_local! {
     pub static ERROR_QUEUE: RefCell<VecDeque<ErrorCode>> = RefCell::new(VecDeque::new());
 }
 
-#[cfg(feature = "error_strings")]
-lazy_static! {
-    static ref INAPPROPRIATE_MESSAGE: &'static str = "InappropriateMessage";
-    static ref INAPPROPRIATE_HANDSHAKE_MESSAGE: &'static str = "InappropriateHandshakeMessage";
-    static ref CORRUPT_MESSAGE: &'static str = "CorruptMessage";
-    static ref CORRUPT_MESSAGE_PAYLOAD: &'static str = "CorruptMessagePayload";
-    static ref NO_CERTIFICATES_PRESENTED: &'static str = "NoCertificatesPresented";
-    static ref DECRYPT_ERROR: &'static str = "DecryptError";
-    static ref PEER_INCOMPATIBLE_ERROR: &'static str = "PeerIncompatibleError";
-    static ref PEER_MISBEHAVED_ERROR: &'static str = "PeerMisbehavedError";
-    static ref ALERT_RECEIVED: &'static str = "AlertReceived";
-    static ref WEBPKI_ERROR: &'static str = "WebPKIError";
-    static ref INVALID_SCT: &'static str = "InvalidSCT";
-    static ref GENERAL: &'static str = "General";
-    static ref FAILED_TO_GET_CURRENT_TIME: &'static str = "FailedToGetCurrentTime";
+impl ErrorCode {
+    #[cfg(feature = "error_strings")]
+    fn as_str(&self) -> &'static str {
+        match *self {
+            ErrorCode::InappropriateMessage => "InappropriateMessage",
+            ErrorCode::InappropriateHandshakeMessage => "InappropriateHandshakeMessage",
+            ErrorCode::CorruptMessage => "CorruptMessage",
+            ErrorCode::CorruptMessagePayload => "CorruptMessagePayload",
+            ErrorCode::NoCertificatesPresented => "NoCertificatesPresented",
+            ErrorCode::DecryptError => "DecryptError",
+            ErrorCode::PeerIncompatibleError => "PeerIncompatibleError",
+            ErrorCode::PeerMisbehavedError => "PeerMisbehavedError",
+            ErrorCode::AlertReceived => "AlertReceived",
+            ErrorCode::WebPKIError => "WebPKIError",
+            ErrorCode::InvalidSCT => "InvalidSCT",
+            ErrorCode::General => "General",
+            ErrorCode::FailedToGetCurrentTime => "FailedToGetCurrentTime",
+            ErrorCode::__Nonexhaustive => unreachable!(),
+        }
+    }
+
+    #[cfg(not(feature = "error_strings"))]
+    fn as_str(&self) -> &'static str {
+        "No support for error strings built-in"
+    }
+}
+
+impl From<c_ulong> for ErrorCode {
+    fn from(t:c_ulong) -> ErrorCode {
+        let t = t as u32;
+        assert!(t <= 999);
+        unsafe { std::mem::transmute(t) }
+    }
 }
 
 #[no_mangle]
@@ -88,47 +107,8 @@ pub extern "C" fn mesalink_ERR_error_string_n(
 
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_reason_error_string(errno: c_ulong) -> *const c_char {
-    match () {
-        #[cfg(feature = "error_strings")]
-        () => match errno {
-            x if x == ErrorCode::InappropriateMessage as c_ulong => {
-                INAPPROPRIATE_MESSAGE.as_ptr() as *const c_char
-            }
-            x if x == ErrorCode::InappropriateHandshakeMessage as c_ulong => {
-                INAPPROPRIATE_HANDSHAKE_MESSAGE.as_ptr() as *const c_char
-            }
-            x if x == ErrorCode::CorruptMessage as c_ulong => {
-                CORRUPT_MESSAGE.as_ptr() as *const c_char
-            }
-            x if x == ErrorCode::CorruptMessagePayload as c_ulong => {
-                CORRUPT_MESSAGE_PAYLOAD.as_ptr() as *const c_char
-            }
-            x if x == ErrorCode::NoCertificatesPresented as c_ulong => {
-                NO_CERTIFICATES_PRESENTED.as_ptr() as *const c_char
-            }
-            x if x == ErrorCode::DecryptError as c_ulong => DECRYPT_ERROR.as_ptr() as *const c_char,
-            x if x == ErrorCode::PeerIncompatibleError as c_ulong => {
-                PEER_INCOMPATIBLE_ERROR.as_ptr() as *const c_char
-            }
-            x if x == ErrorCode::PeerMisbehavedError as c_ulong => {
-                PEER_MISBEHAVED_ERROR.as_ptr() as *const c_char
-            }
-            x if x == ErrorCode::AlertReceived as c_ulong => {
-                ALERT_RECEIVED.as_ptr() as *const c_char
-            }
-            x if x == ErrorCode::WebPKIError as c_ulong => WEBPKI_ERROR.as_ptr() as *const c_char,
-            x if x == ErrorCode::InvalidSCT as c_ulong => INVALID_SCT.as_ptr() as *const c_char,
-            x if x == ErrorCode::General as c_ulong => GENERAL.as_ptr() as *const c_char,
-            x if x == ErrorCode::FailedToGetCurrentTime as c_ulong => {
-                FAILED_TO_GET_CURRENT_TIME.as_ptr() as *const c_char
-            }
-            _ => CString::new("Unknown error").unwrap().into_raw(),
-        },
-        #[cfg(not(feature = "error_strings"))]
-        () => CString::new("No support for error strings builtin")
-            .unwrap()
-            .into_raw(),
-    }
+    let error_code = ErrorCode::from(errno);
+    error_code.as_str().as_ptr() as *const c_char
 }
 
 pub fn mesalink_push_error(err: ErrorCode) {
