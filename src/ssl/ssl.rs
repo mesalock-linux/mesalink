@@ -43,12 +43,32 @@ pub struct MESALINK_METHOD {
     tls_version: rustls::ProtocolVersion,
 }
 
+impl MESALINK_METHOD {
+    pub fn new(version: rustls::ProtocolVersion) -> MESALINK_METHOD {
+        MESALINK_METHOD {
+            magic: *MAGIC,
+            tls_version: version,
+        }
+    }
+}
+
 #[repr(C)]
 pub struct MESALINK_CTX {
     magic: [u8; MAGIC_SIZE],
     methods: Option<Vec<rustls::ProtocolVersion>>,
     certificates: Option<Vec<rustls::Certificate>>,
     private_key: Option<rustls::PrivateKey>,
+}
+
+impl MESALINK_CTX {
+    pub fn new<'a>(method: &'a MESALINK_METHOD) -> MESALINK_CTX {
+        MESALINK_CTX {
+            magic: *MAGIC,
+            methods: Some(vec![method.tls_version]),
+            certificates: None,
+            private_key: None,
+        }
+    }
 }
 
 #[repr(C)]
@@ -58,8 +78,18 @@ pub struct MESALINK_SSL<'a> {
     hostname: Option<&'a std::ffi::CStr>,
     io: Option<TcpStream>,
     session: Option<Box<Session>>,
-    eof: bool,
-    is_shutdown: bool,
+}
+
+impl<'a> MESALINK_SSL<'a> {
+    pub fn new(ctx: &'a mut MESALINK_CTX) -> MESALINK_SSL {
+        MESALINK_SSL {
+            magic: *MAGIC,
+            context: ctx,
+            hostname: None,
+            io: None,
+            session: None,
+        }
+    }
 }
 
 impl<'a> Read for MESALINK_SSL<'a> {
@@ -236,19 +266,13 @@ pub extern "C" fn mesalink_TLSv1_1_server_method() -> *const MESALINK_METHOD {
 
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_2_server_method() -> *const MESALINK_METHOD {
-    let method = MESALINK_METHOD {
-        magic: *MAGIC,
-        tls_version: rustls::ProtocolVersion::TLSv1_2,
-    };
+    let method = MESALINK_METHOD::new(rustls::ProtocolVersion::TLSv1_2);
     Box::into_raw(Box::new(method))
 }
 
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_3_server_method() -> *const MESALINK_METHOD {
-    let method = MESALINK_METHOD {
-        magic: *MAGIC,
-        tls_version: rustls::ProtocolVersion::TLSv1_3,
-    };
+    let method = MESALINK_METHOD::new(rustls::ProtocolVersion::TLSv1_3);
     Box::into_raw(Box::new(method))
 }
 
@@ -256,12 +280,7 @@ pub extern "C" fn mesalink_TLSv1_3_server_method() -> *const MESALINK_METHOD {
 pub extern "C" fn mesalink_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut MESALINK_CTX {
     sanitize_ptr_return_null!(method_ptr);
     let method = unsafe { &*method_ptr };
-    let context = MESALINK_CTX {
-        magic: *MAGIC,
-        methods: Some(vec![method.tls_version]),
-        certificates: None,
-        private_key: None,
-    };
+    let context = MESALINK_CTX::new(method);
     let _ = unsafe { Box::from_raw(method_ptr) }; // Always free the method object
     Box::into_raw(Box::new(context))
 }
@@ -354,15 +373,7 @@ pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX)
 pub extern "C" fn mesalink_SSL_new<'a>(ctx_ptr: *mut MESALINK_CTX) -> *mut MESALINK_SSL<'a> {
     sanitize_ptr_return_null!(ctx_ptr);
     let ctx = unsafe { &mut *ctx_ptr };
-    let ssl = MESALINK_SSL {
-        magic: *MAGIC,
-        context: ctx,
-        hostname: None,
-        io: None,
-        session: None,
-        eof: false,
-        is_shutdown: false,
-    };
+    let ssl = MESALINK_SSL::new(ctx);
     Box::into_raw(Box::new(ssl))
 }
 

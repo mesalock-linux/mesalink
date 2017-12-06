@@ -20,6 +20,7 @@ use thread_id;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub enum ErrorCode {
+    NoError = 0,
     InappropriateMessage = 401,
     InappropriateHandshakeMessage = 402,
     CorruptMessage = 403,
@@ -44,20 +45,21 @@ impl ErrorCode {
     #[cfg(feature = "error_strings")]
     fn as_str(&self) -> &'static str {
         match *self {
-            ErrorCode::InappropriateMessage => "InappropriateMessage",
-            ErrorCode::InappropriateHandshakeMessage => "InappropriateHandshakeMessage",
-            ErrorCode::CorruptMessage => "CorruptMessage",
-            ErrorCode::CorruptMessagePayload => "CorruptMessagePayload",
-            ErrorCode::NoCertificatesPresented => "NoCertificatesPresented",
-            ErrorCode::DecryptError => "DecryptError",
-            ErrorCode::PeerIncompatibleError => "PeerIncompatibleError",
-            ErrorCode::PeerMisbehavedError => "PeerMisbehavedError",
-            ErrorCode::AlertReceived => "AlertReceived",
-            ErrorCode::WebPKIError => "WebPKIError",
-            ErrorCode::InvalidSCT => "InvalidSCT",
+            ErrorCode::NoError => "No error in queue",
+            ErrorCode::InappropriateMessage => "Inappropriate message",
+            ErrorCode::InappropriateHandshakeMessage => "Inappropriate handshake message",
+            ErrorCode::CorruptMessage => "Corrupt message",
+            ErrorCode::CorruptMessagePayload => "Corrupt message payload",
+            ErrorCode::NoCertificatesPresented => "No certificates presented",
+            ErrorCode::DecryptError => "Decrypt error",
+            ErrorCode::PeerIncompatibleError => "Peer incompatible error",
+            ErrorCode::PeerMisbehavedError => "Peer misbehaved error",
+            ErrorCode::AlertReceived => "Alert eeceived",
+            ErrorCode::WebPKIError => "Web PKI error",
+            ErrorCode::InvalidSCT => "Invalid SCT",
             ErrorCode::General => "General",
-            ErrorCode::FailedToGetCurrentTime => "FailedToGetCurrentTime",
-            ErrorCode::__Nonexhaustive => unreachable!(),
+            ErrorCode::FailedToGetCurrentTime => "Failed to get current time",
+            ErrorCode::__Nonexhaustive => "Invalid error code",
         }
     }
 
@@ -70,7 +72,6 @@ impl ErrorCode {
 impl From<c_ulong> for ErrorCode {
     fn from(t: c_ulong) -> ErrorCode {
         let t = t as u32;
-        assert!(t <= 999);
         unsafe { std::mem::transmute(t) }
     }
 }
