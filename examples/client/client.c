@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
     if (ctx == NULL)
     {
         fprintf(stderr, "[-] Context failed to create\n");
-        //ERR_print_errors_fp(stderr);
+        ERR_print_errors_fp(stderr);
         return -1;
     }
 

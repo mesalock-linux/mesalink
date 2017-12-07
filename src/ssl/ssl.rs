@@ -158,11 +158,13 @@ pub enum Filetypes {
 macro_rules! sanitize_ptr_return_null {
     ( $ptr_var:ident ) => {
         if $ptr_var.is_null() {
+            mesalink_push_error(ErrorCode::NullPointerException);
             return std::ptr::null_mut();
         }
         let obj = unsafe { &* $ptr_var };
         let magic = *MAGIC;
         if obj.magic != magic {
+            mesalink_push_error(ErrorCode::MalformedObject);
             return std::ptr::null_mut();
         }
     }
@@ -171,11 +173,13 @@ macro_rules! sanitize_ptr_return_null {
 macro_rules! sanitize_ptr_return_fail {
     ( $ptr_var:ident ) => {
         if $ptr_var.is_null() {
+            mesalink_push_error(ErrorCode::NullPointerException);
             return SslConstants::SslFailure as c_int;
         }
         let obj = unsafe { &*$ptr_var };
         let magic = *MAGIC;
         if obj.magic != magic {
+            mesalink_push_error(ErrorCode::MalformedObject);
             return SslConstants::SslFailure as c_int;
         }
     }
@@ -298,12 +302,17 @@ pub extern "C" fn mesalink_SSL_CTX_use_certificate_file(
         match std::fs::File::open(filename) {
             Ok(f) => {
                 let mut reader = std::io::BufReader::new(f);
-                let certs = rustls::internal::pemfile::certs(&mut reader).unwrap();
-                ctx.certificates = Some(certs);
-                return SslConstants::SslSuccess as c_int;
+                let certs = rustls::internal::pemfile::certs(&mut reader);
+                if certs.is_ok() {
+                    ctx.certificates = Some(certs.unwrap());
+                    return SslConstants::SslSuccess as c_int;
+                } else {
+                    mesalink_push_error(ErrorCode::BadKey);
+                    return SslConstants::SslFailure as c_int;
+                }
             }
-            Err(_) => {
-                mesalink_push_error(ErrorCode::General);
+            Err(e) => {
+                mesalink_push_error(ErrorCode::from(e));
                 return SslConstants::SslFailure as c_int;
             }
         }
@@ -326,20 +335,32 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
         let rsa_keys = match std::fs::File::open(filename) {
             Ok(f) => {
                 let mut reader = std::io::BufReader::new(f);
-                rustls::internal::pemfile::rsa_private_keys(&mut reader).unwrap()
+                let keys = rustls::internal::pemfile::rsa_private_keys(&mut reader);
+                if keys.is_ok() {
+                    keys.unwrap()
+                } else {
+                    mesalink_push_error(ErrorCode::BadKey);
+                    return SslConstants::SslFailure as c_int;
+                }
             }
-            Err(_) => {
-                mesalink_push_error(ErrorCode::General);
+            Err(e) => {
+                mesalink_push_error(ErrorCode::from(e));
                 return SslConstants::SslFailure as c_int;
             }
         };
         let pk8_keys = match std::fs::File::open(filename) {
             Ok(f) => {
                 let mut reader = std::io::BufReader::new(f);
-                rustls::internal::pemfile::pkcs8_private_keys(&mut reader).unwrap()
+                let keys = rustls::internal::pemfile::pkcs8_private_keys(&mut reader);
+                if keys.is_ok() {
+                    keys.unwrap()
+                } else {
+                    mesalink_push_error(ErrorCode::BadKey);
+                    return SslConstants::SslFailure as c_int;
+                }
             }
-            Err(_) => {
-                mesalink_push_error(ErrorCode::General);
+            Err(e) => {
+                mesalink_push_error(ErrorCode::from(e));
                 return SslConstants::SslFailure as c_int;
             }
         };
@@ -366,12 +387,15 @@ pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX)
                     rustls::sign::CertifiedKey::new(certs.clone(), Arc::new(Box::new(rsa_key)));
                 if certified_key.cross_check_end_entity_cert(None).is_ok() {
                     return SslConstants::SslSuccess as c_int;
+                } else {
+                    mesalink_push_error(ErrorCode::CertKeyMismatch);
+                    return SslConstants::SslFailure as c_int;
                 }
             }
         }
         _ => (),
     }
-    mesalink_push_error(ErrorCode::General);
+    mesalink_push_error(ErrorCode::BadKey);
     SslConstants::SslFailure as c_int
 }
 
@@ -391,7 +415,7 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
     sanitize_ptr_return_fail!(ssl_ptr);
     let ssl = unsafe { &mut *ssl_ptr };
     if hostname_ptr.is_null() {
-        mesalink_push_error(ErrorCode::General);
+        mesalink_push_error(ErrorCode::InvalidDNSName);
         return SslConstants::SslFailure as c_int;
     }
     let hostname = unsafe { std::ffi::CStr::from_ptr(hostname_ptr) };
@@ -414,7 +438,10 @@ pub extern "C" fn mesalink_SSL_get_fd(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     let ssl = unsafe { &mut *ssl_ptr };
     match ssl.io {
         Some(ref socket) => socket.as_raw_fd(),
-        None => SslConstants::SslFailure as c_int,
+        None => {
+            mesalink_push_error(ErrorCode::NotConnected);
+            SslConstants::SslFailure as c_int
+        }
     }
 }
 
@@ -424,18 +451,23 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     let ssl = unsafe { &mut *ssl_ptr };
     if let Some(hostname) = ssl.hostname {
         if let Ok(hostname_str) = hostname.to_str() {
-            let mut client_config = rustls::ClientConfig::new();
-            client_config.versions = ssl.context.methods.clone().unwrap();
-            client_config
-                .root_store
-                .add_server_trust_anchors(&TLS_SERVER_ROOTS);
-            let dns_name = webpki::DNSNameRef::try_from_ascii_str(hostname_str).unwrap();
-            let session = rustls::ClientSession::new(&Arc::new(client_config), dns_name);
-            ssl.session = Some(Box::new(session));
-            return SslConstants::SslSuccess as c_int;
+            if let Ok(dns_name) = webpki::DNSNameRef::try_from_ascii_str(hostname_str) {
+                let mut client_config = rustls::ClientConfig::new();
+                if let Some(ref versions) = ssl.context.methods {
+                    client_config.versions = versions.clone();
+                } else {
+                    // Use defaults if no TLS version is set
+                }
+                client_config
+                    .root_store
+                    .add_server_trust_anchors(&TLS_SERVER_ROOTS);
+                let session = rustls::ClientSession::new(&Arc::new(client_config), dns_name);
+                ssl.session = Some(Box::new(session));
+                return SslConstants::SslSuccess as c_int;
+            }
         }
     }
-    mesalink_push_error(ErrorCode::General);
+    mesalink_push_error(ErrorCode::InvalidDNSName);
     SslConstants::SslFailure as c_int
 }
 
@@ -447,12 +479,15 @@ pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     match (&ssl.context.certificates, &ssl.context.private_key) {
         (&Some(ref certs), &Some(ref key)) => {
             server_config.set_single_cert(certs.clone(), key.clone());
+            let session = rustls::ServerSession::new(&Arc::new(server_config));
+            ssl.session = Some(Box::new(session));
+            SslConstants::SslSuccess as c_int
         }
-        _ => (),
+        _ => {
+            mesalink_push_error(ErrorCode::NoCertificatesPresented);
+            SslConstants::SslFailure as c_int
+        }
     }
-    let session = rustls::ServerSession::new(&Arc::new(server_config));
-    ssl.session = Some(Box::new(session));
-    SslConstants::SslSuccess as c_int
 }
 
 #[no_mangle]
@@ -467,8 +502,7 @@ pub extern "C" fn mesalink_SSL_read(
     match ssl.read(buf) {
         Ok(count) => count as c_int,
         Err(e) => {
-            writeln!(&mut std::io::stderr(), "mesalink_SSL_read error: {:?}", e).unwrap();
-            mesalink_push_error(ErrorCode::General);
+            mesalink_push_error(ErrorCode::from(e));
             SslConstants::SslFailure as c_int
         }
     }
@@ -486,8 +520,7 @@ pub extern "C" fn mesalink_SSL_write(
     match ssl.write(buf) {
         Ok(count) => count as c_int,
         Err(e) => {
-            writeln!(&mut std::io::stderr(), "mesalink_SSL_write error: {:?}", e).unwrap();
-            mesalink_push_error(ErrorCode::General);
+            mesalink_push_error(ErrorCode::from(e));
             SslConstants::SslFailure as c_int
         }
     }
