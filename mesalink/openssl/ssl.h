@@ -46,7 +46,7 @@ typedef MESALINK_SSL SSL;
 #define TLSv1_3_server_method mesalink_TLSv1_3_server_method
 
 #define SSL_CTX_new mesalink_CTX_new
-#define SSL_CTX_use_certificate_file mesalink_SSL_CTX_use_certificate_file
+#define SSL_CTX_use_certificate_file mesalink_SSL_CTX_use_certificate_chain_file
 #define SSL_CTX_use_PrivateKey_file mesalink_SSL_CTX_use_PrivateKey_file
 #define SSL_CTX_check_private_key mesalink_SSL_CTX_check_private_key
 

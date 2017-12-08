@@ -290,7 +290,7 @@ pub extern "C" fn mesalink_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut MES
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_CTX_use_certificate_file(
+pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
     ctx_ptr: *mut MESALINK_CTX,
     filename_ptr: *const c_char,
     _format: c_int,
