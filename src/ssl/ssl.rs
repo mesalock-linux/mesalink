@@ -408,6 +408,27 @@ pub extern "C" fn mesalink_SSL_new<'a>(ctx_ptr: *mut MESALINK_CTX) -> *mut MESAL
 }
 
 #[no_mangle]
+pub extern "C" fn mesalink_SSL_get_SSL_CTX(ssl_ptr: *const MESALINK_SSL) -> *const MESALINK_CTX {
+    sanitize_ptr_return_null!(ssl_ptr);
+    let ssl = unsafe { &*ssl_ptr };
+    let ctx_ptr: *const MESALINK_CTX = ssl.context;
+    ctx_ptr
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_set_SSL_CTX(
+    ssl_ptr: *mut MESALINK_SSL,
+    ctx_ptr: *mut MESALINK_CTX,
+) -> *mut MESALINK_CTX {
+    sanitize_ptr_return_null!(ssl_ptr);
+    let ssl = unsafe { &mut *ssl_ptr };
+    sanitize_ptr_return_null!(ctx_ptr);
+    let ctx = unsafe { &mut *ctx_ptr };
+    ssl.context = ctx;
+    ssl.context
+}
+
+#[no_mangle]
 pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
     ssl_ptr: *mut MESALINK_SSL,
     hostname_ptr: *const c_char,
