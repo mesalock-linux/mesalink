@@ -49,6 +49,7 @@ typedef MESALINK_SSL SSL;
 #define SSL_CTX_use_certificate_file mesalink_SSL_CTX_use_certificate_chain_file
 #define SSL_CTX_use_PrivateKey_file mesalink_SSL_CTX_use_PrivateKey_file
 #define SSL_CTX_check_private_key mesalink_SSL_CTX_check_private_key
+#define SSL_CTX_free mesalink_CTX_free
 
 #define SSL_new mesalink_SSL_new
 #define SSL_set_tlsext_host_name mesalink_SSL_set_tlsext_host_name
@@ -60,8 +61,7 @@ typedef MESALINK_SSL SSL;
 #define SSL_accept mesalink_SSL_accept
 #define SSL_write mesalink_SSL_write
 #define SSL_read mesalink_SSL_read
-
-#define SSL_CTX_free mesalink_CTX_free
+#define SSL_shutdown mesalink_SSL_shutdown
 #define SSL_free mesalink_SSL_free
 
 enum

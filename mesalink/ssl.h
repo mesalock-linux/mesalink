@@ -54,6 +54,7 @@ MESALINK_API MESALINK_CTX *mesalink_CTX_new(const MESALINK_METHOD *);
 MESALINK_API int mesalink_SSL_CTX_use_certificate_chain_file(MESALINK_CTX *, const char *, int);
 MESALINK_API int mesalink_SSL_CTX_use_PrivateKey_file(MESALINK_CTX *, const char *, int);
 MESALINK_API int mesalink_SSL_CTX_check_private_key(const MESALINK_CTX *);
+MESALINK_API void mesalink_CTX_free(MESALINK_CTX *);
 
 MESALINK_API MESALINK_SSL *mesalink_SSL_new(MESALINK_CTX *);
 MESALINK_API int mesalink_SSL_set_tlsext_host_name(MESALINK_SSL *, const char *);
@@ -63,10 +64,9 @@ MESALINK_API int mesalink_SSL_connect(MESALINK_SSL *);
 MESALINK_API int mesalink_SSL_accept(MESALINK_SSL *);
 MESALINK_API int mesalink_SSL_write(MESALINK_SSL *, const void *, int);
 MESALINK_API int mesalink_SSL_read(MESALINK_SSL *, void *, int);
+MESALINK_API int mesalink_SSL_shutdown(MESALINK_SSL *);
 MESALINK_API MESALINK_CTX *mesalink_SSL_get_SSL_CTX(const MESALINK_SSL *);
 MESALINK_API MESALINK_CTX *mesalink_SSL_set_SSL_CTX(MESALINK_SSL *, MESALINK_CTX *);
-
-MESALINK_API void mesalink_CTX_free(MESALINK_CTX *);
 MESALINK_API void mesalink_SSL_free(MESALINK_SSL *);
 
 #ifdef __cplusplus

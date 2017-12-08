@@ -548,6 +548,15 @@ pub extern "C" fn mesalink_SSL_write(
 }
 
 #[no_mangle]
+pub extern "C" fn mesalink_SSL_shutdown(ssl_ptr: *mut MESALINK_SSL) -> c_int {
+    sanitize_ptr_return_fail!(ssl_ptr);
+    let ssl = unsafe { &mut *ssl_ptr };
+    let session = ssl.session.as_mut().unwrap();
+    session.send_close_notify();
+    SslConstants::SslSuccess as c_int
+}
+
+#[no_mangle]
 pub extern "C" fn mesalink_CTX_free(ctx_ptr: *mut MESALINK_CTX) {
     let _ = unsafe { Box::from_raw(ctx_ptr) };
 }
