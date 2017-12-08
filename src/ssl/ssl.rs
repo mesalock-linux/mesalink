@@ -445,6 +445,16 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
 }
 
 #[no_mangle]
+pub extern "C" fn mesalink_SSL_get_servername(ssl_ptr: *const MESALINK_SSL, _type: c_int) -> *const c_char {
+    sanitize_ptr_return_null!(ssl_ptr);
+    let ssl = unsafe { &*ssl_ptr };
+    match ssl.hostname {
+        Some(hostname_cstr) => hostname_cstr.as_ptr(),
+        None => std::ptr::null(),
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> c_int {
     sanitize_ptr_return_fail!(ssl_ptr);
     let ssl = unsafe { &mut *ssl_ptr };

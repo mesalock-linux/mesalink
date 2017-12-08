@@ -53,6 +53,7 @@ typedef MESALINK_SSL SSL;
 
 #define SSL_new mesalink_SSL_new
 #define SSL_set_tlsext_host_name mesalink_SSL_set_tlsext_host_name
+#define SSL_get_servername mesalink_SSL_get_servername
 #define SSL_get_SSL_CTX mesalink_SSL_get_SSL_CTX
 #define SSL_set_SSL_CTX mesalink_SSL_set_SSL_CTX
 #define SSL_set_fd mesalink_SSL_set_fd

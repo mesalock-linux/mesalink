@@ -93,7 +93,6 @@ int main(int argc, char *argv[])
         ERR_print_errors_fp(stderr);
         return -1;
     }
-
     if (SSL_set_fd(ssl, sockfd) != SUCCESS)
     {
         fprintf(stderr, "[-] SSL set fd failed\n");
@@ -110,6 +109,7 @@ int main(int argc, char *argv[])
     {
         int sendlen = -1, recvlen = -1, total_recv_len = 0;
         sprintf(sendbuf, request, hostname);
+        printf("Connecting to %s ...\n", SSL_get_servername(ssl, 0));
         //printf("[+] Connected with %s cipher suites\n", mesalink_get_cipher(ssl));
         sendlen = SSL_write(ssl, sendbuf, strlen(sendbuf));
         printf("[+] Sent %d bytes\n\n%s\n", sendlen, sendbuf);

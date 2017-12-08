@@ -58,6 +58,7 @@ MESALINK_API void mesalink_CTX_free(MESALINK_CTX *);
 
 MESALINK_API MESALINK_SSL *mesalink_SSL_new(MESALINK_CTX *);
 MESALINK_API int mesalink_SSL_set_tlsext_host_name(MESALINK_SSL *, const char *);
+MESALINK_API const char *mesalink_SSL_get_servername(const MESALINK_SSL *, const int);
 MESALINK_API int mesalink_SSL_set_fd(MESALINK_SSL *, int);
 MESALINK_API int mesalink_SSL_get_fd(const MESALINK_SSL *);
 MESALINK_API int mesalink_SSL_connect(MESALINK_SSL *);
