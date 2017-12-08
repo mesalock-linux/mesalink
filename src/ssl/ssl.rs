@@ -445,7 +445,10 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_get_servername(ssl_ptr: *const MESALINK_SSL, _type: c_int) -> *const c_char {
+pub extern "C" fn mesalink_SSL_get_servername(
+    ssl_ptr: *const MESALINK_SSL,
+    _type: c_int,
+) -> *const c_char {
     sanitize_ptr_return_null!(ssl_ptr);
     let ssl = unsafe { &*ssl_ptr };
     match ssl.hostname {
