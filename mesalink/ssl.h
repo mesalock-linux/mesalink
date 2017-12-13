@@ -1,14 +1,16 @@
-/* ssl.h
- *                            _ _       _    
- *                           | (_)     | |   
- *  _ __ ___   ___  ___  __ _| |_ _ __ | | __
- * | '_ ` _ \ / _ \/ __|/ _` | | | '_ \| |/ /
- * | | | | | |  __/\__ \ (_| | | | | | |   < 
- * |_| |_| |_|\___||___/\__,_|_|_|_| |_|_|\_\
+/*
+ *   __  __                 _     _       _
+ *  |  \/  | ___  ___  __ _| |   (_)_ __ | | __
+ *  | |\/| |/ _ \/ __|/ _` | |   | | '_ \| |/ /
+ *  | |  | |  __/\__ \ (_| | |___| | | | |   <
+ *  |_|  |_|\___||___/\__,_|_____|_|_| |_|_|\_\
  *
- * Copyright (C) 2017 Baidu USA.
+ * Copyright (c) 2017, The MesaLink Authors. 
+ * All rights reserved.
  *
- * This file is part of Mesalink.
+ * This work is licensed under the terms of the BSD 3-Clause License.
+ * For a copy, see the LICENSE file.
+ *
  */
 
 #ifndef MESALINK_SSL_H

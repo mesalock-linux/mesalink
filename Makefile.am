@@ -24,6 +24,7 @@ maintainer-clean-local:
 	-rm configure
 	-rm config.log
 	-rm config.status
+	-rm config.h
 	-rm config.in
 	-rm m4/libtool.m4
 	-rm m4/ltoptions.m4
