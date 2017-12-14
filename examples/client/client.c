@@ -37,7 +37,6 @@ int main(int argc, char *argv[])
     const char *hostname;
     const char *request = "GET / HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nAccept-Encoding: identity\r\n\r\n";
 
-    const SSL_METHOD *method;
     SSL_CTX *ctx;
     SSL *ssl;
 
@@ -52,13 +51,8 @@ int main(int argc, char *argv[])
     ERR_load_crypto_strings();
     SSL_load_error_strings();
 
-    method = TLSv1_2_client_method();
-    if (method == NULL)
-    {
-        fprintf(stderr, "[-] Method is NULL\n");
-        return -1;
-    }
-    ctx = SSL_CTX_new(method);
+    // Try replace TLSv1_2_client_method with SSLv23_client_method
+    ctx = SSL_CTX_new(TLSv1_2_client_method());
     if (ctx == NULL)
     {
         fprintf(stderr, "[-] Context failed to create\n");
@@ -101,28 +95,27 @@ int main(int argc, char *argv[])
         ERR_print_errors_fp(stderr);
         return -1;
     }
-    if (SSL_connect(ssl) != SUCCESS)
+    if (SSL_connect(ssl) == SUCCESS)
     {
-        fprintf(stderr, "[-] Socket not connected");
-        ERR_print_errors_fp(stderr);
-        return -1;
-    }
-    else
-    {
-        int sendlen = -1, recvlen = -1, total_recv_len = 0;
+        int sendlen = -1, recvlen = -1, total_recvlen = 0;
         sprintf(sendbuf, request, hostname);
-        printf("Connecting to %s ...\n", SSL_get_servername(ssl, 0));
-        //printf("[+] Connected with %s cipher suites\n", mesalink_get_cipher(ssl));
+        printf("[+] Requesting %s ...\n", SSL_get_servername(ssl, 0));
         sendlen = SSL_write(ssl, sendbuf, strlen(sendbuf));
         printf("[+] Sent %d bytes\n\n%s\n", sendlen, sendbuf);
         while ((recvlen = SSL_read(ssl, recvbuf, sizeof(recvbuf) - 1)) > 0)
         {
             recvbuf[recvlen] = 0;
-            total_recv_len += strlen(recvbuf);
+            total_recvlen += strlen(recvbuf);
             printf("%s", recvbuf);
         };
-        printf("\n[+] Received %d bytes\n", total_recv_len);
+        printf("\n[+] Received %d bytes\n", total_recvlen);
         SSL_free(ssl);
+    }
+    else
+    {
+        fprintf(stderr, "[-] Socket not connected");
+        ERR_print_errors_fp(stderr);
+        return -1;
     }
     close(sockfd);
     SSL_CTX_free(ctx);

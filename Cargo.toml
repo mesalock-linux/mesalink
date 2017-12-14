@@ -23,4 +23,3 @@ webpki = { git = "https://github.com/briansmith/webpki" }
 webpki-roots = { git = "https://github.com/briansmith/webpki-roots", branch = "webpki-github" }
 libc = "0.2"
 lazy_static = "1.0.0"
-thread-id = "3.2.0"

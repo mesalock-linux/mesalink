@@ -49,13 +49,7 @@ int main(int argc, char *argv[])
     ERR_load_crypto_strings();
     SSL_load_error_strings();
 
-    method = TLSv1_2_server_method();
-    if (method == NULL)
-    {
-        fprintf(stderr, "[-] Method is NULL\n");
-        return -1;
-    }
-    ctx = SSL_CTX_new(method);
+    ctx = SSL_CTX_new(TLSv1_2_server_method());
     if (ctx == NULL)
     {
         fprintf(stderr, "[-] Context failed to create\n");

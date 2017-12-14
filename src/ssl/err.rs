@@ -5,7 +5,7 @@
  *  | |  | |  __/\__ \ (_| | |___| | | | |   <
  *  |_|  |_|\___||___/\__,_|_____|_|_| |_|_|\_\
  *
- * Copyright (c) 2017, The MesaLink Authors. 
+ * Copyright (c) 2017, The MesaLink Authors.
  * All rights reserved.
  *
  * This work is licensed under the terms of the BSD 3-Clause License.
@@ -18,10 +18,9 @@ use std;
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use rustls::TLSError;
-use thread_id;
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum ErrorCode {
     NoError = 0,
     NullPointerException = 0x2001,
@@ -141,8 +140,7 @@ impl From<c_ulong> for ErrorCode {
 impl From<std::io::Error> for ErrorCode {
     fn from(e: std::io::Error) -> ErrorCode {
         let errno: u8 = unsafe { std::mem::transmute::<std::io::ErrorKind, u8>(e.kind()) };
-        let base: u32 = 0x300;
-        ErrorCode::from(base + errno as u32 + 1)
+        ErrorCode::from(0x300 + errno as u32 + 1)
     }
 }
 
@@ -235,13 +233,13 @@ pub extern "C" fn mesalink_ERR_clear_error() {
 
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
-    let tid = thread_id::get();
+    let tid = std::thread::current().id();
     let error_code = mesalink_ERR_peek_last_error();
     let message = mesalink_ERR_reason_error_string(error_code);
     let _ = unsafe {
         libc::fprintf(
             fp,
-            "[thread: %d]:%d:%s\n".as_ptr() as *const c_char,
+            "[thread: %u]:%d:%s\n".as_ptr() as *const c_char,
             tid,
             error_code,
             message,
