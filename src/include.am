@@ -1,4 +1,9 @@
-target/release/libmesalink.la:
+src/lib.rs:
+src/ssl/mod.rs:
+src/ssl/ssl.rs:
+src/ssl/err.rs:
+
+target/release/libmesalink.la: src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/err.rs
 	cargo build --release
 clean-local:
 	-cargo clean

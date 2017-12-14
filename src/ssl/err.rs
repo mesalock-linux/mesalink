@@ -239,7 +239,7 @@ pub extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
     let _ = unsafe {
         libc::fprintf(
             fp,
-            "[thread: %u]:%d:%s\n".as_ptr() as *const c_char,
+            "[thread: %u]:[error code: 0x%x]:[%s]\n".as_ptr() as *const c_char,
             tid,
             error_code,
             message,
