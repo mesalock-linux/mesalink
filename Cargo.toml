@@ -1,9 +1,10 @@
 [package]
 name = "mesalink"
 version = "0.1.0"
-authors = ["Yiming Jing <jingyiming@baidu.com>"]
+authors = ["The MesaLink Project Contributors"]
 license = "BSD-3-Clause"
-description = "MesaLink is an OpenSSL-compatible TLS library based on Rustls and Ring."
+readme = "README.md"
+description = "MesaLink is a memory-safe and OpenSSL-compatible TLS library based on Rustls and Ring."
 categories = ["network-programming"]
 build = "build.rs"
 

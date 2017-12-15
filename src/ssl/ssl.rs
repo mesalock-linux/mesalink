@@ -46,7 +46,7 @@ pub struct MESALINK_METHOD {
 }
 
 impl MESALINK_METHOD {
-    pub fn new(version: rustls::ProtocolVersion) -> MESALINK_METHOD {
+    fn new(version: rustls::ProtocolVersion) -> MESALINK_METHOD {
         MESALINK_METHOD {
             magic: *MAGIC,
             tls_version: version,
@@ -63,7 +63,7 @@ pub struct MESALINK_CTX {
 }
 
 impl MESALINK_CTX {
-    pub fn new<'a>(method: &'a MESALINK_METHOD) -> MESALINK_CTX {
+    fn new<'a>(method: &'a MESALINK_METHOD) -> MESALINK_CTX {
         MESALINK_CTX {
             magic: *MAGIC,
             methods: Some(vec![method.tls_version]),
@@ -83,7 +83,7 @@ pub struct MESALINK_SSL<'a> {
 }
 
 impl<'a> MESALINK_SSL<'a> {
-    pub fn new(ctx: &'a mut MESALINK_CTX) -> MESALINK_SSL {
+    fn new(ctx: &'a mut MESALINK_CTX) -> MESALINK_SSL {
         MESALINK_SSL {
             magic: *MAGIC,
             context: ctx,

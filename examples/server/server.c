@@ -86,6 +86,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "[-] Accept error\n");
         return -1;
     }
+    fprintf(stdout, "[+] Listening at 0.0.0.0:%d\n", port);
     if (listen(sockfd, 10) != 0)
     {
         fprintf(stderr, "[-] Listen error\n");

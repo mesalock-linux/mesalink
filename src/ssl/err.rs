@@ -20,7 +20,7 @@ use std::collections::VecDeque;
 use rustls::TLSError;
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub enum ErrorCode {
     NoError = 0,
     NullPointerException = 0x2001,
@@ -67,7 +67,7 @@ pub enum ErrorCode {
 }
 
 thread_local! {
-    pub static ERROR_QUEUE: RefCell<VecDeque<ErrorCode>> = RefCell::new(VecDeque::new());
+    static ERROR_QUEUE: RefCell<VecDeque<ErrorCode>> = RefCell::new(VecDeque::new());
 }
 
 impl ErrorCode {

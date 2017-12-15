@@ -13,7 +13,10 @@
  *
  */
 
-#![allow(non_snake_case)]
-
+/// Implementations of OpenSSL ERR APIs.
+/// Please also refer to mesalink/openssl/err.h
 pub mod err;
+
+/// Implementations of OpenSSL SSL APIs.
+/// Please also refer to mesalink/openssl/ssl.h
 pub mod ssl;
