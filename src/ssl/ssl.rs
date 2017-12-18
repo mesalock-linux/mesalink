@@ -15,25 +15,23 @@
 
 //! # Synopsis
 //! This sub-module implements the necessary APIs to establish a TLS session.
-//! All the APIs are compatible to their OpenSSL counterparts except their names
-//! start with `mesalink_` instead. 
+//! All the APIs are compatible to their OpenSSL counterparts.
 //!
 //! # Usage
-//! The first step is to create a `MESALINK_CTX` object with `mesalink_CTX_new`.
+//! The first step is to create a `SSL_CTX` object with `SSL_CTX_new`.
 //!
 //! Then `SSL_CTX_use_certificate_chain_file` and `SSL_CTX_use_PrivateKey_file`
 //! must be called to set up the certificate and private key if the context is
-//! to be used in a TLS server. 
+//! to be used in a TLS server.
 //!
-//! When a TCP socket has been created, a `MESALINK_SSL` object can be created
-//! with `mesalink_SSL_new`. Afterwards, the socket can be assigned to the
-//! `MESALINK_SSL` object with `mesalink_SSL_set_fd`. 
-//! 
-//! Then the TLS handshake is performed using `mesalink_SSL_connect` or
-//! `mesalink_SSL_accept` for a client or a server respectively.
-//! `mesalink_SSL_read` and `mesalink_SSL_write` are used to read and write data
-//! on the TLS connection. Finally, `mesalink_SSL_shutdown` can be used to shut
-//! down the connection. 
+//! When a TCP socket has been created, an `SSL` object can be created with
+//! `SSL_new`. Afterwards, the socket can be assigned to the `SSL` object with
+//! `SSL_set_fd`.
+//!
+//! Then the TLS handshake is performed using `SSL_connect` or `SSL_accept` for
+//! a client or a server respectively. `SSL_read` and `SSL_write` are used to
+//! read and write data on the TLS connection. Finally, `SSL_shutdown` can be
+//! used to shut down the connection.
 
 use std;
 use std::sync::Arc;
@@ -62,14 +60,13 @@ lazy_static! {
 }
 
 /// A dispatch structure describing the internal ssl library methods/functions
-/// which implement the various protocol versions (SSLv1, SSLv2 and TLSv1).
+/// which implement the various protocol versions such as TLS v1.2.
 ///
-/// This is a structure describing a specific TLS protocol version. It can
-/// be created with a method like `mesalink_TLSv1_2_client_method`. Then
-/// `mesalink_CTX_new` can consume it and create a new context. Note that a
-/// `MESALINK_METHOD` object is implicitly freed in `mesalink_CTX_new`. To
-/// avoid double free, do NOT reuse `MESALINK_METHOD` objects; always create
-/// new ones when needed.
+/// This is a structure describing a specific TLS protocol version. It can be
+/// created with a method like `TLSv1_2_client_method`. Then `SSL_CTX_new` can
+/// consume it and create a new context. Note that a `SSL_METHOD` object is
+/// implicitly freed in `SSL_CTX_new`. To avoid double free, do NOT reuse
+/// `SSL_METHOD` objects; always create new ones when needed.
 #[repr(C)]
 pub struct MESALINK_METHOD {
     magic: [u8; MAGIC_SIZE],
@@ -85,22 +82,20 @@ impl MESALINK_METHOD {
     }
 }
 
-
 /// A global context structure which is created by a server or a client once per
-/// program. It holds default values for `MESALINK_SSL` objects which are later
-/// created for individual connections.
+/// program. It holds default values for `SSL` objects which are later created
+/// for individual connections.
 ///
-/// Pass a valid `MESALINK_METHOD` object to `mesalink_CTX_new` to create a
-/// `MESALINK_CTX` object. Note that only TLS 1.2 and 1.3 (draft 18) are
-/// supported.
+/// Pass a valid `SSL_METHOD` object to `SSL_CTX_new` to create a `SSL_CTX`
+/// object. Note that only TLS 1.2 and 1.3 (draft 18) are supported.
 ///
 /// For a context to be used in a TLS server, call
 /// `SSL_CTX_use_certificate_chain_file` and `SSL_CTX_use_PrivateKey_file` to
-/// set the certificates and private key. Otherwise, `mesalink_SSL_accept` would
-/// fail and return an error code `NoCertificatesPresented`. If the context is
-/// created for a TLS client, no further action is needed as MesaLink has
-/// built-in root CA certificates and default ciphersuites. Support for
-/// configurable ciphersuites will be added soon in the next release.
+/// set the certificates and private key. Otherwise, `SSL_accept` would fail and
+/// return an error code `NoCertificatesPresented`. If the context is created
+/// for a TLS client, no further action is needed as MesaLink has built-in root
+/// CA certificates and default ciphersuites. Support for configurable
+/// ciphersuites will be added soon in the next release.
 #[repr(C)]
 pub struct MESALINK_CTX {
     magic: [u8; MAGIC_SIZE],
@@ -123,9 +118,8 @@ impl MESALINK_CTX {
 /// The main TLS structure which is created by a server or client per
 /// established connection.
 ///
-/// Pass a valid `MESALINK_CTX` object to `mesalink_SSL_new` to create a new
-/// `MESALINK_SSL` object. Then associate a valid socket file descriptor with
-/// `mesalink_SSL_set_fd`.
+/// Pass a valid `SSL_CTX` object to `SSL_new` to create a new `SSL` object.
+/// Then associate a valid socket file descriptor with `SSL_set_fd`.
 #[repr(C)]
 pub struct MESALINK_SSL<'a> {
     magic: [u8; MAGIC_SIZE],
@@ -147,40 +141,36 @@ impl<'a> MESALINK_SSL<'a> {
     }
 }
 
+#[doc(hidden)]
 impl<'a> Read for MESALINK_SSL<'a> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         let session = self.session.as_mut().unwrap();
         let mut io = self.io.as_mut().unwrap();
         loop {
             match session.read(buf)? {
-                0 => {
-                    if session.wants_write() {
-                        let _ = session.write_tls(&mut io)?;
-                    } else if session.wants_read() {
-                        if session.read_tls(&mut io)? == 0 {
-                            return Ok(0); // there is no data left to read.
-                        } else {
-                            if let Err(err) = session.process_new_packets() {
-                                // flush queued messages before returning an Err
-                                // in order to send alerts instead of abruptly
-                                // closing the socket
-                                if session.wants_write() {
-                                    // ignore result to avoid masking original error
-                                    let _ = session.write_tls(&mut io);
-                                }
-                                return Err(std::io::Error::new(std::io::ErrorKind::Other, err));
-                            }
-                        }
-                    } else {
+                0 => if session.wants_write() {
+                    let _ = session.write_tls(&mut io)?;
+                } else if session.wants_read() {
+                    if session.read_tls(&mut io)? == 0 {
                         return Ok(0);
+                    } else {
+                        if let Err(err) = session.process_new_packets() {
+                            if session.wants_write() {
+                                let _ = session.write_tls(&mut io);
+                            }
+                            return Err(std::io::Error::new(std::io::ErrorKind::Other, err));
+                        }
                     }
-                }
+                } else {
+                    return Ok(0);
+                },
                 n => return Ok(n),
             }
         }
     }
 }
 
+#[doc(hidden)]
 impl<'a> Write for MESALINK_SSL<'a> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let session = self.session.as_mut().unwrap();
@@ -199,11 +189,13 @@ impl<'a> Write for MESALINK_SSL<'a> {
     }
 }
 
+#[doc(hidden)]
 pub enum SslConstants {
     SslFailure = 0,
     SslSuccess = 1,
 }
 
+#[doc(hidden)]
 pub enum Filetypes {
     FiletypePEM = 1,
     FiletypeASN = 2,
@@ -240,47 +232,129 @@ macro_rules! sanitize_ptr_return_fail {
     }
 }
 
+/// # OpenSSL C API
+/// For OpenSSL compatibility only. Always returns 1.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_library_init(void);
+/// int OpenSSL_add_ssl_algorithms(void);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_library_init() -> c_int {
     /* compatibility only */
     SslConstants::SslSuccess as c_int
 }
 
+/// # OpenSSL C API
+/// For OpenSSL compatibility only. Always returns 1.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_library_init(void);
+/// int OpenSSL_add_ssl_algorithms(void);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_add_ssl_algorithms() -> c_int {
     /* compatibility only */
     SslConstants::SslSuccess as c_int
 }
 
+/// # OpenSSL C API
+/// For OpenSSL compatibility only.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// void SSL_load_error_strings(void);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_load_error_strings() {
     /* compatibility only */
 }
 
+
+/// # OpenSSL C API
+/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
+/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
+/// pointers. Others simply return NULL.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const SSL_METHOD *SSLv3_client_method(void);
+/// ```
+///
 #[no_mangle]
 pub extern "C" fn mesalink_SSLv3_client_method() -> *const MESALINK_METHOD {
     let p: *const MESALINK_METHOD = std::ptr::null();
     p
 }
 
+/// # OpenSSL C API
+/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
+/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
+/// pointers. Others simply return NULL.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const SSL_METHOD *SSLv23_client_method(void);
+/// ```
+///
 #[no_mangle]
 pub extern "C" fn mesalink_SSLv23_client_method() -> *const MESALINK_METHOD {
     let p: *const MESALINK_METHOD = std::ptr::null();
     p
 }
 
+/// # OpenSSL C API
+/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
+/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
+/// pointers. Others simply return NULL.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const SSL_METHOD *TLSv1_client_method(void);
+/// ```
+///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_client_method() -> *const MESALINK_METHOD {
     let p: *const MESALINK_METHOD = std::ptr::null();
     p
 }
 
+/// # OpenSSL C API
+/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
+/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
+/// pointers. Others simply return NULL.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const SSL_METHOD *TLSv1_1_client_method(void);
+/// ```
+///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_1_client_method() -> *const MESALINK_METHOD {
     let p: *const MESALINK_METHOD = std::ptr::null();
     p
 }
 
+/// # OpenSSL C API
+/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
+/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
+/// pointers. Others simply return NULL.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const SSL_METHOD *SSLv1_2_client_method(void);
+/// ```
+///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_2_client_method() -> *const MESALINK_METHOD {
     let method = MESALINK_METHOD {
@@ -290,6 +364,17 @@ pub extern "C" fn mesalink_TLSv1_2_client_method() -> *const MESALINK_METHOD {
     Box::into_raw(Box::new(method))
 }
 
+/// # OpenSSL C API
+/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
+/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
+/// pointers. Others simply return NULL.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const SSL_METHOD *TLSv1_3_client_method(void);
+/// ```
+///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_3_client_method() -> *const MESALINK_METHOD {
     let method = MESALINK_METHOD {
@@ -299,42 +384,117 @@ pub extern "C" fn mesalink_TLSv1_3_client_method() -> *const MESALINK_METHOD {
     Box::into_raw(Box::new(method))
 }
 
+/// # OpenSSL C API
+/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
+/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
+/// pointers. Others simply return NULL.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const SSL_METHOD *SSLv3_server_method(void);
+/// ```
+///
 #[no_mangle]
 pub extern "C" fn mesalink_SSLv3_server_method() -> *const MESALINK_METHOD {
     let p: *const MESALINK_METHOD = std::ptr::null();
     p
 }
 
+/// # OpenSSL C API
+/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
+/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
+/// pointers. Others simply return NULL.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const SSL_METHOD *SSLv23_server_method(void);
+/// ```
+///
 #[no_mangle]
 pub extern "C" fn mesalink_SSLv23_server_method() -> *const MESALINK_METHOD {
     let p: *const MESALINK_METHOD = std::ptr::null();
     p
 }
 
+/// # OpenSSL C API
+/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
+/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
+/// pointers. Others simply return NULL.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const SSL_METHOD *TLSv1_server_method(void);
+/// ```
+///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_server_method() -> *const MESALINK_METHOD {
     let p: *const MESALINK_METHOD = std::ptr::null();
     p
 }
 
+/// # OpenSSL C API
+/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
+/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
+/// pointers. Others simply return NULL.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const SSL_METHOD *TLSv1_1_server_method(void);
+/// ```
+///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_1_server_method() -> *const MESALINK_METHOD {
     let p: *const MESALINK_METHOD = std::ptr::null();
     p
 }
 
+/// # OpenSSL C API
+/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
+/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
+/// pointers. Others simply return NULL.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const SSL_METHOD *TLSv1_2_server_method(void);
+/// ```
+///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_2_server_method() -> *const MESALINK_METHOD {
     let method = MESALINK_METHOD::new(rustls::ProtocolVersion::TLSv1_2);
     Box::into_raw(Box::new(method))
 }
 
+/// # OpenSSL C API
+/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
+/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
+/// pointers. Others simply return NULL.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const SSL_METHOD *TLSv1_3_server_method(void);
+/// ```
+///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_3_server_method() -> *const MESALINK_METHOD {
     let method = MESALINK_METHOD::new(rustls::ProtocolVersion::TLSv1_3);
     Box::into_raw(Box::new(method))
 }
 
+/// # OpenSSL C API
+/// `SSL_CTX_new` - create a new SSL_CTX object as framework to establish TLS/SSL
+/// enabled connections.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// SSL_CTX *SSL_CTX_new(const SSL_METHOD *method);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut MESALINK_CTX {
     sanitize_ptr_return_null!(method_ptr);
@@ -344,6 +504,18 @@ pub extern "C" fn mesalink_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut MES
     Box::into_raw(Box::new(context))
 }
 
+/// # OpenSSL C API
+/// `SSL_CTX_use_certificate_chain_file` - load a certificate chain from file into
+/// ctx. The certificates must be in PEM format and must be sorted starting with
+/// the subject's certificate (actual client or server certificate), followed by
+/// intermediate CA certificates if applicable, and ending at the highest level
+/// (root) CA.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx, const char *file);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
     ctx_ptr: *mut MESALINK_CTX,
@@ -377,6 +549,16 @@ pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
     }
 }
 
+/// # OpenSSL C API
+/// `SSL_CTX_use_PrivateKey_file` - add the first private key found in file to
+/// ctx. The formatting type of the certificate must be specified from the known
+/// types SSL_FILETYPE_PEM and SSL_FILETYPE_ASN1.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_CTX_use_PrivateKey_file(SSL_CTX *ctx, const char *file, int type);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
     ctx_ptr: *mut MESALINK_CTX,
@@ -431,6 +613,15 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
     }
 }
 
+/// # OpenSSL C API
+/// `SSL_CTX_check_private_key` - check the consistency of a private key with the
+/// corresponding certificate loaded into ctx
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_CTX_check_private_key(const SSL_CTX *ctx);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX) -> c_int {
     sanitize_ptr_return_fail!(ctx_ptr);
@@ -454,6 +645,15 @@ pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX)
     SslConstants::SslFailure as c_int
 }
 
+/// # OpenSSL C API
+/// `SSL_new` - create a new SSL structure which is needed to hold the data for a
+/// TLS/SSL connection
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// SSL *SSL_new(SSL_CTX *ctx);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_new<'a>(ctx_ptr: *mut MESALINK_CTX) -> *mut MESALINK_SSL<'a> {
     sanitize_ptr_return_null!(ctx_ptr);
@@ -462,6 +662,15 @@ pub extern "C" fn mesalink_SSL_new<'a>(ctx_ptr: *mut MESALINK_CTX) -> *mut MESAL
     Box::into_raw(Box::new(ssl))
 }
 
+/// # OpenSSL C API
+/// `SSL_get_SSL_CTX` - return a pointer to the SSL_CTX object, from which ssl was
+/// created with SSL_new.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// SSL_CTX *SSL_get_SSL_CTX(const SSL *ssl);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_SSL_CTX(ssl_ptr: *const MESALINK_SSL) -> *const MESALINK_CTX {
     sanitize_ptr_return_null!(ssl_ptr);
@@ -470,6 +679,14 @@ pub extern "C" fn mesalink_SSL_get_SSL_CTX(ssl_ptr: *const MESALINK_SSL) -> *con
     ctx_ptr
 }
 
+/// # OpenSSL C API
+/// `SSL_set_SSL_CTX` - set the SSL_CTX object of an SSL object.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_set_SSL_CTX(
     ssl_ptr: *mut MESALINK_SSL,
@@ -483,6 +700,15 @@ pub extern "C" fn mesalink_SSL_set_SSL_CTX(
     ssl.context
 }
 
+/// # OpenSSL C API
+/// `SSL_set_tlsext_host_name` - set the server name indication ClientHello
+/// extension to contain the value name.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_set_tlsext_host_name(const SSL *s, const char *name);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
     ssl_ptr: *mut MESALINK_SSL,
@@ -499,6 +725,15 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
     SslConstants::SslSuccess as c_int
 }
 
+/// # OpenSSL C API
+/// `SSL_get_servername` - return a servername extension value of the specified
+/// type if provided in the Client Hello or NULL.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const char *SSL_get_servername(const SSL *s, const int type);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_servername(
     ssl_ptr: *const MESALINK_SSL,
@@ -512,6 +747,16 @@ pub extern "C" fn mesalink_SSL_get_servername(
     }
 }
 
+/// # OpenSSL C API
+/// `SSL_set_fd` - set the file descriptor fd as the input/output facility for the
+/// TLS/SSL (encrypted) side of ssl. fd will typically be the socket file
+/// descriptor of a network connection.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_set_fd(SSL *ssl, int fd);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> c_int {
     sanitize_ptr_return_fail!(ssl_ptr);
@@ -521,10 +766,18 @@ pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> 
     SslConstants::SslSuccess as c_int
 }
 
+/// # OpenSSL C API
+/// `SSL_get_fd` - return the file descriptor which is linked to ssl.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_get_fd(const SSL *ssl);
+/// ```
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_get_fd(ssl_ptr: *mut MESALINK_SSL) -> c_int {
+pub extern "C" fn mesalink_SSL_get_fd(ssl_ptr: *const MESALINK_SSL) -> c_int {
     sanitize_ptr_return_fail!(ssl_ptr);
-    let ssl = unsafe { &mut *ssl_ptr };
+    let ssl = unsafe { &*ssl_ptr };
     match ssl.io {
         Some(ref socket) => socket.as_raw_fd(),
         None => {
@@ -534,6 +787,15 @@ pub extern "C" fn mesalink_SSL_get_fd(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     }
 }
 
+/// # OpenSSL C API
+/// `SSL_connect` - initiate the TLS handshake with a server. The communication
+/// channel must already have been set and assigned to the ssl with SSL_set_fd.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_connect(SSL *ssl);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     sanitize_ptr_return_fail!(ssl_ptr);
@@ -560,6 +822,16 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     SslConstants::SslFailure as c_int
 }
 
+/// # OpenSSL C API
+/// `SSL_accept` - wait for a TLS client to initiate the TLS handshake. The
+/// communication channel must already have been set and assigned to the ssl by
+/// setting SSL_set_fd.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_accept(SSL *ssl);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     sanitize_ptr_return_fail!(ssl_ptr);
@@ -579,6 +851,15 @@ pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     }
 }
 
+/// # OpenSSL C API
+/// `SSL_read` - read `num` bytes from the specified `ssl` into the
+/// buffer `buf`.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_read(SSL *ssl, void *buf, int num);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_read(
     ssl_ptr: *mut MESALINK_SSL,
@@ -597,6 +878,15 @@ pub extern "C" fn mesalink_SSL_read(
     }
 }
 
+/// # OpenSSL C API
+/// `SSL_write` - write `num` bytes from the buffer `buf` into the
+/// specified `ssl` connection.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_write(SSL *ssl, const void *buf, int num);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_write(
     ssl_ptr: *mut MESALINK_SSL,
@@ -615,6 +905,14 @@ pub extern "C" fn mesalink_SSL_write(
     }
 }
 
+/// # OpenSSL C API
+/// `SSL_shutdown` - shut down a TLS connection
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_shutdown(SSL *ssl);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_shutdown(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     sanitize_ptr_return_fail!(ssl_ptr);
@@ -624,11 +922,27 @@ pub extern "C" fn mesalink_SSL_shutdown(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     SslConstants::SslSuccess as c_int
 }
 
+/// # OpenSSL C API
+/// `SSL_CTX_free` - free an allocated SSL_CTX object
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// void SSL_CTX_free(SSL_CTX *ctx);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_CTX_free(ctx_ptr: *mut MESALINK_CTX) {
     let _ = unsafe { Box::from_raw(ctx_ptr) };
 }
 
+/// # OpenSSL C API
+/// `SSL_free` - free an allocated SSL object
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// void SSL_free(SSL *ssl);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_free(ssl_ptr: *mut MESALINK_SSL) {
     let _ = unsafe { Box::from_raw(ssl_ptr) };

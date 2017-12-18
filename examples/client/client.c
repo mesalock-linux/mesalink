@@ -13,8 +13,6 @@
  *
  */
 
-/* This example demonstrates the OpenSSL compatibility layer */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
