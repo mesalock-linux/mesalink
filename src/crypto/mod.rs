@@ -13,10 +13,5 @@
  *
  */
 
-/// Implementations of OpenSSL ERR APIs.
-/// Please also refer to the header file at mesalink/openssl/err.h
-pub mod err;
-
-/// Implementations of OpenSSL SSL APIs.
-/// Please also refer to the header file at mesalink/openssl/ssl.h
-pub mod ssl;
+//!
+//! Not implemented yet

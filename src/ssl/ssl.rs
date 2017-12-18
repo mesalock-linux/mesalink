@@ -13,6 +13,28 @@
  *
  */
 
+//! # Synopsis
+//! This sub-module implements the necessary APIs to establish a TLS session.
+//! All the APIs are compatible to their OpenSSL counterparts except their names
+//! start with `mesalink_` instead. 
+//!
+//! # Usage
+//! The first step is to create a `MESALINK_CTX` object with `mesalink_CTX_new`.
+//!
+//! Then `SSL_CTX_use_certificate_chain_file` and `SSL_CTX_use_PrivateKey_file`
+//! must be called to set up the certificate and private key if the context is
+//! to be used in a TLS server. 
+//!
+//! When a TCP socket has been created, a `MESALINK_SSL` object can be created
+//! with `mesalink_SSL_new`. Afterwards, the socket can be assigned to the
+//! `MESALINK_SSL` object with `mesalink_SSL_set_fd`. 
+//! 
+//! Then the TLS handshake is performed using `mesalink_SSL_connect` or
+//! `mesalink_SSL_accept` for a client or a server respectively.
+//! `mesalink_SSL_read` and `mesalink_SSL_write` are used to read and write data
+//! on the TLS connection. Finally, `mesalink_SSL_shutdown` can be used to shut
+//! down the connection. 
+
 use std;
 use std::sync::Arc;
 use std::net::TcpStream;
@@ -39,6 +61,15 @@ lazy_static! {
     };
 }
 
+/// A dispatch structure describing the internal ssl library methods/functions
+/// which implement the various protocol versions (SSLv1, SSLv2 and TLSv1).
+///
+/// This is a structure describing a specific TLS protocol version. It can
+/// be created with a method like `mesalink_TLSv1_2_client_method`. Then
+/// `mesalink_CTX_new` can consume it and create a new context. Note that a
+/// `MESALINK_METHOD` object is implicitly freed in `mesalink_CTX_new`. To
+/// avoid double free, do NOT reuse `MESALINK_METHOD` objects; always create
+/// new ones when needed.
 #[repr(C)]
 pub struct MESALINK_METHOD {
     magic: [u8; MAGIC_SIZE],
@@ -54,6 +85,22 @@ impl MESALINK_METHOD {
     }
 }
 
+
+/// A global context structure which is created by a server or a client once per
+/// program. It holds default values for `MESALINK_SSL` objects which are later
+/// created for individual connections.
+///
+/// Pass a valid `MESALINK_METHOD` object to `mesalink_CTX_new` to create a
+/// `MESALINK_CTX` object. Note that only TLS 1.2 and 1.3 (draft 18) are
+/// supported.
+///
+/// For a context to be used in a TLS server, call
+/// `SSL_CTX_use_certificate_chain_file` and `SSL_CTX_use_PrivateKey_file` to
+/// set the certificates and private key. Otherwise, `mesalink_SSL_accept` would
+/// fail and return an error code `NoCertificatesPresented`. If the context is
+/// created for a TLS client, no further action is needed as MesaLink has
+/// built-in root CA certificates and default ciphersuites. Support for
+/// configurable ciphersuites will be added soon in the next release.
 #[repr(C)]
 pub struct MESALINK_CTX {
     magic: [u8; MAGIC_SIZE],
@@ -73,6 +120,12 @@ impl MESALINK_CTX {
     }
 }
 
+/// The main TLS structure which is created by a server or client per
+/// established connection.
+///
+/// Pass a valid `MESALINK_CTX` object to `mesalink_SSL_new` to create a new
+/// `MESALINK_SSL` object. Then associate a valid socket file descriptor with
+/// `mesalink_SSL_set_fd`.
 #[repr(C)]
 pub struct MESALINK_SSL<'a> {
     magic: [u8; MAGIC_SIZE],

@@ -77,8 +77,8 @@
 //! CMake support will be introduced in future releases.
 //! 
 //! ## Examples
-//! MesaLink comes with two examples that demonstrate its use in a TLS client
-//! and a TLS server.
+//! MesaLink comes with two examples that demonstrate a TLS client and a TLS
+//! server.
 //!
 //! ### A sample run of the client example program
 //!
@@ -157,8 +157,8 @@ extern crate webpki_roots;
 #[macro_use]
 extern crate lazy_static;
 
-/// Implementations of libssl APIs
+/// The ssl module is the counterpart of the OpenSSL ssl library.
 pub mod ssl;
 
-/// Implementations of libcrypto APIs
+/// The crypo module is the counterpart of the OpenSSL crypto library.
 pub mod crypto;
