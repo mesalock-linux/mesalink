@@ -62,10 +62,10 @@ $ make
 CMake support will be introduced in future releases.
 
 ## Building the MesaLink documentation
-MesaLink uses Rust-style documentation. To generate the documents, please use `cargo`.
+MesaLink uses Rust-style documentation. To generate the documents, please use `cargo doc`.
 
 ```
-$ cargo build --no-deps
+$ cargo doc --no-deps
 $ open target/doc/mesalink/index.html
 ```
 
