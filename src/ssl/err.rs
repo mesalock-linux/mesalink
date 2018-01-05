@@ -69,6 +69,8 @@ pub enum ErrorCode {
     General,
     FailedToGetCurrentTime,
     InvalidDNSName,
+    HandshakeNotComplete,
+    PeerSentOversizedRecord,
 
     __Nonexhaustive = 0xFFFF,
 }
@@ -115,12 +117,14 @@ impl ErrorCode {
             ErrorCode::DecryptError => "Decrypt error",
             ErrorCode::PeerIncompatibleError => "Peer incompatible error",
             ErrorCode::PeerMisbehavedError => "Peer misbehaved error",
-            ErrorCode::AlertReceived => "Alert eeceived",
+            ErrorCode::AlertReceived => "Alert received",
             ErrorCode::WebPKIError => "Web PKI error",
             ErrorCode::InvalidSCT => "Invalid SCT",
             ErrorCode::General => "General",
             ErrorCode::FailedToGetCurrentTime => "Failed to get current time",
             ErrorCode::InvalidDNSName => "Invalid DNS name",
+            ErrorCode::HandshakeNotComplete => "Handshake not complete",
+            ErrorCode::PeerSentOversizedRecord => "Peer sent oversized record",
             ErrorCode::__Nonexhaustive => "Invalid error code",
         }
     }
@@ -175,6 +179,8 @@ impl From<TLSError> for ErrorCode {
             TLSError::General(_) => ErrorCode::General,
             TLSError::FailedToGetCurrentTime => ErrorCode::FailedToGetCurrentTime,
             TLSError::InvalidDNSName(_) => ErrorCode::InvalidDNSName,
+            TLSError::HandshakeNotComplete => ErrorCode::HandshakeNotComplete,
+            TLSError::PeerSentOversizedRecord => ErrorCode::PeerSentOversizedRecord,
         }
     }
 }
