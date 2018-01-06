@@ -38,6 +38,7 @@ use std::sync::Arc;
 use std::net::TcpStream;
 use std::io::{Read, Write};
 use std::os::unix::io::{AsRawFd, FromRawFd};
+use std::ffi::CString;
 use libc::{c_char, c_int, c_uchar};
 use rustls::{self, Session};
 use ring;
@@ -57,6 +58,22 @@ lazy_static! {
             [0xc0, 0xd4, 0xc5, 0x09]
         }
     };
+}
+
+/// An OpenSSL Cipher object
+#[repr(C)]
+pub struct MESALINK_CIPHER {
+    magic: [u8; MAGIC_SIZE],
+    ciphersuite: &'static rustls::SupportedCipherSuite,
+}
+
+impl MESALINK_CIPHER {
+    fn new(ciphersuite: &'static rustls::SupportedCipherSuite) -> MESALINK_CIPHER {
+        MESALINK_CIPHER {
+            magic: *MAGIC,
+            ciphersuite: ciphersuite,
+        }
+    }
 }
 
 /// A dispatch structure describing the internal ssl library methods/functions
@@ -144,27 +161,34 @@ impl<'a> MESALINK_SSL<'a> {
 #[doc(hidden)]
 impl<'a> Read for MESALINK_SSL<'a> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        let session = self.session.as_mut().unwrap();
-        let mut io = self.io.as_mut().unwrap();
-        loop {
-            match session.read(buf)? {
-                0 => if session.wants_write() {
-                    let _ = session.write_tls(&mut io)?;
-                } else if session.wants_read() {
-                    if session.read_tls(&mut io)? == 0 {
-                        return Ok(0);
-                    } else {
-                        if let Err(err) = session.process_new_packets() {
-                            if session.wants_write() {
-                                let _ = session.write_tls(&mut io);
+        match (self.session.as_mut(), self.io.as_mut()) {
+            (Some(session), Some(io)) => loop {
+                match session.read(buf)? {
+                    0 => if session.wants_write() {
+                        let _ = session.write_tls(io)?;
+                    } else if session.wants_read() {
+                        if session.read_tls(io)? == 0 {
+                            return Ok(0);
+                        } else {
+                            if let Err(err) = session.process_new_packets() {
+                                if session.wants_write() {
+                                    let _ = session.write_tls(io);
+                                }
+                                return Err(std::io::Error::new(std::io::ErrorKind::Other, err));
                             }
-                            return Err(std::io::Error::new(std::io::ErrorKind::Other, err));
                         }
-                    }
-                } else {
-                    return Ok(0);
-                },
-                n => return Ok(n),
+                    } else {
+                        return Ok(0);
+                    },
+                    n => return Ok(n),
+                }
+            },
+            _ => {
+                mesalink_push_error(ErrorCode::HandshakeNotComplete);
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Session or socket not initialized",
+                ))
             }
         }
     }
@@ -173,19 +197,37 @@ impl<'a> Read for MESALINK_SSL<'a> {
 #[doc(hidden)]
 impl<'a> Write for MESALINK_SSL<'a> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let session = self.session.as_mut().unwrap();
-        let mut io = self.io.as_mut().unwrap();
-        let len = session.write(buf)?;
-        let _ = session.write_tls(&mut io)?;
-        Ok(len)
+        match (self.session.as_mut(), self.io.as_mut()) {
+            (Some(session), Some(io)) => {
+                let len = session.write(buf)?;
+                let _ = session.write_tls(io)?;
+                Ok(len)
+            }
+            _ => {
+                mesalink_push_error(ErrorCode::HandshakeNotComplete);
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Session or socket not initialized",
+                ))
+            }
+        }
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        let session = self.session.as_mut().unwrap();
-        let mut io = self.io.as_mut().unwrap();
-        let ret = session.flush();
-        let _ = session.write_tls(&mut io)?;
-        ret
+        match (self.session.as_mut(), self.io.as_mut()) {
+            (Some(session), Some(io)) => {
+                let ret = session.flush();
+                let _ = session.write_tls(io)?;
+                ret
+            }
+            _ => {
+                mesalink_push_error(ErrorCode::HandshakeNotComplete);
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Session or socket not initialized",
+                ))
+            }
+        }
     }
 }
 
@@ -700,6 +742,79 @@ pub extern "C" fn mesalink_SSL_set_SSL_CTX(
     ssl.context
 }
 
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_get_current_cipher(
+    ssl_ptr: *mut MESALINK_SSL,
+) -> *const MESALINK_CIPHER {
+    sanitize_ptr_return_null!(ssl_ptr);
+    let ssl = unsafe { &mut *ssl_ptr };
+    match ssl.session.as_ref() {
+        Some(session) => match session.get_negotiated_ciphersuite() {
+            Some(cs) => {
+                let cipher = MESALINK_CIPHER::new(cs);
+                Box::into_raw(Box::new(cipher))
+            }
+            None => std::ptr::null(),
+        },
+        None => std::ptr::null(),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_CIPHER_get_name(
+    cipher_ptr: *const MESALINK_CIPHER,
+) -> *const c_char {
+    if !cipher_ptr.is_null() {
+        sanitize_ptr_return_null!(cipher_ptr);
+        let ciphersuite = unsafe { &*cipher_ptr };
+        let name = format!("{:?}", ciphersuite.ciphersuite.suite);
+        CString::new(name).unwrap().into_raw() // Intentional memory leak
+    } else {
+        "(NONE)".as_ptr() as *const c_char
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_CIPHER_get_bits(cipher_ptr: *const MESALINK_CIPHER) -> c_int {
+    if !cipher_ptr.is_null() {
+        sanitize_ptr_return_fail!(cipher_ptr);
+        let ciphersuite = unsafe { &*cipher_ptr };
+        ciphersuite.ciphersuite.enc_key_len as c_int
+    } else {
+        0
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_CIPHER_get_version(
+    cipher_ptr: *const MESALINK_CIPHER,
+) -> *const c_char {
+    if !cipher_ptr.is_null() {
+        sanitize_ptr_return_null!(cipher_ptr);
+        "TLS1.2".as_ptr() as *const c_char
+    } else {
+        "(NONE)".as_ptr() as *const c_char
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_get_cipher_name(ssl_ptr: *mut MESALINK_SSL) -> *const c_char {
+    let cipher = mesalink_SSL_get_current_cipher(ssl_ptr);
+    mesalink_SSL_CIPHER_get_name(cipher)
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_get_cipher_bits(ssl_ptr: *mut MESALINK_SSL) -> c_int {
+    let cipher = mesalink_SSL_get_current_cipher(ssl_ptr);
+    mesalink_SSL_CIPHER_get_bits(cipher)
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_get_cipher_version(ssl_ptr: *mut MESALINK_SSL) -> *const c_char {
+    let cipher = mesalink_SSL_get_current_cipher(ssl_ptr);
+    mesalink_SSL_CIPHER_get_version(cipher)
+}
+
 /// # OpenSSL C API
 /// `SSL_set_tlsext_host_name` - set the server name indication ClientHello
 /// extension to contain the value name.
@@ -812,7 +927,8 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
                 client_config
                     .root_store
                     .add_server_trust_anchors(&TLS_SERVER_ROOTS);
-                let session = rustls::ClientSession::new(&Arc::new(client_config), dns_name);
+                let mut session = rustls::ClientSession::new(&Arc::new(client_config), dns_name);
+                session.process_new_packets().unwrap();
                 ssl.session = Some(Box::new(session));
                 return SslConstants::SslSuccess as c_int;
             }
@@ -917,9 +1033,16 @@ pub extern "C" fn mesalink_SSL_write(
 pub extern "C" fn mesalink_SSL_shutdown(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     sanitize_ptr_return_fail!(ssl_ptr);
     let ssl = unsafe { &mut *ssl_ptr };
-    let session = ssl.session.as_mut().unwrap();
-    session.send_close_notify();
-    SslConstants::SslSuccess as c_int
+    match ssl.session {
+        Some(ref mut s) => {
+            s.send_close_notify();
+            SslConstants::SslSuccess as c_int
+        }
+        None => {
+            mesalink_push_error(ErrorCode::HandshakeNotComplete);
+            SslConstants::SslFailure as c_int
+        }
+    }
 }
 
 /// # OpenSSL C API

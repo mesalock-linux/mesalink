@@ -54,6 +54,13 @@ typedef MESALINK_SSL SSL;
 #define SSL_CTX_free mesalink_CTX_free
 
 #define SSL_new mesalink_SSL_new
+#define SSL_get_current_cipher mesalink_SSL_get_current_cipher
+#define SSL_CIPHER_get_name mesalink_SSL_CIPHER_get_name
+#define SSL_CIPHER_get_bits mesalink_SSL_CIPHER_get_bits
+#define SSL_CIPHER_get_version mesalink_SSL_CIPHER_get_version
+#define SSL_get_cipher_name mesalink_SSL_get_cipher_name
+#define SSL_get_cipher_bits mesalink_SSL_get_cipher_bits
+#define SSL_get_cipher_version mesalink_SSL_get_cipher_version
 #define SSL_set_tlsext_host_name mesalink_SSL_set_tlsext_host_name
 #define SSL_get_servername mesalink_SSL_get_servername
 #define SSL_get_SSL_CTX mesalink_SSL_get_SSL_CTX

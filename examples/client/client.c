@@ -95,6 +95,7 @@ int main(int argc, char *argv[])
     }
     if (SSL_connect(ssl) == SUCCESS)
     {
+        printf("[+] Negotiated ciphersuite: %s\n", SSL_get_cipher_name(ssl));
         int sendlen = -1, recvlen = -1, total_recvlen = 0;
         sprintf(sendbuf, request, hostname);
         printf("[+] Requesting %s ...\n", SSL_get_servername(ssl, 0));
@@ -106,6 +107,10 @@ int main(int argc, char *argv[])
             total_recvlen += strlen(recvbuf);
             printf("%s", recvbuf);
         };
+        printf("[+] Negotiated ciphersuite: %s, enc_length=%d, version=%s\n", 
+            SSL_get_cipher_name(ssl), 
+            SSL_get_cipher_bits(ssl), 
+            SSL_get_cipher_version(ssl));
         printf("\n[+] Received %d bytes\n", total_recvlen);
         SSL_free(ssl);
     }

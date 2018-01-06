@@ -59,6 +59,13 @@ MESALINK_API int mesalink_SSL_CTX_check_private_key(const MESALINK_CTX *);
 MESALINK_API void mesalink_CTX_free(MESALINK_CTX *);
 
 MESALINK_API MESALINK_SSL *mesalink_SSL_new(MESALINK_CTX *);
+MESALINK_API MESALINK_CIPHER *mesalink_SSL_get_current_cipher(MESALINK_SSL *);
+MESALINK_API const char *mesalink_SSL_CIPHER_get_name(const MESALINK_CIPHER *);
+MESALINK_API int mesalink_SSL_CIPHER_get_bits(const MESALINK_CIPHER *);
+MESALINK_API const char *mesalink_SSL_CIPHER_get_version(const MESALINK_CIPHER *);
+MESALINK_API const char *mesalink_SSL_get_cipher_name(MESALINK_SSL *);
+MESALINK_API int mesalink_SSL_get_cipher_bits(MESALINK_SSL *);
+MESALINK_API const char *mesalink_SSL_get_cipher_version(const MESALINK_SSL *);
 MESALINK_API int mesalink_SSL_set_tlsext_host_name(MESALINK_SSL *, const char *);
 MESALINK_API const char *mesalink_SSL_get_servername(const MESALINK_SSL *, const int);
 MESALINK_API int mesalink_SSL_set_fd(MESALINK_SSL *, int);
