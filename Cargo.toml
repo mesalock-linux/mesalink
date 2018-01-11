@@ -18,9 +18,13 @@ error_strings = []
 tls13_draft = []
 
 [dependencies]
-rustls = {git = "https://github.com/ctz/rustls", rev = "c8c32f5"}
+rustls = { path = "./rustls", version = "0.12.0", default-features = false, features = ["aesgcm"] }
 ring = { version = "0.13.0-alpha", features = ["rsa_signing"] }
 webpki = "0.18.0-alpha"
 webpki-roots = "0.14.0"
 libc = "0.2"
 lazy_static = "1.0.0"
+
+[profile.release]
+opt-level = "z"
+lto = true
