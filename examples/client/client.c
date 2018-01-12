@@ -107,9 +107,11 @@ int main(int argc, char *argv[])
             total_recvlen += strlen(recvbuf);
             printf("%s", recvbuf);
         };
+        int cipher_bits = 0;
+        SSL_get_cipher_bits(ssl, &cipher_bits);
         printf("[+] Negotiated ciphersuite: %s, enc_length=%d, version=%s\n", 
             SSL_get_cipher_name(ssl), 
-            SSL_get_cipher_bits(ssl), 
+            cipher_bits,
             SSL_get_cipher_version(ssl));
         printf("\n[+] Received %d bytes\n", total_recvlen);
         SSL_free(ssl);
