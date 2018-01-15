@@ -4,6 +4,6 @@ src/ssl/ssl.rs:
 src/ssl/err.rs:
 
 target/release/libmesalink.la: src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/err.rs
-	cargo build --release
+	cargo build --release $(CARGO_FEATURES)
 clean-local:
 	-cargo clean

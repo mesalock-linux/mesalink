@@ -30,5 +30,40 @@ AS_IF(test x$RUSTC = xno,
     AC_MSG_ERROR([rustc is required])
 )
 
+AC_SUBST([CARGO_FEATURES], [--features ])
+CARGO_FEATURES=$CARGO_FEATURES" \""
+
+AC_ARG_ENABLE([errorstrings],
+    [AS_HELP_STRING([--enable-errorstrings], [Enable error string table (default: enabled)])],
+    [ ENABLE_ERROR_STRINGS=$enableval ],
+    [ ENABLE_ERROR_STRINGS=yes ]
+    )
+if test "$ENABLE_ERROR_STRINGS" = "yes"
+then
+    CARGO_FEATURES=$CARGO_FEATURES" error_strings"
+fi
+
+AC_ARG_ENABLE([aesgcm],
+    [AS_HELP_STRING([--enable-aesgcm], [Enable AES-GCM bulk encryption (default: enabled)])],
+    [ ENABLE_AESGCM=$enableval ],
+    [ ENABLE_AESGCM=yes ]
+    )
+if test "$ENABLE_AESGCM" = "yes"
+then
+    CARGO_FEATURES=$CARGO_FEATURES" aesgcm"
+fi
+
+AC_ARG_ENABLE([chachapoly],
+    [AS_HELP_STRING([--enable-chachapoly], [Enable Chacha20Poly1305 bulk encryption (default: enabled)])],
+    [ ENABLE_CHACHAPOLY=$enableval ],
+    [ ENABLE_CHACHAPOLY=yes ]
+    )
+if test "$ENABLE_CHACHAPOLY" = "yes"
+then
+    CARGO_FEATURES=$CARGO_FEATURES" chachapoly"
+fi
+
+CARGO_FEATURES=$CARGO_FEATURES"\""
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
