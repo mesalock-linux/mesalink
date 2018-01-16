@@ -34,8 +34,8 @@ AS_IF(test x$RUSTC = xno,
     AC_MSG_ERROR([rustc is required])
 )
 
-OPTIMIZE_CFLAGS="-Os -fomit-frame-pointer"
-DEBUG_CFLAGS="-g -DDEBUG"
+OPTIMIZE_CFLAGS="-Os -ffunction-sections -fdata-sections"
+DEBUG_CFLAGS="-g -ggdb -O0 -Wall"
 
 AX_DEBUG
 AM_CONDITIONAL([CARGO_DEBUG], [test "x$ax_enable_debug" = "xyes"])
@@ -95,7 +95,12 @@ echo "   * System type:                $host_vendor-$host_os"
 echo "   * Host CPU:                   $host_cpu"
 echo "   * C Compiler:                 $CC"
 echo "   * C Flags:                    $CFLAGS"
-echo "   * LIB Flags:                  $LIB"
 echo "   * Debug enabled:              $ax_enable_debug"
 echo "   * Warnings as failure:        $ac_cv_warnings_as_errors"
+echo
+echo "   Features "
+echo "   * Error strings               $ENABLE_ERROR_STRINGS"
+echo "   * AES-GCM                     $ENABLE_AESGCM"
+echo "   * Chacha20-Poly1305           $ENABLE_CHACHAPOLY"
 echo ""
+echo "---"
