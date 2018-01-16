@@ -3,7 +3,13 @@ src/ssl/mod.rs:
 src/ssl/ssl.rs:
 src/ssl/err.rs:
 
+if CARGO_DEBUG
+target/debug/libmesalink.la: src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/err.rs
+	cargo build $(CARGO_FEATURES)
+else
 target/release/libmesalink.la: src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/err.rs
 	cargo build --release $(CARGO_FEATURES)
+endif
+
 clean-local:
 	-cargo clean

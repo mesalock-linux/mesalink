@@ -3,6 +3,8 @@ AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h:config.in])
 
+: ${CFLAGS=""}
+
 AC_CANONICAL_BUILD
 AC_CANONICAL_HOST
 
@@ -18,6 +20,8 @@ LT_LANG([C++])
 LT_LANG([C])
 
 AC_PROG_CC
+AC_PROG_CC_C_O
+AC_PROG_INSTALL
 
 AC_CHECK_HEADERS([netdb.h netinet/in.h string.h sys/socket.h unistd.h])
 AC_CHECK_FUNCS([gethostbyname memset socket])
@@ -30,6 +34,17 @@ AS_IF(test x$RUSTC = xno,
     AC_MSG_ERROR([rustc is required])
 )
 
+OPTIMIZE_CFLAGS="-Os -fomit-frame-pointer"
+DEBUG_CFLAGS="-g -DDEBUG"
+
+AX_DEBUG
+AM_CONDITIONAL([CARGO_DEBUG], [test "x$ax_enable_debug" = "xyes"])
+if test "$ax_enable_debug" = "yes"
+then
+    CFLAGS="$DEBUG_CFLAGS $CFLAGS"
+else
+    CFLAGS="$OPTIMIZE_CFLAGS $CFLAGS"
+fi
 AC_SUBST([CARGO_FEATURES], [--features ])
 CARGO_FEATURES=$CARGO_FEATURES" \""
 
@@ -67,3 +82,20 @@ CARGO_FEATURES=$CARGO_FEATURES"\""
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
+
+echo "---"
+echo "Running make clean ..."
+make clean >/dev/null 2>&1
+
+echo "---"
+echo "Configuration summary for $PACKAGE_NAME version $VERSION"
+echo ""
+echo "   * Installation prefix:        $prefix"
+echo "   * System type:                $host_vendor-$host_os"
+echo "   * Host CPU:                   $host_cpu"
+echo "   * C Compiler:                 $CC"
+echo "   * C Flags:                    $CFLAGS"
+echo "   * LIB Flags:                  $LIB"
+echo "   * Debug enabled:              $ax_enable_debug"
+echo "   * Warnings as failure:        $ac_cv_warnings_as_errors"
+echo ""
