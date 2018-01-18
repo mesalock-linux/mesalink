@@ -14,14 +14,14 @@ AM_INIT_AUTOMAKE([1.11 -Wall -Werror foreign no-dependencies subdir-objects])
 MESALINK_VERSION=$(grep ^version Cargo.toml | awk '{print $3}' | tr -d '"' | tr -d "\n")
 AC_SUBST(MESALINK_VERSION)
 
-LT_PREREQ([2.2])
-LT_INIT([disable-static])
-LT_LANG([C++])
-LT_LANG([C])
-
+AC_LANG([C])
 AC_PROG_CC
 AC_PROG_CC_C_O
 AC_PROG_INSTALL
+
+LT_PREREQ([2.2])
+LT_INIT([disable-static])
+LT_LANG([C])
 
 AC_CHECK_HEADERS([netdb.h netinet/in.h string.h sys/socket.h unistd.h])
 AC_CHECK_FUNCS([gethostbyname memset socket])
@@ -34,7 +34,16 @@ AS_IF(test x$RUSTC = xno,
     AC_MSG_ERROR([rustc is required])
 )
 
-OPTIMIZE_CFLAGS="-Os -ffunction-sections -fdata-sections -Wl,-dead_strip"
+AX_COMPILER_VENDOR
+OPTIMIZE_CFLAGS="-Os -ffunction-sections -fdata-sections"
+if test "$ax_cv_c_compiler_vendor" = "gnu"
+then
+    OPTIMIZE_CFLAGS="$OPTIMIZE_CFLAGS -Wl,--gc-sections"
+fi
+if test "$ax_cv_c_compiler_vendor" = "clang"
+then
+    OPTIMIZE_CFLAGS="$OPTIMIZE_CFLAGS -Wl,-dead_strip"
+fi
 DEBUG_CFLAGS="-g -ggdb -O0 -Wall"
 
 AX_DEBUG
