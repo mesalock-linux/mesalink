@@ -34,7 +34,7 @@ AS_IF(test x$RUSTC = xno,
     AC_MSG_ERROR([rustc is required])
 )
 
-OPTIMIZE_CFLAGS="-Os -ffunction-sections -fdata-sections"
+OPTIMIZE_CFLAGS="-Os -ffunction-sections -fdata-sections -Wl,-dead_strip"
 DEBUG_CFLAGS="-g -ggdb -O0 -Wall"
 
 AX_DEBUG

@@ -756,16 +756,43 @@ pub extern "C" fn mesalink_SSL_get_current_cipher(
 /// const char *SSL_CIPHER_get_name(const SSL_CIPHER *cipher);
 /// ```
 #[no_mangle]
+#[cfg(feature = "error_strings")]
 pub extern "C" fn mesalink_SSL_CIPHER_get_name(
     cipher_ptr: *const MESALINK_CIPHER,
 ) -> *const c_char {
     if !cipher_ptr.is_null() {
         sanitize_ptr_return_null!(cipher_ptr);
         let ciphersuite = unsafe { &*cipher_ptr };
-        let name = format!("{:?}", ciphersuite.ciphersuite.suite);
-        CString::new(name).unwrap().into_raw() // Intentional memory leak
+        let name = match ciphersuite.ciphersuite.suite.get_u16() {
+            #[cfg(feature = "chachapoly")]
+            0x1303 => "TLS13_CHACHA20_POLY1305_SHA256",
+            0xcca8 => "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
+            0xcca9 => "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256",
+            #[cfg(feature = "aesgcm")]
+            0x1301 => "TLS13_AES_128_GCM_SHA256",
+            0x1302 => "TLS13_AES_256_GCM_SHA384",
+            0xc02b => "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
+            0xc02c => "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+            0xc02f => "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+            0xc030 => "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+            _ => "Unsupported ciphersuite"
+        };
+        CString::new(name).unwrap().into_raw()
     } else {
-        "(NONE)".as_ptr() as *const c_char
+        CString::new("(NONE)").unwrap().into_raw()
+    }
+}
+
+#[no_mangle]
+#[cfg(not(feature = "error_strings"))]
+pub extern "C" fn mesalink_SSL_CIPHER_get_name(
+    cipher_ptr: *const MESALINK_CIPHER,
+) -> *const c_char {
+    if !cipher_ptr.is_null() {
+        sanitize_ptr_return_null!(cipher_ptr);
+        CString::new("Error string not enabled").unwrap().into_raw()
+    } else {
+        CString::new("(NONE)").unwrap().into_raw()
     }
 }
 
