@@ -763,23 +763,28 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_name(
     if !cipher_ptr.is_null() {
         sanitize_ptr_return_null!(cipher_ptr);
         let ciphersuite = unsafe { &*cipher_ptr };
-        let name = match ciphersuite.ciphersuite.suite.get_u16() {
-            #[cfg(feature = "chachapoly")]
-            0x1303 => "TLS13_CHACHA20_POLY1305_SHA256",
-            0xcca8 => "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
-            0xcca9 => "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256",
-            #[cfg(feature = "aesgcm")]
-            0x1301 => "TLS13_AES_128_GCM_SHA256",
-            0x1302 => "TLS13_AES_256_GCM_SHA384",
-            0xc02b => "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
-            0xc02c => "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
-            0xc02f => "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
-            0xc030 => "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
-            _ => "Unsupported ciphersuite"
-        };
+        let name = suite_to_static_str(ciphersuite.ciphersuite.suite.get_u16());
         CString::new(name).unwrap().into_raw()
     } else {
         CString::new("(NONE)").unwrap().into_raw()
+    }
+}
+
+#[cfg(feature = "error_strings")]
+fn suite_to_static_str(suite: u16) -> &'static str {
+    match suite {
+        #[cfg(feature = "chachapoly")]
+        0x1303 => "TLS13_CHACHA20_POLY1305_SHA256",
+        0xcca8 => "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
+        0xcca9 => "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256",
+        #[cfg(feature = "aesgcm")]
+        0x1301 => "TLS13_AES_128_GCM_SHA256",
+        0x1302 => "TLS13_AES_256_GCM_SHA384",
+        0xc02b => "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
+        0xc02c => "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+        0xc02f => "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+        0xc030 => "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+        _ => "Unsupported ciphersuite"
     }
 }
 
@@ -837,9 +842,9 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_version(
 ) -> *const c_char {
     if !cipher_ptr.is_null() {
         sanitize_ptr_return_null!(cipher_ptr);
-        "TLS1.2".as_ptr() as *const c_char
+        CString::new("TLS1.2").unwrap().into_raw()
     } else {
-        "(NONE)".as_ptr() as *const c_char
+        CString::new("(NONE)").unwrap().into_raw()
     }
 }
 
