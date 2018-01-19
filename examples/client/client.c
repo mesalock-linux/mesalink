@@ -95,7 +95,6 @@ int main(int argc, char *argv[])
     }
     if (SSL_connect(ssl) == SUCCESS)
     {
-        printf("[+] Negotiated ciphersuite: %s\n", SSL_get_cipher_name(ssl));
         int sendlen = -1, recvlen = -1, total_recvlen = 0;
         sprintf(sendbuf, request, hostname);
         printf("[+] Requesting %s ...\n", SSL_get_servername(ssl, 0));
