@@ -29,3 +29,4 @@ lazy_static = "1.0.0"
 [profile.release]
 opt-level = "z"
 lto = true
+panic = "abort"
