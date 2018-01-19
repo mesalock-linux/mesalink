@@ -87,6 +87,16 @@ then
     CARGO_FEATURES=$CARGO_FEATURES" chachapoly"
 fi
 
+AC_ARG_ENABLE([tls13],
+    [AS_HELP_STRING([--enable-tls13], [Enable TLS 1.3 draft (default: enabled)])],
+    [ ENABLE_TLS13=$enableval ],
+    [ ENABLE_TLS13=yes ]
+    )
+if test "$ENABLE_TLS13" = "yes"
+then
+    CARGO_FEATURES=$CARGO_FEATURES" tls13"
+fi
+
 CARGO_FEATURES=$CARGO_FEATURES"\""
 
 AC_CONFIG_FILES([Makefile])
@@ -111,5 +121,6 @@ echo "   Features "
 echo "   * Logging and error strings:  $ENABLE_ERROR_STRINGS"
 echo "   * AES-GCM:                    $ENABLE_AESGCM"
 echo "   * Chacha20-Poly1305:          $ENABLE_CHACHAPOLY"
+echo "   * TLS 1.3 (draft):            $ENABLE_TLS13"
 echo ""
 echo "---"
