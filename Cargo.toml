@@ -14,7 +14,7 @@ crate-type = ["cdylib", "staticlib"]
 
 [features]
 error_strings = ["rustls/logging"]
-tls13_draft = []
+tls13 = ["rustls/tls13"]
 aesgcm = ["rustls/aesgcm"]
 chachapoly = ["rustls/chachapoly"]
 x25519 = ["rustls/x25519"]
