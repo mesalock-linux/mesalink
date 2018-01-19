@@ -97,6 +97,26 @@ then
     CARGO_FEATURES=$CARGO_FEATURES" tls13"
 fi
 
+AC_ARG_ENABLE([x25519],
+    [AS_HELP_STRING([--enable-x25519], [Enable Curve25519 for key exchange (default: enabled)])],
+    [ ENABLE_X25519=$enableval ],
+    [ ENABLE_X25519=yes ]
+    )
+if test "$ENABLE_X25519" = "yes"
+then
+    CARGO_FEATURES=$CARGO_FEATURES" x25519"
+fi
+
+AC_ARG_ENABLE([ecdh],
+    [AS_HELP_STRING([--enable-ecdh], [Enable curve secp256r1 and secp384r1 for key exchange (default: enabled)])],
+    [ ENABLE_ECDH=$enableval ],
+    [ ENABLE_ECDH=yes ]
+    )
+if test "$ENABLE_ECDH" = "yes"
+then
+    CARGO_FEATURES=$CARGO_FEATURES" ecdh"
+fi
+
 CARGO_FEATURES=$CARGO_FEATURES"\""
 
 AC_CONFIG_FILES([Makefile])
@@ -122,5 +142,7 @@ echo "   * Logging and error strings:  $ENABLE_ERROR_STRINGS"
 echo "   * AES-GCM:                    $ENABLE_AESGCM"
 echo "   * Chacha20-Poly1305:          $ENABLE_CHACHAPOLY"
 echo "   * TLS 1.3 (draft):            $ENABLE_TLS13"
+echo "   * X25519 key exchange:        $ENABLE_X25519"
+echo "   * EC key exchange:            $ENABLE_ECDH"
 echo ""
 echo "---"

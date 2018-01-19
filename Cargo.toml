@@ -17,6 +17,8 @@ error_strings = ["rustls/logging"]
 tls13_draft = []
 aesgcm = ["rustls/aesgcm"]
 chachapoly = ["rustls/chachapoly"]
+x25519 = ["rustls/x25519"]
+ecdh = ["rustls/ecdh"]
 
 [dependencies]
 rustls = { path = "./rustls", version = "0.12.0", default-features = false }
