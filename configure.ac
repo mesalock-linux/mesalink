@@ -117,6 +117,16 @@ then
     CARGO_FEATURES=$CARGO_FEATURES" ecdh"
 fi
 
+AC_ARG_ENABLE([ecdsa],
+    [AS_HELP_STRING([--enable-ecdsa], [Enable curve secp256r1 and secp384r1 for signature verification (default: enabled)])],
+    [ ENABLE_ECDSA=$enableval ],
+    [ ENABLE_ECDSA=yes ]
+    )
+if test "$ENABLE_ECDSA" = "yes"
+then
+    CARGO_FEATURES=$CARGO_FEATURES" ecdsa"
+fi
+
 CARGO_FEATURES=$CARGO_FEATURES"\""
 
 AC_CONFIG_FILES([Makefile])
@@ -144,5 +154,6 @@ echo "   * Chacha20-Poly1305:          $ENABLE_CHACHAPOLY"
 echo "   * TLS 1.3 (draft):            $ENABLE_TLS13"
 echo "   * X25519 key exchange:        $ENABLE_X25519"
 echo "   * EC key exchange:            $ENABLE_ECDH"
+echo "   * EC signature verification:  $ENABLE_ECDSA"
 echo ""
 echo "---"

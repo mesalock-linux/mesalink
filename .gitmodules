@@ -2,3 +2,11 @@
 	path = rustls
 	url = https://github.com/ctz/rustls.git
 	branch = master
+[submodule "webpki"]
+	path = webpki
+	url = https://github.com/briansmith/webpki
+	branch = master
+[submodule "ring"]
+	path = ring
+	url = https://github.com/briansmith/ring.git
+	branch = master
