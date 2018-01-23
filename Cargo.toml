@@ -31,8 +31,6 @@ lazy_static = "1.0.0"
 
 [patch.crates-io]
 rustls = { path = "./rustls" }
-webpki = { path = "./webpki" }
-ring = { path = "./ring" }
 
 [profile.release]
 opt-level = "z"
