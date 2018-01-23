@@ -1,4 +1,4 @@
-AC_INIT([mesalink], m4_esyscmd([grep version Cargo.toml | awk '{print $3}' | tr -d '"' | tr -d "\n"]), [jingyiming@baidu.com])
+AC_INIT([mesalink], m4_esyscmd([grep version Cargo.toml | head -n1 | awk '{print $3}' | tr -d '"' | tr -d "\n"]), [jingyiming@baidu.com])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h:config.in])
