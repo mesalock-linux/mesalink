@@ -1,8 +1,0 @@
-[submodule "rustls"]
-	path = rustls
-	url = ssh://jingyiming@icode.baidu.com:8235/baidu/mesalink/rustls
-	branch = mesalink
-[submodule "sct.rs"]
-	path = sct.rs
-	url = ssh://jingyiming@icode.baidu.com:8235/baidu/mesalink/sct
-	branch = mesalink
