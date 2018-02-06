@@ -6,18 +6,22 @@ src/ssl/err.rs:
 if CARGO_DEBUG
 if CROSS_COMPILE
 target/$(RUST_TARGET)/debug/libmesalink.la: src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/err.rs
-	cargo build $(CARGO_FEATURES)
+	CROSS_TARGET=$(RUST_TARGET) cargo build $(CARGO_FEATURES) --target $(RUST_TARGET)
+	lib_LTLIBRARIES+= target/$(RUST_TARGET)/debug/libmesalink.la
 else
 target/debug/libmesalink.la: src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/err.rs
-	cargo build $(CARGO_FEATURES) --target $(RUST_TARGET)
+	cargo build $(CARGO_FEATURES)
+	lib_LTLIBRARIES+= target/debug/libmesalink.la
 endif
 else
 if CROSS_COMPILE
 target/$(RUST_TARGET)/release/libmesalink.la: src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/err.rs
-	    RUST_BACKTRACE=0 cargo build --no-default-features --release $(CARGO_FEATURES) --target $(RUST_TARGET)
+	RUST_BACKTRACE=0 CROSS_TARGET=$(RUST_TARGET) cargo build --no-default-features --release $(CARGO_FEATURES) --target $(RUST_TARGET)
+	lib_LTLIBRARIES+= target/$(RUST_TARGET)/release/libmesalink.la
 else
 target/release/libmesalink.la: src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/err.rs
-	    RUST_BACKTRACE=0 cargo build --no-default-features --release $(CARGO_FEATURES)
+	RUST_BACKTRACE=0 cargo build --no-default-features --release $(CARGO_FEATURES)
+	lib_LTLIBRARIES+= target/release/libmesalink.la
 endif
 endif
 
