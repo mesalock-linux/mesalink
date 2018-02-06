@@ -5,7 +5,7 @@
  *  | |  | |  __/\__ \ (_| | |___| | | | |   <
  *  |_|  |_|\___||___/\__,_|_____|_|_| |_|_|\_\
  *
- * Copyright (c) 2017, The MesaLink Authors. 
+ * Copyright (c) 2017, The MesaLink Authors.
  * All rights reserved.
  *
  * This work is licensed under the terms of the BSD 3-Clause License.
@@ -25,7 +25,8 @@ fn generate_la(lib: &str) -> std::io::Result<()> {
     let top_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let profile = env::var("PROFILE").unwrap();
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-    let target_dir = format!("{}/target/{}", top_dir, profile);
+    let target_triple = env::var("TARGET").unwrap();
+    let target_dir = format!("{}/target/{}/{}", top_dir, target_triple, profile);
     let libs_dir = format!("{}/.libs", target_dir);
     let libs_path = PathBuf::from(&libs_dir);
     let la_path = PathBuf::from(format!("{}/{}.la", target_dir, lib));

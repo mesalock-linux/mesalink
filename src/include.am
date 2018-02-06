@@ -4,11 +4,21 @@ src/ssl/ssl.rs:
 src/ssl/err.rs:
 
 if CARGO_DEBUG
-target/debug/libmesalink.la: src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/err.rs
+if CROSS_COMPILE
+target/$(RUST_TARGET)/debug/libmesalink.la: src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/err.rs
 	cargo build $(CARGO_FEATURES)
 else
+target/debug/libmesalink.la: src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/err.rs
+	cargo build $(CARGO_FEATURES) --target $(RUST_TARGET)
+endif
+else
+if CROSS_COMPILE
+target/$(RUST_TARGET)/release/libmesalink.la: src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/err.rs
+	    RUST_BACKTRACE=0 cargo build --no-default-features --release $(CARGO_FEATURES) --target $(RUST_TARGET)
+else
 target/release/libmesalink.la: src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/err.rs
-	RUST_BACKTRACE=0 cargo build --no-default-features --release $(CARGO_FEATURES)
+	    RUST_BACKTRACE=0 cargo build --no-default-features --release $(CARGO_FEATURES)
+endif
 endif
 
 clean-local:

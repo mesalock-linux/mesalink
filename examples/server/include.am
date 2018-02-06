@@ -1,9 +1,19 @@
 noinst_PROGRAMS += examples/server/server
 examples_server_server_SOURCES = examples/server/server.c
 if CARGO_DEBUG
+if CROSS_COMPILE
+    examples_server_server_LDADD = $(abs_builddir)/target/$(RUST_TARGET)/debug/libmesalink.la
+    examples_server_server_DEPENDENCIES = target/$(RUST_TARGET)/debug/libmesalink.la
+else
     examples_server_server_LDADD = $(abs_builddir)/target/debug/libmesalink.la
     examples_server_server_DEPENDENCIES = target/debug/libmesalink.la
+endif
+else
+if CROSS_COMPILE
+    examples_server_server_LDADD = $(abs_builddir)/target/$(RUST_TARGET)/release/libmesalink.la
+    examples_server_server_DEPENDENCIES = target/$(RUST_TARGET)/release/libmesalink.la
 else
     examples_server_server_LDADD = $(abs_builddir)/target/release/libmesalink.la
     examples_server_server_DEPENDENCIES = target/release/libmesalink.la
+endif
 endif

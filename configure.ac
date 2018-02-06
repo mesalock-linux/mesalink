@@ -54,6 +54,10 @@ then
 else
     CFLAGS="$OPTIMIZE_CFLAGS $CFLAGS"
 fi
+
+AC_ARG_VAR([RUST_TARGET], [Set the Rust target for cross-compilation])
+AM_CONDITIONAL([CROSS_COMPILE], [test "x$RUST_TARGET" != "x"])
+
 AC_SUBST([CARGO_FEATURES], [--features ])
 CARGO_FEATURES=$CARGO_FEATURES" \""
 
@@ -142,6 +146,7 @@ echo ""
 echo "   * Installation prefix:        $prefix"
 echo "   * System type:                $host_vendor-$host_os"
 echo "   * Host CPU:                   $host_cpu"
+echo "   * Rust Target:                $RUST_TARGET"
 echo "   * C Compiler:                 $CC"
 echo "   * C Compiler vendor:          $ax_cv_c_compiler_vendor"
 echo "   * C Flags:                    $CFLAGS"
