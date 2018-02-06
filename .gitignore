@@ -3,6 +3,7 @@
 Cargo.lock
 .DS_Store
 **/*.o
+mesalink-config
 examples/client/client
 examples/server/server
 Makefile
@@ -12,6 +13,7 @@ autom4te.cache/
 build-aux/
 config.h
 config.in
+config.in~
 config.log
 config.status
 configure

@@ -12,11 +12,18 @@ include src/include.am
 include mesalink/include.am
 include examples/include.am
 
+install-exec-local:	install-generic-config
+
+install-generic-config:
+	$(mkinstalldirs) $(DESTDIR)$(bindir)
+	$(INSTALL_SCRIPT) @GENERIC_CONFIG@ $(DESTDIR)$(bindir)
+
 maintainer-clean-local:
 	-cargo clean
 	-rm -rf target
 	-rm Makefile.in
 	-rm Makefile
+	-rm mesalink-config
 	-rm aclocal.m4
 	-rm -rf build-aux
 	-rm -rf autom4te.cache
@@ -26,6 +33,7 @@ maintainer-clean-local:
 	-rm config.status
 	-rm config.h
 	-rm config.in
+	-rm config.in~
 	-rm m4/libtool.m4
 	-rm m4/ltoptions.m4
 	-rm m4/ltsugar.m4
