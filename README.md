@@ -49,29 +49,55 @@ in 2017 but would not be possible in MesaLink.
   parameters, aka a buffer overflow triggered by a malformed temporary DH
   file.
 
-## Building the MesaLink library
-MesaLink requires autotools and a [Rust toolchain](https://www.rustup.rs/)
-to build. Building is easy.
+## Building the MesaLink library from source
 
+To build MesaLink from source, the following tools are needed:
+
+  * autoconf
+  * automake
+  * libtool
+  * curl (used to download gmock)
+  * make
+  * gcc
+  * rustc
+  * cargo
+
+On Ubuntu, you can install them with:
+```
+$ sudo apt-get install autoconf automake libtool make gcc curl
+$ curl https://sh.rustup.rs -sSf | sh
+$ rustup default nightly
+```
+
+On other platforms, please use the corresponding package managing tool to
+install them before proceeding.
+
+Download the source code from icode:
+```
+$ git clone --recurse-submodules ssh://jingyiming@icode.baidu.com:8235/baidu/mesalink/mesalink
+```
+
+To build and install the MesaLink headers and library, execute the following:
 ```
 $ autoreconf -i
 $ ./configure
 $ make
+$ sudo make install
+$ sudo ldconfig
 ```
 
-CMake support will be introduced in future releases.
-
 ## Building the MesaLink documentation
-MesaLink uses Rust-style documentation. To generate the documents, please use `cargo doc`.
+MesaLink uses Rust-style documentation. To generate the documents, execute the following:
 
 ```
 $ cargo doc --no-deps
-$ open target/doc/mesalink/index.html
 ```
+The documents are located at `target/doc/mesalink/index.html`
+
 
 ## Examples
 MesaLink comes with two examples that demonstrate a TLS client and a TLS
-server.
+server. They are located at `examples/`.
 
 ### A sample run of the client example program
 
