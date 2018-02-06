@@ -13,6 +13,7 @@ name = "mesalink"
 crate-type = ["cdylib", "staticlib"]
 
 [features]
+default = ["error_strings", "tls13", "aesgcm", "chachapoly", "x25519", "ecdh", "ecdsa"]
 error_strings = ["rustls/logging"]
 tls13 = ["rustls/tls13"]
 aesgcm = ["rustls/aesgcm"]

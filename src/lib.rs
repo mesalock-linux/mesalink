@@ -135,7 +135,7 @@
 //!
 
 #![deny(trivial_numeric_casts, unstable_features, unused_qualifications)]
-#![forbid(anonymous_parameters, trivial_casts, unused_extern_crates, unused_import_braces,
+#![forbid(anonymous_parameters, unused_extern_crates, unused_import_braces,
           unused_results, variant_size_differences, warnings)]
 
 // libc for libc bindings

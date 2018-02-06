@@ -141,8 +141,8 @@ impl From<u32> for ErrorCode {
     }
 }
 
-impl From<c_ulong> for ErrorCode {
-    fn from(e: c_ulong) -> ErrorCode {
+impl From<u64> for ErrorCode {
+    fn from(e: u64) -> ErrorCode {
         let e = e as u32;
         ErrorCode::from(e)
     }
