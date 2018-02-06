@@ -1,29 +1,21 @@
-src/lib.rs:
-src/ssl/mod.rs:
-src/ssl/ssl.rs:
-src/ssl/err.rs:
+lib_LTLIBRARIES+= libmesalink.la
 
-if CARGO_DEBUG
-if CROSS_COMPILE
-target/$(RUST_TARGET)/debug/libmesalink.la: src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/err.rs
-	CROSS_TARGET=$(RUST_TARGET) cargo build $(CARGO_FEATURES) --target $(RUST_TARGET)
-	lib_LTLIBRARIES+= target/$(RUST_TARGET)/debug/libmesalink.la
-else
-target/debug/libmesalink.la: src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/err.rs
-	cargo build $(CARGO_FEATURES)
-	lib_LTLIBRARIES+= target/debug/libmesalink.la
-endif
-else
-if CROSS_COMPILE
-target/$(RUST_TARGET)/release/libmesalink.la: src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/err.rs
-	RUST_BACKTRACE=0 CROSS_TARGET=$(RUST_TARGET) cargo build --no-default-features --release $(CARGO_FEATURES) --target $(RUST_TARGET)
-	lib_LTLIBRARIES+= target/$(RUST_TARGET)/release/libmesalink.la
-else
-target/release/libmesalink.la: src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/err.rs
-	RUST_BACKTRACE=0 cargo build --no-default-features --release $(CARGO_FEATURES)
-	lib_LTLIBRARIES+= target/release/libmesalink.la
-endif
-endif
+RUST_LIB=@abs_top_builddir@/target/@CARGO_TARGET_SUBDIR@/libmesalink_internals.a
+
+$(RUST_LIB): Cargo.toml src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/err.rs
+	cd $(top_srcdir) && \
+	cargo build $(CARGO_RELEASE_ARGS) $(CARGO_FEATURES) $(CARGO_TARGET_ARGS)
+
+libmesalink_la_SOURCES = \
+	$(NULL)
+libmesalink_la_CFLAGS = \
+	$(AM_CFLAGS)
+libmesalink_la_LDFLAGS = \
+	-export-dynamic \
+	-no-undefined \
+	$(AM_LDFLAGS)
+libmesalink_la_LIBADD = \
+	$(RUST_LIB)
 
 clean-local:
 	-cargo clean

@@ -3,7 +3,9 @@
 Cargo.lock
 .DS_Store
 **/*.o
+/.libs/
 mesalink-config
+libmesalink.la
 examples/client/client
 examples/server/server
 Makefile

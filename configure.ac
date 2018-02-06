@@ -1,7 +1,6 @@
 AC_INIT([mesalink], m4_esyscmd([grep version Cargo.toml | head -n1 | awk '{print $3}' | tr -d '"' | tr -d "\n"]), [jingyiming@baidu.com])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
-AC_CONFIG_HEADERS([config.h:config.in])
 
 : ${CFLAGS=""}
 
@@ -18,20 +17,21 @@ AC_LANG([C])
 AC_PROG_CC
 AC_PROG_CC_C_O
 AC_PROG_INSTALL
+AM_PROG_AR
 
 LT_PREREQ([2.2])
-LT_INIT([disable-static])
+LT_INIT([disable-shared])
 LT_LANG([C])
 
 AC_CHECK_HEADERS([netdb.h netinet/in.h string.h sys/socket.h unistd.h])
 AC_CHECK_FUNCS([gethostbyname memset socket])
 AC_CHECK_PROG(CARGO, [cargo], [yes], [no])
 AS_IF(test x$CARGO = xno,
-    AC_MSG_ERROR([cargo is required])
+     AC_MSG_ERROR([cargo is required.  Please install the Rust toolchain from https://www.rust-lang.org/])
 )
 AC_CHECK_PROG(RUSTC, [rustc], [yes], [no])
 AS_IF(test x$RUSTC = xno,
-    AC_MSG_ERROR([rustc is required])
+    AC_MSG_ERROR([rustc is required.  Please install the Rust toolchain from https://www.rust-lang.org/])
 )
 
 AX_COMPILER_VENDOR
@@ -47,16 +47,36 @@ fi
 DEBUG_CFLAGS="-g -ggdb -O0 -Wall"
 
 AX_DEBUG
-AM_CONDITIONAL([CARGO_DEBUG], [test "x$ax_enable_debug" = "xyes"])
+
+AC_ARG_VAR([RUST_TARGET], [Set the Rust target for cross-compilation])
+
 if test "$ax_enable_debug" = "yes"
 then
     CFLAGS="$DEBUG_CFLAGS $CFLAGS"
+    CARGO_TARGET_SUBDIR=debug
+    CARGO_RELEASE_ARGS=
 else
     CFLAGS="$OPTIMIZE_CFLAGS $CFLAGS"
+    CARGO_TARGET_SUBDIR=release
+    CARGO_RELEASE_ARGS=--release
 fi
 
+AM_CONDITIONAL([CARGO_DEBUG], [test "x$ax_enable_debug" = "xyes"])
+AC_SUBST([CARGO_RELEASE_ARGS])
+
 AC_ARG_VAR([RUST_TARGET], [Set the Rust target for cross-compilation])
-AM_CONDITIONAL([CROSS_COMPILE], [test "x$RUST_TARGET" != "x"])
+
+if test "x$RUST_TARGET" = "x"
+then
+    CARGO_TARGET_ARGS=""
+    CARGO_TARGET_SUBDIR="$CARGO_TARGET_SUBDIR"
+else 
+    CARGO_TARGET_ARGS="--target $RUST_TARGET"
+    CARGO_TARGET_SUBDIR="$CARGO_TARGET_SUBDIR/$RUST_TARGET"
+fi
+
+AC_SUBST([CARGO_TARGET_ARGS])
+AC_SUBST([CARGO_TARGET_SUBDIR])
 
 AC_SUBST([CARGO_FEATURES], [--features ])
 CARGO_FEATURES=$CARGO_FEATURES" \""
