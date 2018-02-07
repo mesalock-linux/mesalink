@@ -6,10 +6,11 @@ license = "BSD-3-Clause"
 readme = "README.md"
 description = "MesaLink is a memory-safe and OpenSSL-compatible TLS library based on Rustls and Ring."
 categories = ["network-programming"]
+build = "build.rs"
 
 [lib]
 name = "mesalink_internals"
-crate-type = ["staticlib"]
+crate-type = ["staticlib", "cdylib"]
 
 [features]
 default = ["error_strings", "tls13", "aesgcm", "chachapoly", "x25519", "ecdh", "ecdsa"]

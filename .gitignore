@@ -1,6 +1,5 @@
 /target/
 **/*.rs.bk
-Cargo.lock
 .DS_Store
 **/*.o
 /.libs/
@@ -8,6 +7,8 @@ mesalink-config
 libmesalink.la
 examples/client/client
 examples/server/server
+examples/client/.libs/
+examples/server/.libs/
 Makefile
 Makefile.in
 aclocal.m4
