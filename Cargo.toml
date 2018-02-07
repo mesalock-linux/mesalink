@@ -10,7 +10,7 @@ build = "build.rs"
 
 [lib]
 name = "mesalink_internals"
-crate-type = ["staticlib", "cdylib"]
+crate-type = ["staticlib"]
 
 [features]
 default = ["error_strings", "tls13", "aesgcm", "chachapoly", "x25519", "ecdh", "ecdsa"]
