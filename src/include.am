@@ -13,6 +13,7 @@ libmesalink_la_CFLAGS = \
 libmesalink_la_LDFLAGS = \
 	-export-dynamic \
 	-no-undefined \
+	-export-symbols-regex "^mesalink_.*" \
 	$(AM_LDFLAGS)
 libmesalink_la_LIBADD = \
 	$(RUST_LIB)

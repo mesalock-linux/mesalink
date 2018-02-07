@@ -21,8 +21,6 @@ AM_PROG_AR
 
 LT_PREREQ([2.2])
 LT_INIT
-AC_DISABLE_SHARED
-AC_ENABLE_STATIC
 LT_LANG([C])
 
 AC_CHECK_HEADERS([netdb.h netinet/in.h string.h sys/socket.h unistd.h])
@@ -50,8 +48,6 @@ DEBUG_CFLAGS="-g -ggdb -O0 -Wall"
 
 AX_DEBUG
 
-AC_ARG_VAR([RUST_TARGET], [Set the Rust target for cross-compilation])
-
 if test "$ax_enable_debug" = "yes"
 then
     CFLAGS="$DEBUG_CFLAGS $CFLAGS"
@@ -66,16 +62,20 @@ fi
 AM_CONDITIONAL([CARGO_DEBUG], [test "x$ax_enable_debug" = "xyes"])
 AC_SUBST([CARGO_RELEASE_ARGS])
 
-AC_ARG_VAR([RUST_TARGET], [Set the Rust target for cross-compilation])
+AC_ARG_ENABLE([rusthost],
+    [AS_HELP_STRING([--enable-rusthost], [Set the Rust host for cross compilation (default: disabled)])],
+    [ RUST_HOST=$enableval ],
+    [ RUST_HOST= ]
+    )
 
-if test "x$RUST_TARGET" = "x"
+if test "x$RUST_HOST" = "x"
 then
     CARGO_TARGET_ARGS=""
     CARGO_TARGET_SUBDIR="$CARGO_TARGET_SUBDIR"
     CARGO_TARGET_SUBDIR_ENV_VAR=
 else 
-    CARGO_TARGET_ARGS="--target $RUST_TARGET"
-    CARGO_TARGET_SUBDIR="$CARGO_TARGET_SUBDIR/$RUST_TARGET"
+    CARGO_TARGET_ARGS="--target $RUST_HOST"
+    CARGO_TARGET_SUBDIR="$RUST_HOST/$CARGO_TARGET_SUBDIR"
     CARGO_TARGET_SUBDIR_ENV_VAR="CARGO_TARGET_SUBDIR=$CARGO_TARGET_SUBDIR"
 fi
 
@@ -172,8 +172,8 @@ echo "Configuration summary for $PACKAGE_NAME version $VERSION"
 echo ""
 echo "   * Installation prefix:        $prefix"
 echo "   * System type:                $host_vendor-$host_os"
-echo "   * Host CPU:                   $host_cpu"
-echo "   * Rust Target:                $RUST_TARGET"
+echo "   * Host:                       $host_cpu"
+echo "   * Rust Host:                  $RUST_HOST"
 echo "   * C Compiler:                 $CC"
 echo "   * C Compiler vendor:          $ax_cv_c_compiler_vendor"
 echo "   * C Flags:                    $CFLAGS"

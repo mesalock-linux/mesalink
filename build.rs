@@ -5,7 +5,7 @@
  *  | |  | |  __/\__ \ (_| | |___| | | | |   <
  *  |_|  |_|\___||___/\__,_|_____|_|_| |_|_|\_\
  *
- * Copyright (c) 2017, The MesaLink Authors. 
+ * Copyright (c) 2017, The MesaLink Authors.
  * All rights reserved.
  *
  * This work is licensed under the terms of the BSD 3-Clause License.
@@ -25,10 +25,10 @@ fn generate_la(lib: &str) -> std::io::Result<()> {
     let top_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let profile = env::var("PROFILE").unwrap();
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-    let target_dir = match env::var("CARGO_TARGET_SUBDIR_ENV_VAR") {
-        Ok(dir) => format!("{}/{}", top_dir, dir),
+    let target_dir = match env::var("CARGO_TARGET_SUBDIR") {
+        Ok(dir) => format!("{}/target/{}", top_dir, dir),
         Err(_) => format!("{}/target/{}", top_dir, profile),
-    }; 
+    };
     let libs_dir = format!("{}/.libs", target_dir);
     let libs_path = PathBuf::from(&libs_dir);
     let la_path = PathBuf::from(format!("{}/{}.la", target_dir, lib));
@@ -50,7 +50,10 @@ fn generate_la(lib: &str) -> std::io::Result<()> {
     writeln!(file, "library_names=''")?;
     writeln!(file, "old_library='{}.a'", lib)?;
     if target_os == "macos" {
-        writeln!(file, "inherited_linker_flags=' -lm -ldl -lresolv -framework Security'")?;
+        writeln!(
+            file,
+            "inherited_linker_flags=' -lm -ldl -lresolv -framework Security'"
+        )?;
     } else {
         writeln!(file, "inherited_linker_flags=' -pthread -lm -ldl'")?;
     }
@@ -61,6 +64,11 @@ fn generate_la(lib: &str) -> std::io::Result<()> {
 }
 
 fn main() {
-    let lib_name = format!("{}{}{}", "lib", env::var("CARGO_PKG_NAME").unwrap(), "_internals");
+    let lib_name = format!(
+        "{}{}{}",
+        "lib",
+        env::var("CARGO_PKG_NAME").unwrap(),
+        "_internals"
+    );
     let _ = generate_la(lib_name.as_str());
 }
