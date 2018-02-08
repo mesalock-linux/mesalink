@@ -31,7 +31,6 @@ int main(int argc, char *argv[])
     const char *key_file;
     const char *response = "HTTP/1.0 200 OK\r\nConnection: close\r\n\r\n<html><body><pre>Hello from MesaLink server</pre></body></html>\r\n";
 
-    const SSL_METHOD *method;
     SSL_CTX *ctx;
 
     if (argc != 4)
@@ -115,7 +114,7 @@ int main(int argc, char *argv[])
             {
                 recvbuf[recvlen] = 0;
                 printf("[+] Received:\n%s", recvbuf);
-                SSL_write(ssl, response, strlen(response));
+                SSL_write(ssl, response, (int)strlen(response));
             }
         }
         else

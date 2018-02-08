@@ -40,11 +40,11 @@ if test "$ax_cv_c_compiler_vendor" = "gnu"
 then
     OPTIMIZE_CFLAGS="$OPTIMIZE_CFLAGS -Wl,--gc-sections"
 fi
-if test "$ax_cv_c_compiler_vendor" = "clang"
-then
-    OPTIMIZE_CFLAGS="$OPTIMIZE_CFLAGS -Wl,-dead_strip"
-fi
+
 DEBUG_CFLAGS="-g -ggdb -O0 -Wall"
+
+AX_HARDEN_CC_COMPILER_FLAGS
+AX_HARDEN_LINKER_FLAGS
 
 AX_DEBUG
 

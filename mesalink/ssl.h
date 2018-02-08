@@ -29,28 +29,28 @@ typedef struct MEASLINK_CTX MESALINK_CTX;
 typedef struct MESALINK_CIPHER MESALINK_CIPHER;
 typedef struct MESALINK_SSL MESALINK_SSL;
 
-MESALINK_API int mesalink_library_init();
-MESALINK_API int mesalink_add_ssl_algorithms();
-MESALINK_API void mesalink_SSL_load_error_strings();
-MESALINK_API void mesalink_ERR_load_error_strings();
-MESALINK_API void mesalink_ERR_free_error_strings();
+MESALINK_API int mesalink_library_init(void);
+MESALINK_API int mesalink_add_ssl_algorithms(void);
+MESALINK_API void mesalink_SSL_load_error_strings(void);
+MESALINK_API void mesalink_ERR_load_error_strings(void);
+MESALINK_API void mesalink_ERR_free_error_strings(void);
 
 MESALINK_API const char *mesalink_ERR_reason_error_string(unsigned long);
 
-typedef MESALINK_METHOD *(*mesalink_method_func)();
-MESALINK_API MESALINK_METHOD *mesalink_SSLv3_client_method();
-MESALINK_API MESALINK_METHOD *mesalink_SSLv23_client_method();
-MESALINK_API MESALINK_METHOD *mesalink_TLSv1_client_method();
-MESALINK_API MESALINK_METHOD *mesalink_TLSv1_1_client_method();
-MESALINK_API MESALINK_METHOD *mesalink_TLSv1_2_client_method();
-MESALINK_API MESALINK_METHOD *mesalink_TLSv1_3_client_method();
+typedef MESALINK_METHOD *(*mesalink_method_func)(void);
+MESALINK_API MESALINK_METHOD *mesalink_SSLv3_client_method(void);
+MESALINK_API MESALINK_METHOD *mesalink_SSLv23_client_method(void);
+MESALINK_API MESALINK_METHOD *mesalink_TLSv1_client_method(void);
+MESALINK_API MESALINK_METHOD *mesalink_TLSv1_1_client_method(void);
+MESALINK_API MESALINK_METHOD *mesalink_TLSv1_2_client_method(void);
+MESALINK_API MESALINK_METHOD *mesalink_TLSv1_3_client_method(void);
 
-MESALINK_API MESALINK_METHOD *mesalink_SSLv3_server_method();
-MESALINK_API MESALINK_METHOD *mesalink_SSLv23_server_method();
-MESALINK_API MESALINK_METHOD *mesalink_TLSv1_server_method();
-MESALINK_API MESALINK_METHOD *mesalink_TLSv1_1_server_method();
-MESALINK_API MESALINK_METHOD *mesalink_TLSv1_2_server_method();
-MESALINK_API MESALINK_METHOD *mesalink_TLSv1_3_server_method();
+MESALINK_API MESALINK_METHOD *mesalink_SSLv3_server_method(void);
+MESALINK_API MESALINK_METHOD *mesalink_SSLv23_server_method(void);
+MESALINK_API MESALINK_METHOD *mesalink_TLSv1_server_method(void);
+MESALINK_API MESALINK_METHOD *mesalink_TLSv1_1_server_method(void);
+MESALINK_API MESALINK_METHOD *mesalink_TLSv1_2_server_method(void);
+MESALINK_API MESALINK_METHOD *mesalink_TLSv1_3_server_method(void);
 
 MESALINK_API MESALINK_CTX *mesalink_CTX_new(const MESALINK_METHOD *);
 MESALINK_API int mesalink_SSL_CTX_use_certificate_chain_file(MESALINK_CTX *, const char *, int);

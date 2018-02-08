@@ -24,6 +24,8 @@
 #include <mesalink/openssl/err.h>
 
 #define SSL_SUCCESS 1
+#define REQUEST "GET / HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\
+        Accept-Encoding: identity\r\n\r\n"
 
 int main(int argc, char *argv[])
 {
@@ -33,7 +35,6 @@ int main(int argc, char *argv[])
     char sendbuf[1024] = {0};
     char recvbuf[1024] = {0};
     const char *hostname;
-    const char *request = "GET / HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nAccept-Encoding: identity\r\n\r\n";
 
     SSL_CTX *ctx;
     SSL *ssl;
@@ -64,7 +65,7 @@ int main(int argc, char *argv[])
         return -1;
     }
     memset(&addr, 0, sizeof(addr));
-    bcopy(hp->h_addr, &addr.sin_addr, hp->h_length);
+    memmove(&addr.sin_addr, hp->h_addr, hp->h_length);
     addr.sin_family = AF_INET;
     addr.sin_port = htons(443);
 
@@ -96,9 +97,9 @@ int main(int argc, char *argv[])
     if (SSL_connect(ssl) == SUCCESS)
     {
         int sendlen = -1, recvlen = -1, total_recvlen = 0;
-        sprintf(sendbuf, request, hostname);
+        sprintf(sendbuf, REQUEST, hostname);
         printf("[+] Requesting %s ...\n", SSL_get_servername(ssl, 0));
-        sendlen = SSL_write(ssl, sendbuf, strlen(sendbuf));
+        sendlen = SSL_write(ssl, sendbuf, (int)strlen(sendbuf));
         printf("[+] Sent %d bytes\n\n%s\n", sendlen, sendbuf);
         while ((recvlen = SSL_read(ssl, recvbuf, sizeof(recvbuf) - 1)) > 0)
         {
@@ -108,10 +109,10 @@ int main(int argc, char *argv[])
         };
         int cipher_bits = 0;
         SSL_get_cipher_bits(ssl, &cipher_bits);
-        printf("[+] Negotiated ciphersuite: %s, enc_length=%d, version=%s\n", 
-            SSL_get_cipher_name(ssl), 
-            cipher_bits,
-            SSL_get_cipher_version(ssl));
+        printf("[+] Negotiated ciphersuite: %s, enc_length=%d, version=%s\n",
+               SSL_get_cipher_name(ssl),
+               cipher_bits,
+               SSL_get_cipher_version(ssl));
         printf("\n[+] Received %d bytes\n", total_recvlen);
         SSL_free(ssl);
     }
