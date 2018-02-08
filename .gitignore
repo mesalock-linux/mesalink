@@ -5,6 +5,8 @@
 /.libs/
 mesalink-config
 libmesalink.la
+mesalink/options.h
+mesalink/version.h
 examples/client/client
 examples/server/server
 examples/client/.libs/

@@ -1,4 +1,6 @@
 nobase_include_HEADERS+= \
+                    mesalink/options.h \
+                    mesalink/version.h \
                     mesalink/visibility.h \
                     mesalink/ssl.h \
                     mesalink/err.h \

@@ -1,6 +1,7 @@
 AC_INIT([mesalink], m4_esyscmd([grep version Cargo.toml | head -n1 | awk '{print $3}' | tr -d '"' | tr -d "\n"]), [jingyiming@baidu.com])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
+AC_CONFIG_HEADERS([config.h:config.in])
 
 : ${CFLAGS=""}
 
@@ -89,6 +90,8 @@ AC_SUBST([CARGO_TARGET_SUBDIR_ENV_VAR])
 AC_SUBST([CARGO_FEATURES], [--features ])
 CARGO_FEATURES=$CARGO_FEATURES" \""
 
+CONFIG_OPTIONS=""
+
 AC_ARG_ENABLE([errorstrings],
     [AS_HELP_STRING([--enable-errorstrings], [Enable error string table (default: enabled)])],
     [ ENABLE_ERROR_STRINGS=$enableval ],
@@ -97,6 +100,9 @@ AC_ARG_ENABLE([errorstrings],
 if test "$ENABLE_ERROR_STRINGS" = "yes"
 then
     CARGO_FEATURES=$CARGO_FEATURES" error_strings"
+    CONFIG_OPTIONS="$CONFIG_OPTIONS HAVE_ERROR_STRINGS"
+else
+    CONFIG_OPTIONS="$CONFIG_OPTIONS NO_ERROR_STRINGS"
 fi
 
 AC_ARG_ENABLE([aesgcm],
@@ -107,6 +113,9 @@ AC_ARG_ENABLE([aesgcm],
 if test "$ENABLE_AESGCM" = "yes"
 then
     CARGO_FEATURES=$CARGO_FEATURES" aesgcm"
+    CONFIG_OPTIONS="$CONFIG_OPTIONS HAVE_AESGCM"
+else
+    CONFIG_OPTIONS="$CONFIG_OPTIONS NO_AESGCM"
 fi
 
 AC_ARG_ENABLE([chachapoly],
@@ -117,6 +126,9 @@ AC_ARG_ENABLE([chachapoly],
 if test "$ENABLE_CHACHAPOLY" = "yes"
 then
     CARGO_FEATURES=$CARGO_FEATURES" chachapoly"
+    CONFIG_OPTIONS="$CONFIG_OPTIONS HAVE_CHACHAPOLY"
+else
+    CONFIG_OPTIONS="$CONFIG_OPTIONS NO_CHACHAPOLY"
 fi
 
 AC_ARG_ENABLE([tls13],
@@ -127,6 +139,9 @@ AC_ARG_ENABLE([tls13],
 if test "$ENABLE_TLS13" = "yes"
 then
     CARGO_FEATURES=$CARGO_FEATURES" tls13"
+    CONFIG_OPTIONS="$CONFIG_OPTIONS HAVE_TLS13"
+else
+    CONFIG_OPTIONS="$CONFIG_OPTIONS NO_TLS13"
 fi
 
 AC_ARG_ENABLE([x25519],
@@ -137,6 +152,9 @@ AC_ARG_ENABLE([x25519],
 if test "$ENABLE_X25519" = "yes"
 then
     CARGO_FEATURES=$CARGO_FEATURES" x25519"
+    CONFIG_OPTIONS="$CONFIG_OPTIONS HAVE_X25519"
+else
+    CONFIG_OPTIONS="$CONFIG_OPTIONS NO_X25519"
 fi
 
 AC_ARG_ENABLE([ecdh],
@@ -147,6 +165,9 @@ AC_ARG_ENABLE([ecdh],
 if test "$ENABLE_ECDH" = "yes"
 then
     CARGO_FEATURES=$CARGO_FEATURES" ecdh"
+    CONFIG_OPTIONS="$CONFIG_OPTIONS HAVE_ECDH"
+else
+    CONFIG_OPTIONS="$CONFIG_OPTIONS NO_ECDH"
 fi
 
 AC_ARG_ENABLE([ecdsa],
@@ -157,6 +178,9 @@ AC_ARG_ENABLE([ecdsa],
 if test "$ENABLE_ECDSA" = "yes"
 then
     CARGO_FEATURES=$CARGO_FEATURES" ecdsa"
+    CONFIG_OPTIONS="$CONFIG_OPTIONS HAVE_ECDSA"
+else
+    CONFIG_OPTIONS="$CONFIG_OPTIONS NO_ECDSA"
 fi
 
 CARGO_FEATURES=$CARGO_FEATURES"\""
@@ -164,11 +188,50 @@ CARGO_FEATURES=$CARGO_FEATURES"\""
 AX_CREATE_GENERIC_CONFIG
 
 AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([mesalink/options.h])
+AC_CONFIG_FILES([mesalink/version.h])
+
 AC_OUTPUT
 
 echo "---"
 echo "Running make clean ..."
 make clean >/dev/null 2>&1
+
+OPTION_FILE="mesalink/options.h"
+rm -f $OPTION_FILE
+
+echo "/* MesaLink options.h" > $OPTION_FILE
+echo " * generated from configure options" >> $OPTION_FILE
+echo " *" >> $OPTION_FILE
+echo " * This file is part of MesaLink. " >> $OPTION_FILE
+echo " *" >> $OPTION_FILE
+echo " */" >> $OPTION_FILE
+
+echo "" >> $OPTION_FILE
+echo "#ifndef MESALINK_OPTIONS_H" >> $OPTION_FILE
+echo "#define MESALINK_OPTIONS_H" >> $OPTION_FILE
+echo "" >> $OPTION_FILE
+echo "" >> $OPTION_FILE
+echo "#ifdef __cplusplus" >> $OPTION_FILE
+echo "extern \"C\" {" >> $OPTION_FILE
+echo "#endif" >> $OPTION_FILE
+echo "" >> $OPTION_FILE
+
+for option in $CONFIG_OPTIONS; do
+    echo "#undef  $option" >> $OPTION_FILE
+    echo "#define $option" >> $OPTION_FILE
+    echo "" >> $OPTION_FILE
+done
+
+echo "" >> $OPTION_FILE
+echo "#ifdef __cplusplus" >> $OPTION_FILE
+echo "}" >> $OPTION_FILE
+echo "#endif" >> $OPTION_FILE
+echo "" >> $OPTION_FILE
+echo "" >> $OPTION_FILE
+echo "#endif /* MESALINK_OPTIONS_H */" >> $OPTION_FILE
+echo "" >> $OPTION_FILE
+echo
 
 echo "---"
 echo "Configuration summary for $PACKAGE_NAME version $VERSION"

@@ -1,3 +1,4 @@
 noinst_PROGRAMS += examples/client/client
 examples_client_client_SOURCES = examples/client/client.c
 examples_client_client_LDADD = libmesalink.la
+DISTCLEANFILES+= examples/client/.libs/client
