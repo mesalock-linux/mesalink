@@ -144,6 +144,7 @@ pub struct MESALINK_SSL<'a> {
     hostname: Option<&'a std::ffi::CStr>,
     io: Option<TcpStream>,
     session: Option<Box<Session>>,
+    error: ErrorCode,
 }
 
 impl<'a> MESALINK_SSL<'a> {
@@ -154,6 +155,7 @@ impl<'a> MESALINK_SSL<'a> {
             hostname: None,
             io: None,
             session: None,
+            error: ErrorCode::SslErrorNone,
         }
     }
 }
@@ -161,26 +163,44 @@ impl<'a> MESALINK_SSL<'a> {
 #[doc(hidden)]
 impl<'a> Read for MESALINK_SSL<'a> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        match self.error {
+            ErrorCode::SslErrorWantRead => self.error = ErrorCode::SslErrorNone,
+            ErrorCode::SslErrorWantWrite | ErrorCode::SslErrorNone => (),
+            _ => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    self.error
+                ))
+            }
+        }
+
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => loop {
                 match session.read(buf)? {
                     0 => if session.wants_write() {
+                        self.error = ErrorCode::SslErrorWantWrite;
                         let _ = session.write_tls(io)?;
                     } else if session.wants_read() {
                         if session.read_tls(io)? == 0 {
+                            self.error = ErrorCode::SslErrorWantRead;
                             return Ok(0);
                         } else {
                             if let Err(err) = session.process_new_packets() {
                                 if session.wants_write() {
                                     let _ = session.write_tls(io);
                                 }
+                                self.error = ErrorCode::SslErrorZeroReturn;
                                 return Err(std::io::Error::new(std::io::ErrorKind::Other, err));
                             }
                         }
                     } else {
+                        self.error = ErrorCode::SslErrorZeroReturn;
                         return Ok(0);
                     },
-                    n => return Ok(n),
+                    n => {
+                        self.error = ErrorCode::SslErrorNone;
+                        return Ok(n);
+                    }
                 }
             },
             _ => {
@@ -236,6 +256,7 @@ impl<'a> Write for MESALINK_SSL<'a> {
 pub enum SslConstants {
     SslFailure = 0,
     SslSuccess = 1,
+    ShutdownNotDone = 2,
 }
 
 #[doc(hidden)]
@@ -786,7 +807,7 @@ fn suite_to_static_str(suite: u16) -> &'static str {
         0xc02c => "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
         0xc02f => "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
         0xc030 => "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
-        _ => "Unsupported ciphersuite"
+        _ => "Unsupported ciphersuite",
     }
 }
 
