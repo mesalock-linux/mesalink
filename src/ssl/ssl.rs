@@ -232,12 +232,14 @@ impl<'a> Write for MESALINK_SSL<'a> {
 }
 
 #[doc(hidden)]
+#[repr(C)]
 pub enum SslConstants {
     SslFailure = 0,
     SslSuccess = 1,
 }
 
 #[doc(hidden)]
+#[repr(C)]
 pub enum Filetypes {
     FiletypePEM = 1,
     FiletypeASN = 2,

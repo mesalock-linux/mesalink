@@ -20,22 +20,64 @@
 extern "C" {
 #endif
 
-enum ErrorCode
-{
-    INAPPROPRIATE_MESSAGE = -401,
-    INAPPROPRIATE_HANDSHAKE_MESSAGE = -402,
-    CORRUPT_MESSAGE = -403,
-    CORRUPT_MESSAGE_PAYLOAD = -404,
-    NO_CERTIFICATES_PRESENTED = -405,
-    DECEYPT_ERROR = -406,
-    PEER_INCOMPATIBLE_ERROR = -407,
-    PEER_MISBEHAVED_ERROR = -408,
-    ALERT_RECEIVED = -409,
-    WEBPKI_ERROR = -410,
-    INVALID_SCT = -411,
-    GENERAL = -412,
-    FAILED_TO_GET_CURRENT_TIME = -413,
-};
+#include <stdio.h>
+#include <mesalink/options.h>
+#include <mesalink/version.h>
+#include <mesalink/visibility.h>
+
+typedef enum ErrorCode {
+    // OpenSSL error codes
+    SSL_ERR_NONE = 0,
+    SSL_ERROR_ZERO_RETURN = 6,
+    SSL_ERROR_WANT_READ = 2,
+    SSL_ERROR_WANT_WRITE = 3,
+    SSL_ERROR_WANT_CONNECT = 7,
+    SSL_ERROR_WANT_ACCEPT = 8,
+    SSL_ERROR_SYSCALL = 5,
+    SSL_ERROR_SSL = 85,
+    // MesaLink built-in error codes
+    NULL_POINTER_EXCEPTION = 0x2001,
+    MALFORMED_OBJECT,
+    BAD_FILE_NAME,
+    BAD_KEY,
+    CERT_KEY_MISMATCH,
+    // std::io error codes
+    NOT_FOUND = 0x3001,
+    PERMISSION_DENIED,
+    CONNECTION_REFUSED,
+    CONNECTION_RESET,
+    CONNECTION_ABORTED,
+    NOT_CONNECTED,
+    ADDR_IN_USE,
+    ADDR_NOT_AVAILABLE,
+    BROKEN_PIPE,
+    ALREADY_EXISTS,
+    WOULD_BLOCK,
+    INVALID_INPUT,
+    INVALID_DATA,
+    TIMED_OUT,
+    WRITE_ZERO,
+    INTERRUPTED,
+    OTHER,
+    UNEXPECTED_EOF,
+    // Rustls error codes
+    INAPPROPRIATE_MESSAGE = 0x4001,
+    INAPPROPRIATE_HANDSHAKE_MESSAGE,
+    CORRUPT_MESSAGE,
+    CORRUPT_MESSAGE_PAYLOAD,
+    NO_CERTIFICATES_PRESENTED,
+    DECRYPT_ERROR,
+    PEER_INCOMPATIBLE_ERROR,
+    PEER_MISBEHAVED_ERROR,
+    ALERT_RECEIVED,
+    WEB_PKI_ERROR,
+    INVALID_SCT,
+    GENERAL,
+    FAILED_TO_GET_CURRENT_TIME,
+    INVALID_DNS_NAME,
+    HANDSHAKE_NOT_COMPLETE,
+    PEER_SENT_OVERSIZED_RECORD,
+} ErrorCode;
 
 MESALINK_API void mesalink_ERR_error_string_n(unsigned long e, char *buf, size_t len);
 MESALINK_API const char *ERR_reason_error_string(unsigned long e);
@@ -44,7 +86,7 @@ MESALINK_API unsigned long mesalink_ERR_get_error(void);
 MESALINK_API unsigned long mesalink_ERR_peek_last_error(void);
 MESALINK_API void mesalink_ERR_clear_error(void);
 
-MESALINK_API void mesalink_ERR_print_errors_fp(const FILE*);
+MESALINK_API void mesalink_ERR_print_errors_fp(const FILE *);
 
 #ifdef __cplusplus
 } /* extern C */

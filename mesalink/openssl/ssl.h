@@ -74,6 +74,8 @@ typedef MESALINK_SSL SSL;
 #define SSL_shutdown mesalink_SSL_shutdown
 #define SSL_free mesalink_SSL_free
 
+#define SSL_get_error mesalink_SSL_get_error
+
 enum
 { /* ssl constants */
   ERROR_NONE = 0,

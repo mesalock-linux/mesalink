@@ -29,7 +29,16 @@ use rustls::TLSError;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub enum ErrorCode {
-    NoError = 0,
+    // OpenSSL error codes
+    SslErrorNone = 0,
+    SslErrorZeroReturn = 6,
+    SslErrorWantRead = 2,
+    SslErrorWantWrite = 3,
+    SslErrorWantConnect = 7,
+    SslErrorWantAccept = 8,
+    SslErrorSyscall = 5,
+    SslErrorSsl = 85,
+    // MesaLink build-in error codes
     NullPointerException = 0x2001,
     MalformedObject,
     BadFileName,
@@ -83,7 +92,16 @@ impl ErrorCode {
     #[cfg(feature = "error_strings")]
     fn as_str(&self) -> &'static str {
         match *self {
-            ErrorCode::NoError => "No error in queue",
+            // OpenSSL error codes
+            ErrorCode::SslErrorNone => "No error",
+            ErrorCode::SslErrorZeroReturn => "SSL error: zero return",
+            ErrorCode::SslErrorWantRead => "SSL error: want read",
+            ErrorCode::SslErrorWantWrite => "SSL error: want write",
+            ErrorCode::SslErrorWantAccept => "SSL error: want accept",
+            ErrorCode::SslErrorWantConnect => "SSL error: want connect",
+            ErrorCode::SslErrorSyscall => "SSL error: syscall",
+            ErrorCode::SslErrorSsl => "SSL error: protocol",
+            // MesaLink build-in error codes
             ErrorCode::NullPointerException => "Null pointer exception",
             ErrorCode::MalformedObject => "Malformed object",
             ErrorCode::BadFileName => "Bad file name",
