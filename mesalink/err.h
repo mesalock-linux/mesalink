@@ -29,7 +29,7 @@ enum /* ssl constants */
 {
     MESALINK_ERROR_NONE = 0,
     MESALINK_FAILURE = 0,
-    MESALINK_FATAL_ERROR = -1,
+    MESALINK_ERROR = -1,
     MESALINK_SUCCESS = 1,
     MESALINK_SHUTDOWN_NOT_DONE = 2,
 
