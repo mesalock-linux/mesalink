@@ -23,7 +23,6 @@
 #include <mesalink/openssl/ssl.h>
 #include <mesalink/openssl/err.h>
 
-#define SSL_SUCCESS 1
 #define REQUEST "GET / HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\
         Accept-Encoding: identity\r\n\r\n"
 
@@ -82,19 +81,19 @@ int main(int argc, char *argv[])
         ERR_print_errors_fp(stderr);
         return -1;
     }
-    if (SSL_set_tlsext_host_name(ssl, hostname) != SUCCESS)
+    if (SSL_set_tlsext_host_name(ssl, hostname) != SSL_SUCCESS)
     {
         fprintf(stderr, "[-] SSL set hostname failed\n");
         ERR_print_errors_fp(stderr);
         return -1;
     }
-    if (SSL_set_fd(ssl, sockfd) != SUCCESS)
+    if (SSL_set_fd(ssl, sockfd) != SSL_SUCCESS)
     {
         fprintf(stderr, "[-] SSL set fd failed\n");
         ERR_print_errors_fp(stderr);
         return -1;
     }
-    if (SSL_connect(ssl) == SUCCESS)
+    if (SSL_connect(ssl) == SSL_SUCCESS)
     {
         int sendlen = -1, recvlen = -1, total_recvlen = 0;
         snprintf(sendbuf, sizeof(sendbuf), REQUEST, hostname);
