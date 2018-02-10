@@ -101,13 +101,13 @@ int main(int argc, char *argv[])
             ERR_print_errors_fp(stderr);
             return -1;
         }
-        if (SSL_set_fd(ssl, client_sockfd) != SUCCESS)
+        if (SSL_set_fd(ssl, client_sockfd) != SSL_SUCCESS)
         {
             fprintf(stderr, "[-] SSL set fd failed\n");
             ERR_print_errors_fp(stderr);
             return -1;
         }
-        if (SSL_accept(ssl) == SUCCESS)
+        if (SSL_accept(ssl) == SSL_SUCCESS)
         {
             int recvlen = -1;
             while ((recvlen = SSL_read(ssl, recvbuf, sizeof(recvbuf) - 1)) > 0)
