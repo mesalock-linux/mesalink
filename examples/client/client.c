@@ -106,6 +106,12 @@ int main(int argc, char *argv[])
             total_recvlen += strlen(recvbuf);
             printf("%s", recvbuf);
         };
+
+        const char *tls_version;
+        if ((tls_version = SSL_get_version(ssl))) {
+            printf("[+] TLS protocol version: %s\n", tls_version);
+        }
+
         int cipher_bits = 0;
         SSL_get_cipher_bits(ssl, &cipher_bits);
         printf("[+] Negotiated ciphersuite: %s, enc_length=%d, version=%s\n",

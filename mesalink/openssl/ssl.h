@@ -72,6 +72,7 @@ typedef MESALINK_SSL SSL;
 #define SSL_write mesalink_SSL_write
 #define SSL_read mesalink_SSL_read
 #define SSL_shutdown mesalink_SSL_shutdown
+#define SSL_get_version mesalink_SSL_get_version
 #define SSL_free mesalink_SSL_free
 
 #define SSL_get_error mesalink_SSL_get_error

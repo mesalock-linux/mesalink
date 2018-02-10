@@ -729,10 +729,10 @@ pub extern "C" fn mesalink_SSL_set_SSL_CTX(
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_current_cipher(
-    ssl_ptr: *mut MESALINK_SSL,
+    ssl_ptr: *const MESALINK_SSL,
 ) -> *const MESALINK_CIPHER {
     sanitize_ptr_return_null!(ssl_ptr);
-    let ssl = unsafe { &mut *ssl_ptr };
+    let ssl = unsafe { & *ssl_ptr };
     match ssl.session.as_ref() {
         Some(session) => match session.get_negotiated_ciphersuite() {
             Some(cs) => {
@@ -855,7 +855,7 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_version(
 /// char *SSL_get_cipher_name(const SSL *ssl);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_get_cipher_name(ssl_ptr: *mut MESALINK_SSL) -> *const c_char {
+pub extern "C" fn mesalink_SSL_get_cipher_name(ssl_ptr: *const MESALINK_SSL) -> *const c_char {
     let cipher = mesalink_SSL_get_current_cipher(ssl_ptr);
     mesalink_SSL_CIPHER_get_name(cipher)
 }
@@ -868,7 +868,7 @@ pub extern "C" fn mesalink_SSL_get_cipher_name(ssl_ptr: *mut MESALINK_SSL) -> *c
 /// char *SSL_get_cipher(const SSL *ssl);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_get_cipher(ssl_ptr: *mut MESALINK_SSL) -> *const c_char {
+pub extern "C" fn mesalink_SSL_get_cipher(ssl_ptr: *const MESALINK_SSL) -> *const c_char {
     mesalink_SSL_get_cipher_name(ssl_ptr)
 }
 
@@ -881,7 +881,7 @@ pub extern "C" fn mesalink_SSL_get_cipher(ssl_ptr: *mut MESALINK_SSL) -> *const 
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_cipher_bits(
-    ssl_ptr: *mut MESALINK_SSL,
+    ssl_ptr: *const MESALINK_SSL,
     bits_ptr: *mut c_int,
 ) -> c_int {
     let cipher = mesalink_SSL_get_current_cipher(ssl_ptr);
@@ -896,7 +896,7 @@ pub extern "C" fn mesalink_SSL_get_cipher_bits(
 /// char* SSL_get_cipher_version(const SSL *ssl);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_get_cipher_version(ssl_ptr: *mut MESALINK_SSL) -> *const c_char {
+pub extern "C" fn mesalink_SSL_get_cipher_version(ssl_ptr: *const MESALINK_SSL) -> *const c_char {
     let cipher = mesalink_SSL_get_current_cipher(ssl_ptr);
     mesalink_SSL_CIPHER_get_version(cipher)
 }
@@ -974,7 +974,7 @@ pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> 
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_fd(ssl_ptr: *const MESALINK_SSL) -> c_int {
     sanitize_ptr_return_fail!(ssl_ptr);
-    let ssl = unsafe { &*ssl_ptr };
+    let ssl = unsafe { & *ssl_ptr };
     match ssl.io {
         Some(ref socket) => socket.as_raw_fd(),
         None => {
@@ -1116,8 +1116,34 @@ pub extern "C" fn mesalink_SSL_shutdown(ssl_ptr: *mut MESALINK_SSL) -> c_int {
             SslConstants::SslSuccess as c_int
         }
         None => {
-            mesalink_push_error(ErrorCode::HandshakeNotComplete);
+            mesalink_push_error(ErrorCode::NotConnected);
             SslConstants::SslFailure as c_int
+        }
+    }
+}
+
+/// `SSL_get_version` - get the protocol information of a connection
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const char *SSL_get_version(const SSL *ssl);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_get_version(ssl_ptr: *mut MESALINK_SSL) -> *const c_char {
+    sanitize_ptr_return_null!(ssl_ptr);
+    let ssl = unsafe { &*ssl_ptr };
+    match ssl.session {
+        Some(ref s) => {
+            match s.get_protocol_version() {
+                Some(rustls::ProtocolVersion::TLSv1_2) => CString::new("TLSv1.2").unwrap().into_raw(),
+                Some(rustls::ProtocolVersion::TLSv1_3) => CString::new("TLSv1.3").unwrap().into_raw(),
+                _ => CString::new("unknown").unwrap().into_raw(),
+            }
+        }
+        None => {
+            mesalink_push_error(ErrorCode::NotConnected);
+            std::ptr::null()
         }
     }
 }
