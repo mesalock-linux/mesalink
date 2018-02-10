@@ -25,6 +25,20 @@ extern "C" {
 #include <mesalink/version.h>
 #include <mesalink/visibility.h>
 
+enum
+{ /* ssl constants */
+  MESALINK_ERROR_NONE = 0,
+  MESALINK_FAILURE = 0,
+  MESALINK_FATAL_ERROR = -1,
+  MESALINK_SUCCESS = 1,
+  MESALINK_SHUTDOWN_NOT_DONE = 2,
+
+  MESALINK_FILETYPE_PEM = 1,
+  MESALINK_FILETYPE_ASN1 = 2,
+  MESALINK_FILETYPE_DEFAULT = 2,
+  MESALINK_FILETYPE_RAW = 3,
+};
+
 typedef enum ErrorCode {
     // OpenSSL error codes
     SSL_ERR_NONE = 0,

@@ -21,7 +21,7 @@
 extern "C" {
 #endif
 
-#define LIBMESALINK_VERSION_STRING "@VERSION@"
+#define MESALINK_VERSION_STRING "@VERSION@"
 
 #ifdef __cplusplus
 }

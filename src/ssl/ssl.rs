@@ -36,7 +36,7 @@
 use std;
 use std::sync::Arc;
 use std::net::TcpStream;
-use std::io::{Read, Write};
+use std::io::{Error, ErrorKind, Read, Write};
 use std::os::unix::io::{AsRawFd, FromRawFd};
 use std::ffi::CString;
 use libc::{c_char, c_int, c_uchar};
@@ -166,31 +166,24 @@ impl<'a> Read for MESALINK_SSL<'a> {
         match self.error {
             ErrorCode::SslErrorWantRead => self.error = ErrorCode::SslErrorNone,
             ErrorCode::SslErrorWantWrite | ErrorCode::SslErrorNone => (),
-            _ => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    self.error
-                ))
-            }
+            _ => return Err(Error::new(ErrorKind::Other, self.error)),
         }
 
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => loop {
                 match session.read(buf)? {
                     0 => if session.wants_write() {
-                        self.error = ErrorCode::SslErrorWantWrite;
                         let _ = session.write_tls(io)?;
                     } else if session.wants_read() {
                         if session.read_tls(io)? == 0 {
-                            self.error = ErrorCode::SslErrorWantRead;
                             return Ok(0);
                         } else {
                             if let Err(err) = session.process_new_packets() {
                                 if session.wants_write() {
                                     let _ = session.write_tls(io);
                                 }
-                                self.error = ErrorCode::SslErrorZeroReturn;
-                                return Err(std::io::Error::new(std::io::ErrorKind::Other, err));
+                                // err is of type TLSError
+                                return Err(Error::new(ErrorKind::Other, err));
                             }
                         }
                     } else {
@@ -203,13 +196,7 @@ impl<'a> Read for MESALINK_SSL<'a> {
                     }
                 }
             },
-            _ => {
-                mesalink_push_error(ErrorCode::HandshakeNotComplete);
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Session or socket not initialized",
-                ))
-            }
+            _ => Err(Error::new(ErrorKind::Other, ErrorCode::NotConnected)),
         }
     }
 }
@@ -223,13 +210,7 @@ impl<'a> Write for MESALINK_SSL<'a> {
                 let _ = session.write_tls(io)?;
                 Ok(len)
             }
-            _ => {
-                mesalink_push_error(ErrorCode::HandshakeNotComplete);
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Session or socket not initialized",
-                ))
-            }
+            _ => Err(Error::new(ErrorKind::Other, ErrorCode::NotConnected)),
         }
     }
 
@@ -240,13 +221,7 @@ impl<'a> Write for MESALINK_SSL<'a> {
                 let _ = session.write_tls(io)?;
                 ret
             }
-            _ => {
-                mesalink_push_error(ErrorCode::HandshakeNotComplete);
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Session or socket not initialized",
-                ))
-            }
+            _ => Err(Error::new(ErrorKind::Other, ErrorCode::NotConnected)),
         }
     }
 }
@@ -254,6 +229,7 @@ impl<'a> Write for MESALINK_SSL<'a> {
 #[doc(hidden)]
 #[repr(C)]
 pub enum SslConstants {
+    SslFatalError = -1,
     SslFailure = 0,
     SslSuccess = 1,
     ShutdownNotDone = 2,

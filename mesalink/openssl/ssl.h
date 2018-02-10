@@ -76,19 +76,6 @@ typedef MESALINK_SSL SSL;
 
 #define SSL_get_error mesalink_SSL_get_error
 
-enum
-{ /* ssl constants */
-  ERROR_NONE = 0,
-  FAILURE = 0,
-  SUCCESS = 1,
-  SHUTDOWN_NOT_DONE = 2,
-
-  SSL_FILETYPE_PEM = 1,
-  SSL_FILETYPE_ASN1 = 2,
-  SSL_FILETYPE_DEFAULT = 2,
-  SSL_FILETYPE_RAW = 3,
-};
-
 #ifdef __cplusplus
 } /* extern C */
 #endif
