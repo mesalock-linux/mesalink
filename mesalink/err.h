@@ -93,8 +93,8 @@ typedef enum ErrorCode {
     PEER_SENT_OVERSIZED_RECORD,
 } ErrorCode;
 
-MESALINK_API void mesalink_ERR_error_string_n(unsigned long e, char *buf, size_t len);
-MESALINK_API const char *ERR_reason_error_string(unsigned long e);
+MESALINK_API const char *mesalink_ERR_error_string_n(unsigned long e, char *buf, size_t len);
+MESALINK_API const char *mesalink_ERR_reason_error_string(unsigned long e);
 
 MESALINK_API unsigned long mesalink_ERR_get_error(void);
 MESALINK_API unsigned long mesalink_ERR_peek_last_error(void);
