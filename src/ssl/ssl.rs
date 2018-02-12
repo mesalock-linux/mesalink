@@ -147,7 +147,6 @@ pub struct MESALINK_SSL<'a> {
     session: Option<Box<Session>>,
     error: ErrorCode,
     eof: bool,
-    is_shutdown: bool,
 }
 
 impl<'a> MESALINK_SSL<'a> {
@@ -160,7 +159,6 @@ impl<'a> MESALINK_SSL<'a> {
             session: None,
             error: ErrorCode::SslErrorNone,
             eof: false,
-            is_shutdown: false,
         }
     }
 }
@@ -172,11 +170,16 @@ impl<'a> Read for MESALINK_SSL<'a> {
             (Some(session), Some(io)) => loop {
                 match session.read(buf)? {
                     0 => if session.wants_write() {
+                        println!("Branch A: want write\n");
                         let _ = session.write_tls(io)?;
                     } else if session.wants_read() {
+                        println!("Branch B: want read\n");
                         if session.read_tls(io)? == 0 {
-                            return Ok(0);
+                            println!("Branch B-1: want read, but no data to read\n");
+                            self.eof = true;
+                            return Ok(0); // EOF
                         } else {
+                            println!("Branch B-2: want read, got some data\n");
                             if let Err(err) = session.process_new_packets() {
                                 if session.wants_write() {
                                     let _ = session.write_tls(io);
@@ -185,9 +188,11 @@ impl<'a> Read for MESALINK_SSL<'a> {
                             }
                         }
                     } else {
-                        return Ok(0);
+                        println!("Branch C: do not want read or write\n");
+                        return Ok(0); // EOF?
                     },
                     n => {
+                        println!("Branch D: normal read\n");
                         self.error = ErrorCode::SslErrorNone;
                         return Ok(n);
                     }
@@ -1098,8 +1103,14 @@ pub extern "C" fn mesalink_SSL_read(
     match ssl.read(buf) {
         Ok(count) => count as c_int,
         Err(e) => {
-            mesalink_push_error(ErrorCode::from(e));
-            SslConstants::SslFailure as c_int
+            println!("Error from io::Read: {:?}", e);
+            match e.kind() {
+                io::ErrorKind::WouldBlock => {
+                    ssl.error = ErrorCode::SslErrorWantRead;
+                    SslConstants::SslError as c_int
+                },
+                _ => SslConstants::SslFailure as c_int
+            }
         }
     }
 }

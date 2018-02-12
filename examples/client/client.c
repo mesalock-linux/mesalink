@@ -26,6 +26,7 @@
 
 #define REQUEST "GET / HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\
         Accept-Encoding: identity\r\n\r\n"
+#define NONBLOCKING
 
 int main(int argc, char *argv[])
 {
@@ -89,9 +90,11 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+#ifdef NONBLOCKING
     int flags = fcntl(sockfd, F_GETFL, 0);
     flags =  flags | O_NONBLOCK;
     fcntl(sockfd, F_SETFL, flags);
+#endif
 
     if (SSL_set_fd(ssl, sockfd) != SSL_SUCCESS)
     {
