@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <mesalink/openssl/ssl.h>
@@ -87,6 +88,11 @@ int main(int argc, char *argv[])
         ERR_print_errors_fp(stderr);
         return -1;
     }
+
+    int flags = fcntl(sockfd, F_GETFL, 0);
+    flags =  flags | O_NONBLOCK;
+    fcntl(sockfd, F_SETFL, flags);
+
     if (SSL_set_fd(ssl, sockfd) != SSL_SUCCESS)
     {
         fprintf(stderr, "[-] SSL set fd failed\n");
