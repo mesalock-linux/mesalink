@@ -36,8 +36,8 @@
 use std;
 use std::sync::Arc;
 use std::net::TcpStream;
-use std::io::{Error, ErrorKind, Read, Write};
 use std::io;
+use std::io::{Read, Write};
 use std::os::unix::io::{AsRawFd, FromRawFd};
 use std::ffi::CString;
 use libc::{c_char, c_int, c_uchar};
@@ -165,73 +165,41 @@ impl<'a> MESALINK_SSL<'a> {
     }
 }
 
-fn do_io(session: &mut Box<Session>, io: &mut TcpStream, eof: &mut bool) -> io::Result<()> {
-    loop {
-        let read_would_block = if !*eof && session.wants_read() {
-            match session.read_tls(io) {
-                Ok(0) => {
-                    *eof = true;
-                    continue
-                },
-                Ok(_) => {
-                    if let Err(err) = session.process_new_packets() {
-                        // flush queued messages before returning an Err in
-                        // order to send alerts instead of abruptly closing
-                        // the socket
-                        if session.wants_write() {
-                            // ignore result to avoid masking original error
-                            let _ = session.write_tls(io);
-                        }
-                        return Err(io::Error::new(io::ErrorKind::Other, err));
-                    }
-                    continue
-                },
-                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => true,
-                Err(e) => return Err(e)
-            }
-        } else {
-            false
-        };
-
-        let write_would_block = if session.wants_write() {
-            match session.write_tls(io) {
-                Ok(_) => continue,
-                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => true,
-                Err(e) => return Err(e)
-            }
-        } else {
-            false
-        };
-
-        if read_would_block || write_would_block {
-            return Err(io::Error::from(io::ErrorKind::WouldBlock));
-        } else {
-            return Ok(());
-        }
-    }
-}
-
 #[doc(hidden)]
 impl<'a> Read for MESALINK_SSL<'a> {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match (self.session.as_mut(), self.io.as_mut()) {
-            (Some(session), Some(io)) => {
-                loop {
-                    match session.read(buf) {
-                        Ok(0) if !self.eof => do_io(session, io, &mut self.eof)?,
-                        Ok(n) => return Ok(n),
-                        Err(e) => {
-                            if e.kind() == io::ErrorKind::ConnectionAborted {
-                                do_io(session, io, &mut self.eof)?;
-                                return if self.eof { Ok(0) } else { Err(e) }
-                            } else {
-                                return Err(e)
+            (Some(session), Some(io)) => loop {
+                match session.read(buf)? {
+                    0 => if session.wants_write() {
+                        let _ = session.write_tls(io)?;
+                    } else if session.wants_read() {
+                        if session.read_tls(io)? == 0 {
+                            return Ok(0);
+                        } else {
+                            if let Err(err) = session.process_new_packets() {
+                                if session.wants_write() {
+                                    let _ = session.write_tls(io);
+                                }
+                                return Err(io::Error::new(io::ErrorKind::Other, err));
                             }
                         }
+                    } else {
+                        return Ok(0);
+                    },
+                    n => {
+                        self.error = ErrorCode::SslErrorNone;
+                        return Ok(n);
                     }
                 }
             },
-            _ => Err(Error::new(ErrorKind::NotConnected, ErrorCode::NotConnected)),
+            _ => {
+                mesalink_push_error(ErrorCode::HandshakeNotComplete);
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Session or socket not initialized",
+                ))
+            }
         }
     }
 }
@@ -239,31 +207,21 @@ impl<'a> Read for MESALINK_SSL<'a> {
 #[doc(hidden)]
 impl<'a> Write for MESALINK_SSL<'a> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        if buf.is_empty() {
-            return Ok(0);
-        }
         match (self.session.as_mut(), self.io.as_mut()) {
-            (Some(session), Some(io)) => loop {
+            (Some(session), Some(io)) => {
                 let len = session.write(buf)?;
-                while session.wants_write() {
-                    match session.write_tls(io) {
-                        Ok(_) => (),
-                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => if len == 0 {
-                            return Err(Error::from(ErrorKind::WouldBlock));
-                        } else {
-                            break;
-                        },
-                        Err(e) => return Err(e)
-                    }
-                }
-                if len > 0 {
-                    return Ok(len);
-                }
+                let _ = session.write_tls(io)?;
+                Ok(len)
             }
-            _ => Err(Error::new(ErrorKind::NotConnected, ErrorCode::NotConnected)),
+            _ => {
+                mesalink_push_error(ErrorCode::HandshakeNotComplete);
+                Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    "Session or socket not initialized",
+                ))
+            }
         }
     }
-
     fn flush(&mut self) -> std::io::Result<()> {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => {
@@ -271,7 +229,13 @@ impl<'a> Write for MESALINK_SSL<'a> {
                 let _ = session.write_tls(io)?;
                 ret
             }
-            _ => Err(Error::new(ErrorKind::NotConnected, ErrorCode::NotConnected)),
+            _ => {
+                mesalink_push_error(ErrorCode::HandshakeNotComplete);
+                Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    "Session or socket not initialized",
+                ))
+            }
         }
     }
 }
@@ -1132,18 +1096,11 @@ pub extern "C" fn mesalink_SSL_read(
     let ssl = unsafe { &mut *ssl_ptr };
     let buf = unsafe { std::slice::from_raw_parts_mut(buf_ptr, buf_len as usize) };
     match ssl.read(buf) {
-        Ok(count) => {
-            count as c_int
-        },
+        Ok(count) => count as c_int,
         Err(e) => {
-            match e.kind() {
-                ErrorKind::WouldBlock => {
-                    ssl.error = ErrorCode::SslErrorWantRead;
-                    SslConstants::SslError as c_int
-                },
-                _ => SslConstants::SslFailure as c_int,
-            }
-        },
+            mesalink_push_error(ErrorCode::from(e));
+            SslConstants::SslFailure as c_int
+        }
     }
 }
 
@@ -1166,12 +1123,10 @@ pub extern "C" fn mesalink_SSL_write(
     let buf = unsafe { std::slice::from_raw_parts(buf_ptr, buf_len as usize) };
     match ssl.write(buf) {
         Ok(count) => count as c_int,
-        Err(_) => match ssl.error {
-            ErrorCode::SslErrorWantRead | ErrorCode::SslErrorWantWrite => {
-                SslConstants::SslError as c_int
-            }
-            _ => SslConstants::SslFailure as c_int,
-        },
+        Err(e) => {
+            mesalink_push_error(ErrorCode::from(e));
+            SslConstants::SslFailure as c_int
+        }
     }
 }
 
