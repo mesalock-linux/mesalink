@@ -165,16 +165,15 @@ impl<'a> Read for MESALINK_SSL<'a> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => {
-                if session.is_handshaking() {
-                    self.error = ErrorCode::SslErrorWantRead;
-                    return Err(Error::new(ErrorKind::Other, ErrorCode::SslErrorWantRead));
-                }
                 loop {
                     match session.read(buf)? {
                         0 => if session.wants_write() {
                             let _ = session.write_tls(io)?;
+                            self.error = ErrorCode::SslErrorWantWrite;
+                            return Ok(0);
                         } else if session.wants_read() {
                             if session.read_tls(io)? == 0 {
+                                self.error = ErrorCode::SslErrorWantWrite;
                                 return Ok(0);
                             } else {
                                 if let Err(err) = session.process_new_packets() {
@@ -182,7 +181,10 @@ impl<'a> Read for MESALINK_SSL<'a> {
                                         let _ = session.write_tls(io);
                                     }
                                     // err is of type TLSError
-                                    return Err(Error::new(ErrorKind::Other, err));
+                                    self.error = ErrorCode::from(err);
+                                    return Err(
+                                        Error::new(ErrorKind::Other, ErrorCode::SslErrorSsl),
+                                    );
                                 }
                             }
                         } else {
@@ -195,8 +197,8 @@ impl<'a> Read for MESALINK_SSL<'a> {
                         }
                     }
                 }
-            },
-            _ => Err(Error::new(ErrorKind::Other, ErrorCode::NotConnected)),
+            }
+            _ => Err(Error::new(ErrorKind::NotConnected, ErrorCode::NotConnected)),
         }
     }
 }
@@ -206,15 +208,11 @@ impl<'a> Write for MESALINK_SSL<'a> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => {
-                if session.is_handshaking() {
-                    self.error = ErrorCode::SslErrorWantRead;
-                    return Err(Error::new(ErrorKind::Other, ErrorCode::SslErrorWantWrite));
-                }
                 let len = session.write(buf)?;
                 let _ = session.write_tls(io)?;
                 Ok(len)
             }
-            _ => Err(Error::new(ErrorKind::Other, ErrorCode::NotConnected)),
+            _ => Err(Error::new(ErrorKind::NotConnected, ErrorCode::NotConnected)),
         }
     }
 
@@ -225,7 +223,7 @@ impl<'a> Write for MESALINK_SSL<'a> {
                 let _ = session.write_tls(io)?;
                 ret
             }
-            _ => Err(Error::new(ErrorKind::Other, ErrorCode::NotConnected)),
+            _ => Err(Error::new(ErrorKind::NotConnected, ErrorCode::NotConnected)),
         }
     }
 }
@@ -736,7 +734,7 @@ pub extern "C" fn mesalink_SSL_get_current_cipher(
     ssl_ptr: *const MESALINK_SSL,
 ) -> *const MESALINK_CIPHER {
     sanitize_ptr_return_null!(ssl_ptr);
-    let ssl = unsafe { & *ssl_ptr };
+    let ssl = unsafe { &*ssl_ptr };
     match ssl.session.as_ref() {
         Some(session) => match session.get_negotiated_ciphersuite() {
             Some(cs) => {
@@ -978,7 +976,7 @@ pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> 
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_fd(ssl_ptr: *const MESALINK_SSL) -> c_int {
     sanitize_ptr_return_fail!(ssl_ptr);
-    let ssl = unsafe { & *ssl_ptr };
+    let ssl = unsafe { &*ssl_ptr };
     match ssl.io {
         Some(ref socket) => socket.as_raw_fd(),
         None => {
@@ -1064,7 +1062,7 @@ pub extern "C" fn mesalink_SSL_get_error(ssl_ptr: *const MESALINK_SSL, ret: c_in
         return ErrorCode::SslErrorNone as c_int;
     }
     sanitize_ptr_return_fail!(ssl_ptr);
-    let ssl = unsafe { & *ssl_ptr };
+    let ssl = unsafe { &*ssl_ptr };
     ssl.error as c_int
 }
 
@@ -1089,7 +1087,7 @@ pub extern "C" fn mesalink_SSL_read(
         Ok(count) => count as c_int,
         Err(e) => {
             mesalink_push_error(ErrorCode::from(e));
-            SslConstants::SslError as c_int
+            SslConstants::SslFailure as c_int
         }
     }
 }
@@ -1115,7 +1113,7 @@ pub extern "C" fn mesalink_SSL_write(
         Ok(count) => count as c_int,
         Err(e) => {
             mesalink_push_error(ErrorCode::from(e));
-            SslConstants::SslError as c_int
+            return SslConstants::SslFailure as c_int;
         }
     }
 }
@@ -1155,13 +1153,11 @@ pub extern "C" fn mesalink_SSL_get_version(ssl_ptr: *mut MESALINK_SSL) -> *const
     sanitize_ptr_return_null!(ssl_ptr);
     let ssl = unsafe { &*ssl_ptr };
     match ssl.session {
-        Some(ref s) => {
-            match s.get_protocol_version() {
-                Some(rustls::ProtocolVersion::TLSv1_2) => CString::new("TLSv1.2").unwrap().into_raw(),
-                Some(rustls::ProtocolVersion::TLSv1_3) => CString::new("TLSv1.3").unwrap().into_raw(),
-                _ => CString::new("unknown").unwrap().into_raw(),
-            }
-        }
+        Some(ref s) => match s.get_protocol_version() {
+            Some(rustls::ProtocolVersion::TLSv1_2) => CString::new("TLSv1.2").unwrap().into_raw(),
+            Some(rustls::ProtocolVersion::TLSv1_3) => CString::new("TLSv1.3").unwrap().into_raw(),
+            _ => CString::new("unknown").unwrap().into_raw(),
+        },
         None => {
             mesalink_push_error(ErrorCode::NotConnected);
             std::ptr::null()

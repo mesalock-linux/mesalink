@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
         printf("[+] Requesting %s ...\n", SSL_get_servername(ssl, 0));
         sendlen = SSL_write(ssl, sendbuf, (int)strlen(sendbuf));
         printf("[+] Sent %d bytes\n\n%s\n", sendlen, sendbuf);
-        while ((recvlen = SSL_read(ssl, recvbuf, sizeof(recvbuf) - 1)) > 0)
+        while ((recvlen = SSL_read(ssl, recvbuf, sizeof(recvbuf) - 1)) != SSL_FAILURE)
         {
             recvbuf[recvlen] = 0;
             total_recvlen += strlen(recvbuf);
