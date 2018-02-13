@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
     SSL_load_error_strings();
 
     // Try replace TLSv1_2_client_method with SSLv23_client_method
-    ctx = SSL_CTX_new(TLSv1_2_client_method());
+    ctx = SSL_CTX_new(TLSv1_3_client_method());
     if (ctx == NULL)
     {
         fprintf(stderr, "[-] Context failed to create\n");

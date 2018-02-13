@@ -170,7 +170,6 @@ impl<'a> Read for MESALINK_SSL<'a> {
             (Some(session), Some(io)) => loop {
                 match session.read(buf)? {
                     0 => if session.wants_write() {
-                        println!("Branch A");
                         match session.write_tls(io) {
                             Ok(_) => (), // ignore the result
                             Err(e) => {
@@ -181,47 +180,37 @@ impl<'a> Read for MESALINK_SSL<'a> {
                             }
                         }
                     } else if session.wants_read() {
-                        println!("Branch B, handshaking: {}", session.is_handshaking());
                         match session.read_tls(io) {
-                            Ok(0) => { 
-                                println!("Branch B-1");
+                            Ok(0) => {
                                 self.eof = true;
                                 return Ok(0); // EOF
-                            },
+                            }
                             Err(e) => {
-                                println!("Branch B-2, handshaking: {}", session.is_handshaking());
                                 if e.kind() == io::ErrorKind::WouldBlock {
                                     self.error = ErrorCode::SslErrorWantRead;
                                 }
                                 return Err(e);
-                            },
-                            Ok(_) => {
-                                println!("Branch B-3");
-                                if let Err(err) = session.process_new_packets() {
-                                    if session.wants_write() {
-                                        let _ = session.write_tls(io);
-                                    }
-                                    return Err(io::Error::new(io::ErrorKind::Other, err));
+                            }
+                            Ok(_) => if let Err(err) = session.process_new_packets() {
+                                if session.wants_write() {
+                                    let _ = session.write_tls(io);
                                 }
+                                return Err(io::Error::new(io::ErrorKind::Other, err));
                             },
                         }
                     } else {
-                        println!("Branch C");
-                        return Ok(0); // EOF?
+                        self.error = ErrorCode::SslErrorZeroReturn;
+                        return Ok(0);
                     },
                     n => {
-                        println!("Branch D");
                         self.error = ErrorCode::SslErrorNone;
                         return Ok(n);
                     }
                 }
             },
             _ => {
-                mesalink_push_error(ErrorCode::HandshakeNotComplete);
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Session or socket not initialized",
-                ))
+                mesalink_push_error(ErrorCode::NotConnected);
+                Err(io::Error::from(io::ErrorKind::NotConnected))
             }
         }
     }
@@ -237,11 +226,8 @@ impl<'a> Write for MESALINK_SSL<'a> {
                 Ok(len)
             }
             _ => {
-                mesalink_push_error(ErrorCode::HandshakeNotComplete);
-                Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "Session or socket not initialized",
-                ))
+                mesalink_push_error(ErrorCode::NotConnected);
+                Err(io::Error::from(io::ErrorKind::NotConnected))
             }
         }
     }
@@ -253,11 +239,8 @@ impl<'a> Write for MESALINK_SSL<'a> {
                 ret
             }
             _ => {
-                mesalink_push_error(ErrorCode::HandshakeNotComplete);
-                Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "Session or socket not initialized",
-                ))
+                mesalink_push_error(ErrorCode::NotConnected);
+                Err(io::Error::from(io::ErrorKind::NotConnected))
             }
         }
     }
@@ -778,7 +761,10 @@ pub extern "C" fn mesalink_SSL_get_current_cipher(
             }
             None => std::ptr::null(),
         },
-        None => std::ptr::null(),
+        None => {
+            mesalink_push_error(ErrorCode::NotConnected);
+            std::ptr::null()
+        }
     }
 }
 
@@ -831,7 +817,7 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_name(
 ) -> *const c_char {
     if !cipher_ptr.is_null() {
         sanitize_ptr_return_null!(cipher_ptr);
-        CString::new("Error string not enabled").unwrap().into_raw()
+        CString::new("(Ciphersuite string not built-in)").unwrap().into_raw()
     } else {
         CString::new("(NONE)").unwrap().into_raw()
     }
@@ -878,7 +864,13 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_version(
 ) -> *const c_char {
     if !cipher_ptr.is_null() {
         sanitize_ptr_return_null!(cipher_ptr);
-        CString::new("TLS1.2").unwrap().into_raw()
+        let ciphersuite = unsafe { &*cipher_ptr };
+        let suite_number = ciphersuite.ciphersuite.suite.get_u16() & 0xffff;
+        if suite_number >> 8 == 0x13 {
+            CString::new("TLS1.3").unwrap().into_raw()
+        } else {
+            CString::new("TLS1.2").unwrap().into_raw()
+        }
     } else {
         CString::new("(NONE)").unwrap().into_raw()
     }
