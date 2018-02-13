@@ -170,23 +170,47 @@ impl<'a> Read for MESALINK_SSL<'a> {
             (Some(session), Some(io)) => loop {
                 match session.read(buf)? {
                     0 => if session.wants_write() {
-                        let _ = session.write_tls(io)?;
-                    } else if session.wants_read() {
-                        if session.read_tls(io)? == 0 {
-                            self.eof = true;
-                            return Ok(0); // EOF
-                        } else {
-                            if let Err(err) = session.process_new_packets() {
-                                if session.wants_write() {
-                                    let _ = session.write_tls(io);
+                        println!("Branch A");
+                        match session.write_tls(io) {
+                            Ok(_) => (), // ignore the result
+                            Err(e) => {
+                                if e.kind() == io::ErrorKind::WouldBlock {
+                                    self.error = ErrorCode::SslErrorWantWrite;
                                 }
-                                return Err(io::Error::new(io::ErrorKind::Other, err));
+                                return Err(e);
                             }
                         }
+                    } else if session.wants_read() {
+                        println!("Branch B, handshaking: {}", session.is_handshaking());
+                        match session.read_tls(io) {
+                            Ok(0) => { 
+                                println!("Branch B-1");
+                                self.eof = true;
+                                return Ok(0); // EOF
+                            },
+                            Err(e) => {
+                                println!("Branch B-2, handshaking: {}", session.is_handshaking());
+                                if e.kind() == io::ErrorKind::WouldBlock {
+                                    self.error = ErrorCode::SslErrorWantRead;
+                                }
+                                return Err(e);
+                            },
+                            Ok(_) => {
+                                println!("Branch B-3");
+                                if let Err(err) = session.process_new_packets() {
+                                    if session.wants_write() {
+                                        let _ = session.write_tls(io);
+                                    }
+                                    return Err(io::Error::new(io::ErrorKind::Other, err));
+                                }
+                            },
+                        }
                     } else {
+                        println!("Branch C");
                         return Ok(0); // EOF?
                     },
                     n => {
+                        println!("Branch D");
                         self.error = ErrorCode::SslErrorNone;
                         return Ok(n);
                     }
@@ -194,7 +218,7 @@ impl<'a> Read for MESALINK_SSL<'a> {
             },
             _ => {
                 mesalink_push_error(ErrorCode::HandshakeNotComplete);
-                Err(std::io::Error::new(
+                return Err(std::io::Error::new(
                     std::io::ErrorKind::Other,
                     "Session or socket not initialized",
                 ))
@@ -1096,15 +1120,10 @@ pub extern "C" fn mesalink_SSL_read(
     let buf = unsafe { std::slice::from_raw_parts_mut(buf_ptr, buf_len as usize) };
     match ssl.read(buf) {
         Ok(count) => count as c_int,
-        Err(e) => {
-            match e.kind() {
-                io::ErrorKind::WouldBlock => {
-                    ssl.error = ErrorCode::SslErrorWantRead;
-                    SslConstants::SslError as c_int
-                },
-                _ => SslConstants::SslFailure as c_int
-            }
-        }
+        Err(e) => match e.kind() {
+            io::ErrorKind::WouldBlock => SslConstants::SslError as c_int,
+            _ => SslConstants::SslFailure as c_int,
+        },
     }
 }
 
@@ -1127,10 +1146,10 @@ pub extern "C" fn mesalink_SSL_write(
     let buf = unsafe { std::slice::from_raw_parts(buf_ptr, buf_len as usize) };
     match ssl.write(buf) {
         Ok(count) => count as c_int,
-        Err(e) => {
-            mesalink_push_error(ErrorCode::from(e));
-            SslConstants::SslFailure as c_int
-        }
+        Err(e) => match e.kind() {
+            io::ErrorKind::WouldBlock => SslConstants::SslError as c_int,
+            _ => SslConstants::SslFailure as c_int,
+        },
     }
 }
 

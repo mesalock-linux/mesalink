@@ -26,7 +26,7 @@
 
 #define REQUEST "GET / HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\
         Accept-Encoding: identity\r\n\r\n"
-#define NONBLOCKING
+//#define NONBLOCKING
 
 int main(int argc, char *argv[])
 {
