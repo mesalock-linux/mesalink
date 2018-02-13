@@ -955,7 +955,8 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
 }
 
 /// `SSL_get_servername` - return a servername extension value of the specified
-/// type if provided in the Client Hello or NULL.
+/// type if provided in the Client Hello or NULL. The `type` argument is not
+/// used.
 ///
 /// ```
 /// #include <mesalink/openssl/ssl.h>

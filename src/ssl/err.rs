@@ -27,7 +27,7 @@ use rustls::TLSError;
 
 #[doc(hidden)]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub enum ErrorCode {
     // OpenSSL error codes
     SslErrorNone = 0,
@@ -150,22 +150,6 @@ impl ErrorCode {
     #[cfg(not(feature = "error_strings"))]
     fn as_str(&self) -> &'static str {
         "No support for error strings built-in"
-    }
-}
-
-impl std::error::Error for ErrorCode {
-    fn description(&self) -> &str {
-        self.as_str()
-    }
-
-    fn cause(&self) -> Option<&std::error::Error> {
-        None
-    }
-}
-
-impl std::fmt::Display for ErrorCode {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", *self as i32)
     }
 }
 

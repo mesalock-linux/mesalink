@@ -33,25 +33,20 @@ int main(int argc, char *argv[])
     int sockfd;
     struct hostent *hp;
     struct sockaddr_in addr;
-    char sendbuf[1024] = {0};
-    char recvbuf[1024] = {0};
+    char sendbuf[8192] = {0};
+    char recvbuf[8192] = {0};
     const char *hostname;
-
     SSL_CTX *ctx;
     SSL *ssl;
-
     if (argc != 2)
     {
         printf("Usage: %s <hostname>\n", argv[0]);
         exit(0);
     }
     hostname = argv[1];
-
     SSL_library_init();
     ERR_load_crypto_strings();
     SSL_load_error_strings();
-
-    // Try replace TLSv1_2_client_method with SSLv23_client_method
     ctx = SSL_CTX_new(TLSv1_3_client_method());
     if (ctx == NULL)
     {
@@ -59,7 +54,6 @@ int main(int argc, char *argv[])
         ERR_print_errors_fp(stderr);
         return -1;
     }
-
     if ((hp = gethostbyname(hostname)) == NULL)
     {
         fprintf(stderr, "[-] Gethostname error\n");
@@ -69,7 +63,6 @@ int main(int argc, char *argv[])
     memmove(&addr.sin_addr, hp->h_addr, hp->h_length);
     addr.sin_family = AF_INET;
     addr.sin_port = htons(443);
-
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) != 0)
     {
@@ -89,13 +82,11 @@ int main(int argc, char *argv[])
         ERR_print_errors_fp(stderr);
         return -1;
     }
-
 #ifdef NONBLOCKING
     int flags = fcntl(sockfd, F_GETFL, 0);
-    flags =  flags | O_NONBLOCK;
+    flags = flags | O_NONBLOCK;
     fcntl(sockfd, F_SETFL, flags);
 #endif
-
     if (SSL_set_fd(ssl, sockfd) != SSL_SUCCESS)
     {
         fprintf(stderr, "[-] SSL set fd failed\n");
@@ -115,12 +106,11 @@ int main(int argc, char *argv[])
             total_recvlen += strlen(recvbuf);
             printf("%s", recvbuf);
         };
-
         const char *tls_version;
-        if ((tls_version = SSL_get_version(ssl))) {
+        if ((tls_version = SSL_get_version(ssl)))
+        {
             printf("[+] TLS protocol version: %s\n", tls_version);
         }
-
         int cipher_bits = 0;
         SSL_get_cipher_bits(ssl, &cipher_bits);
         printf("[+] Negotiated ciphersuite: %s, enc_length=%d, version=%s\n",
