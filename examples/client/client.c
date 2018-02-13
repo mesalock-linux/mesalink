@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
     SSL_library_init();
     ERR_load_crypto_strings();
     SSL_load_error_strings();
-    ctx = SSL_CTX_new(TLSv1_3_client_method());
+    ctx = SSL_CTX_new(TLSv1_2_client_method());
     if (ctx == NULL)
     {
         fprintf(stderr, "[-] Context failed to create\n");

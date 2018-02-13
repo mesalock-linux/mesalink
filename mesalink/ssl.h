@@ -35,8 +35,6 @@ MESALINK_API void mesalink_SSL_load_error_strings(void);
 MESALINK_API void mesalink_ERR_load_error_strings(void);
 MESALINK_API void mesalink_ERR_free_error_strings(void);
 
-MESALINK_API const char *mesalink_ERR_reason_error_string(unsigned long);
-
 typedef MESALINK_METHOD *(*mesalink_method_func)(void);
 MESALINK_API MESALINK_METHOD *mesalink_SSLv3_client_method(void);
 MESALINK_API MESALINK_METHOD *mesalink_SSLv23_client_method(void);
