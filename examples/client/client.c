@@ -24,7 +24,7 @@
 #include <mesalink/openssl/ssl.h>
 #include <mesalink/openssl/err.h>
 
-#define REQUEST "GET / HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\
+#define REQUEST "GET / HTTP/1.0\r\nHost: %s\r\nConnection: close\r\n\
         Accept-Encoding: identity\r\n\r\n"
 //#define NONBLOCKING
 
