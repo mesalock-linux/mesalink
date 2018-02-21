@@ -168,6 +168,12 @@ impl<'a> Read for MESALINK_SSL<'a> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => loop {
+                self.error = match self.error {
+                    ErrorCode::SslErrorNone
+                    | ErrorCode::SslErrorWantRead
+                    | ErrorCode::SslErrorWantWrite => ErrorCode::SslErrorNone,
+                    _ => self.error,
+                };
                 match session.read(buf)? {
                     0 => if session.wants_write() {
                         match session.write_tls(io) {
@@ -817,7 +823,9 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_name(
 ) -> *const c_char {
     if !cipher_ptr.is_null() {
         sanitize_ptr_return_null!(cipher_ptr);
-        CString::new("(Ciphersuite string not built-in)").unwrap().into_raw()
+        CString::new("(Ciphersuite string not built-in)")
+            .unwrap()
+            .into_raw()
     } else {
         CString::new("(NONE)").unwrap().into_raw()
     }

@@ -47,7 +47,7 @@ This section lists a few vulnerabilities that affected other TLS libraries in
 
 ## Building the MesaLink library from source
 
-To build MesaLink from source, the following tools are needed:
+### To build MesaLink from source, the following tools are needed:
 
   * autoconf
   * automake
@@ -76,7 +76,7 @@ install them before proceeding. Note that MesaLink always targets the
 **current** stable and nightly release of Rust and Cargo. We do not gurantee
 backward compatibility with older releases.
 
-Download the source code from icode:
+### Download the source code from icode:
 ```
 $ git clone --recurse-submodules ssh://jingyiming@icode.baidu.com:8235/baidu/mesalink/mesalink
 ```
