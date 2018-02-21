@@ -103,7 +103,8 @@ The documents would be located at `target/doc/mesalink/index.html`
 MesaLink comes with two examples that demonstrate a TLS client and a TLS
 server. They are located at `examples/`.
 
-### A sample run of the client example program
+The client example connects to a remote HTTPS server and prints the server's
+response.
 
 ```
 $ ./examples/client/client api.ipify.org
@@ -128,14 +129,12 @@ Via: 1.1 vegur
 [+] Received 177 bytes
 ```
 
-### A sample run of the server example program
-
-This example comes with a pair of certificate and private key. The
-certificate file is in PEM format and contains a chain of certificates from
+The server example comes with a pair of certificate and private key. The
+certificate file is in the PEM format and contains a chain of certificates from
 the server's certificate to the root CA certificate. The private key file
-contains a PKCS8-encoded private key in PEM format. Once the server is up
-and running, open [https://127.0.0.1:8443](https://127.0.0.1:8443) and
-expect to see the hello message. 
+contains a PKCS8-encoded private key in the PEM format. Once the server is up
+and running, open [https://127.0.0.1:8443](https://127.0.0.1:8443) and expect to
+see the hello message. 
 
 ```
 $ ./examples/server/server
@@ -155,7 +154,7 @@ Accept-Encoding: gzip, deflate, br
 Accept-Language: en-US,en;q=0.9
 ```
 
-### Want Libcurl? No problem!
+## Want libcurl? No problem!
 MesaLink proudly supports libcurl as one of its TLS backends. To compile and
 install libcurl with the MesaLink backend, run the following commands:
 
@@ -169,21 +168,21 @@ $ make && make install
 We have tested git 2.16.2 linked with MesaLink-powered libcurl and everything goes
 well!
 
-### Crypto benchmarks
+## Crypto benchmarks
 MesaLink's underlying crypto library is
 [**Ring**](https://github.com/briansmith/ring), a safe and fast crypto using
-Rust. To compare the speed and throughput of MesaLink, we developed new
+Rust. To evaluate the speed and throughput of MesaLink, we developed new
 benchmarks for OpenSSL and wolfSSL based on the
 [crypto-bench](https://github.com/briansmith/crypto-bench) project. A summary of
-the available benchmarks is as follows:
+the available benchmarks is shown as follows:
 
 | Benchmark                           | Ring | OpenSSL/LibreSSL | wolfSSL |
 | ----------------------------------- | :--: | :--------------: | :-----: |
-| SHA-1 & SHA-2                       |  ✔️   |        ✔️         |    ✔️    |
-| AES-128-GCM<br> & AES-256-GCM       |  ✔️   |        ✔️         |    ✔️    |
+| SHA-1 & SHA-256 & SHA-512           |  ✔️   |        ✔️         |    ✔️    |
+| AES-128-GCM & AES-256-GCM           |  ✔️   |        ✔️         |    ✔️    |
 | Chacha20-Poly1305                   |  ✔️   |        ✔️         |    ✔️    |
-| ECDH (suite B)<br>key exchange      |  ✔️   |       TODO       |  TODO   |
-| X25519 (Curve25519)<br>key exchange |  ✔️   |       TODO       |  TODO   |
+| ECDH (suite B) key exchange         |  ✔️   |       TODO       |  TODO   |
+| X25519 (Curve25519) key exchange    |  ✔️   |       TODO       |  TODO   |
 
 To run the benchmarks, run the following. Note you must have OpenSSL/LibreSSL or
 wolfSSL installed to run the corresponding benchmarks.
@@ -195,10 +194,10 @@ $ (cd openssl && cargo bench)
 $ (cd wolfssl && cargo bench)
 ```
 
-### Maintainer
+## Maintainer
 
  * Yiming Jing <jingyiming@baidu.com>
 
-### License
+## License
 MesaLink is provided under the 3-Clause BSD license. For a copy, see the LICENSE
 file.
