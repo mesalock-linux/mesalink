@@ -19,6 +19,7 @@ following features that are considered secure for most use cases:
 * Safe and fast crypto implementations from Google's BoringSSL
 * ECDHE key exchange with forward secrecy
 * AES-GCM and Chacha20Poly1305 bulk encryption
+* Non-blocking I/O
 * Built-in Mozilla's CA root certificates
 
 ## Dodged bullets
@@ -154,6 +155,20 @@ Accept-Encoding: gzip, deflate, br
 Accept-Language: en-US,en;q=0.9
 ```
 
+### Want Libcurl? No problem!
+MesaLink proudly supports libcurl as one of its TLS backends. To compile and
+install libcurl with the MesaLink backend, run the following commands:
+
+```
+$ git clone https://github.com/kevinis/curl.git
+$ cd curl && git checkout mesalink
+$ autoreconf -i && ./configure --with-mesalink --without-ssl -without-gtls
+$ make && make install
+```
+
+We have tested git 2.16.2 linked with MesaLink-powered libcurl and everything goes
+well!
+
 ### Crypto benchmarks
 MesaLink's underlying crypto library is
 [**Ring**](https://github.com/briansmith/ring), a safe and fast crypto using
@@ -173,10 +188,11 @@ the available benchmarks is as follows:
 To run the benchmarks, run the following. Note you must have OpenSSL/LibreSSL or
 wolfSSL installed to run the corresponding benchmarks.
 ```
-$ git clone git@github.com:kevinis/crypto-bench.git -b dev
-$ (cd crypto-bench/ring && cargo bench)
-$ (cd crypto-bench/openssl && cargo bench)
-$ (cd crypto-bench/wolfssl && cargo bench)
+$ git clone https://github.com/kevinis/crypto-bench.git
+$ cd crypto-bench && git checkout dev
+$ (cd ring && cargo bench)
+$ (cd openssl && cargo bench)
+$ (cd wolfssl && cargo bench)
 ```
 
 ### Maintainer
