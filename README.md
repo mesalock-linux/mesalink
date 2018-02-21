@@ -154,6 +154,31 @@ Accept-Encoding: gzip, deflate, br
 Accept-Language: en-US,en;q=0.9
 ```
 
+### Crypto benchmarks
+MesaLink's underlying crypto library is
+[**Ring**](https://github.com/briansmith/ring), a safe and fast crypto using
+Rust. To compare the speed and throughput of MesaLink, we developed new
+benchmarks for OpenSSL and wolfSSL based on the
+[crypto-bench](https://github.com/briansmith/crypto-bench) project. A summary of
+the available benchmarks is as follows:
+
+| Benchmark                           | Ring | OpenSSL/LibreSSL | wolfSSL |
+| ----------------------------------- | :--: | :--------------: | :-----: |
+| SHA-1 & SHA-2                       |  ✔️   |        ✔️         |    ✔️    |
+| AES-128-GCM<br> & AES-256-GCM       |  ✔️   |        ✔️         |    ✔️    |
+| Chacha20-Poly1305                   |  ✔️   |        ✔️         |    ✔️    |
+| ECDH (suite B)<br>key exchange      |  ✔️   |       TODO       |  TODO   |
+| X25519 (Curve25519)<br>key exchange |  ✔️   |       TODO       |  TODO   |
+
+To run the benchmarks, run the following. Note you must have OpenSSL/LibreSSL or
+wolfSSL installed to run the corresponding benchmarks.
+```
+$ git clone git@github.com:kevinis/crypto-bench.git -b dev
+$ (cd crypto-bench/ring && cargo bench)
+$ (cd crypto-bench/openssl && cargo bench)
+$ (cd crypto-bench/wolfssl && cargo bench)
+```
+
 ### Maintainer
 
  * Yiming Jing <jingyiming@baidu.com>

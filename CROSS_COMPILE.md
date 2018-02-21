@@ -32,7 +32,9 @@ commonly used target triples for C/C++ and Rust, respectively.
 | i686-linux-android | i686-linux-android | 32bit x86 Android |
 | x86_64-linux-android | x86_64-linux-android | 64bit x86_64 Android |
 
-A list of target tuples supported by Rust can be found from [Rust Platform Support](https://forge.rust-lang.org/platform-support.html), or by executing the following command:
+A list of target tuples supported by Rust can be found from [Rust Platform
+Support](https://forge.rust-lang.org/platform-support.html), or by executing the
+following command:
 ```
 $ rustc --print target-list
 ```
@@ -61,7 +63,8 @@ Toolchains](https://developer.android.com/ndk/guides/standalone_toolchain.html)
 to setup the toolchain if you are cross-compiling for Android.
 
 ## Add a Rust target
-To cross compile Rust code, you would need to add a `target` with rustup. For example,
+To cross compile Rust code, you would need to add a `target` with rustup. For
+example,
 
 ```
 $ rustup target add arm-unknown-linux-gnueabi
