@@ -39,7 +39,6 @@ use std::net::TcpStream;
 use std::io;
 use std::io::{Read, Write};
 use std::os::unix::io::{AsRawFd, FromRawFd};
-use std::ffi::CString;
 use libc::{c_char, c_int, c_uchar};
 use rustls::{self, Session};
 use ring;
@@ -60,6 +59,13 @@ lazy_static! {
         }
     };
 }
+
+const CONST_NONE_STR: &'static [u8] = b"NONE\0";
+const CONST_TLS12_STR: &'static [u8] = b"TLS1.2\0";
+const CONST_TLS13_STR: &'static [u8] = b"TLS1.3\0";
+
+#[cfg(not(feature = "error_strings"))]
+const CONST_NOTBUILTIN_STR: &'static [u8] = b"(Ciphersuite string not built-in)\0";
 
 /// An OpenSSL Cipher object
 #[repr(C)]
@@ -747,6 +753,7 @@ pub extern "C" fn mesalink_SSL_set_SSL_CTX(
 /// `SSL_get_current_cipher` - returns a pointer to an SSL_CIPHER object
 /// containing the description of the actually used cipher of a connection
 /// established with the ssl object. See SSL_CIPHER_get_name for more details.
+/// Note that this API allocates memory and needs to be properly freed. freed.
 ///
 /// ```
 /// #include <mesalink/openssl/ssl.h>
@@ -756,20 +763,20 @@ pub extern "C" fn mesalink_SSL_set_SSL_CTX(
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_current_cipher(
     ssl_ptr: *const MESALINK_SSL,
-) -> *const MESALINK_CIPHER {
+) -> *mut MESALINK_CIPHER {
     sanitize_ptr_return_null!(ssl_ptr);
     let ssl = unsafe { &*ssl_ptr };
     match ssl.session.as_ref() {
         Some(session) => match session.get_negotiated_ciphersuite() {
             Some(cs) => {
                 let cipher = MESALINK_CIPHER::new(cs);
-                Box::into_raw(Box::new(cipher))
+                Box::into_raw(Box::new(cipher)) // Allocates memory!
             }
-            None => std::ptr::null(),
+            None => std::ptr::null_mut(),
         },
         None => {
             mesalink_push_error(ErrorCode::NotConnected);
-            std::ptr::null()
+            std::ptr::null_mut()
         }
     }
 }
@@ -792,27 +799,27 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_name(
         sanitize_ptr_return_null!(cipher_ptr);
         let ciphersuite = unsafe { &*cipher_ptr };
         let name = suite_to_static_str(ciphersuite.ciphersuite.suite.get_u16());
-        CString::new(name).unwrap().into_raw()
+        name.as_ptr() as *const c_char
     } else {
-        CString::new("(NONE)").unwrap().into_raw()
+        CONST_NONE_STR.as_ptr() as *const c_char
     }
 }
 
 #[cfg(feature = "error_strings")]
-fn suite_to_static_str(suite: u16) -> &'static str {
+fn suite_to_static_str(suite: u16) -> &'static [u8] {
     match suite {
         #[cfg(feature = "chachapoly")]
-        0x1303 => "TLS13_CHACHA20_POLY1305_SHA256",
-        0xcca8 => "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
-        0xcca9 => "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256",
+        0x1303 => b"TLS13_CHACHA20_POLY1305_SHA256\0",
+        0xcca8 => b"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256\0",
+        0xcca9 => b"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256\0",
         #[cfg(feature = "aesgcm")]
-        0x1301 => "TLS13_AES_128_GCM_SHA256",
-        0x1302 => "TLS13_AES_256_GCM_SHA384",
-        0xc02b => "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
-        0xc02c => "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
-        0xc02f => "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
-        0xc030 => "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
-        _ => "Unsupported ciphersuite",
+        0x1301 => b"TLS13_AES_128_GCM_SHA256\0",
+        0x1302 => b"TLS13_AES_256_GCM_SHA384\0",
+        0xc02b => b"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256\0",
+        0xc02c => b"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384\0",
+        0xc02f => b"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256\0",
+        0xc030 => b"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384\0",
+        _ => b"Unsupported ciphersuite\0",
     }
 }
 
@@ -823,11 +830,9 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_name(
 ) -> *const c_char {
     if !cipher_ptr.is_null() {
         sanitize_ptr_return_null!(cipher_ptr);
-        CString::new("(Ciphersuite string not built-in)")
-            .unwrap()
-            .into_raw()
+        CONST_NOTBUILTIN_STR.as_ptr() as *const c_char
     } else {
-        CString::new("(NONE)").unwrap().into_raw()
+        CONST_NONE_STR.as_ptr() as *const c_char
     }
 }
 
@@ -875,12 +880,12 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_version(
         let ciphersuite = unsafe { &*cipher_ptr };
         let suite_number = ciphersuite.ciphersuite.suite.get_u16() & 0xffff;
         if suite_number >> 8 == 0x13 {
-            CString::new("TLS1.3").unwrap().into_raw()
+            CONST_TLS13_STR.as_ptr() as *const c_char
         } else {
-            CString::new("TLS1.2").unwrap().into_raw()
+            CONST_TLS12_STR.as_ptr() as *const c_char
         }
     } else {
-        CString::new("(NONE)").unwrap().into_raw()
+        CONST_NONE_STR.as_ptr() as *const c_char
     }
 }
 
@@ -894,7 +899,9 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_version(
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_cipher_name(ssl_ptr: *const MESALINK_SSL) -> *const c_char {
     let cipher = mesalink_SSL_get_current_cipher(ssl_ptr);
-    mesalink_SSL_CIPHER_get_name(cipher)
+    let ret = mesalink_SSL_CIPHER_get_name(cipher);
+    let _ = unsafe { Box::from_raw(cipher) };
+    ret
 }
 
 /// `SSL_get_cipher` - obtain the name of the currently used cipher.
@@ -922,7 +929,9 @@ pub extern "C" fn mesalink_SSL_get_cipher_bits(
     bits_ptr: *mut c_int,
 ) -> c_int {
     let cipher = mesalink_SSL_get_current_cipher(ssl_ptr);
-    mesalink_SSL_CIPHER_get_bits(cipher, bits_ptr)
+    let ret = mesalink_SSL_CIPHER_get_bits(cipher, bits_ptr);
+    let _ = unsafe { Box::from_raw(cipher) };
+    ret
 }
 
 /// `SSL_get_cipher_version` - returns the protocol name.
@@ -935,7 +944,9 @@ pub extern "C" fn mesalink_SSL_get_cipher_bits(
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_cipher_version(ssl_ptr: *const MESALINK_SSL) -> *const c_char {
     let cipher = mesalink_SSL_get_current_cipher(ssl_ptr);
-    mesalink_SSL_CIPHER_get_version(cipher)
+    let ret = mesalink_SSL_CIPHER_get_version(cipher);
+    let _ = unsafe { Box::from_raw(cipher) };
+    ret
 }
 
 /// `SSL_set_tlsext_host_name` - set the server name indication ClientHello
@@ -1190,9 +1201,9 @@ pub extern "C" fn mesalink_SSL_get_version(ssl_ptr: *mut MESALINK_SSL) -> *const
     let ssl = unsafe { &*ssl_ptr };
     match ssl.session {
         Some(ref s) => match s.get_protocol_version() {
-            Some(rustls::ProtocolVersion::TLSv1_2) => CString::new("TLSv1.2").unwrap().into_raw(),
-            Some(rustls::ProtocolVersion::TLSv1_3) => CString::new("TLSv1.3").unwrap().into_raw(),
-            _ => CString::new("unknown").unwrap().into_raw(),
+            Some(rustls::ProtocolVersion::TLSv1_2) => CONST_TLS12_STR.as_ptr() as *const c_char,
+            Some(rustls::ProtocolVersion::TLSv1_3) => CONST_TLS13_STR.as_ptr() as *const c_char,
+            _ => CONST_NONE_STR.as_ptr() as *const c_char,
         },
         None => {
             mesalink_push_error(ErrorCode::NotConnected);
