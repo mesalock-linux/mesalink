@@ -123,13 +123,13 @@ impl MESALINK_METHOD {
 #[repr(C)]
 pub struct MESALINK_CTX<'a> {
     magic: [u8; MAGIC_SIZE],
-    methods: &'a mut MESALINK_METHOD,
+    methods: &'a MESALINK_METHOD,
     certificates: Option<Vec<rustls::Certificate>>,
     private_key: Option<rustls::PrivateKey>,
 }
 
 impl<'a> MESALINK_CTX<'a> {
-    fn new(method: &'a mut MESALINK_METHOD) -> MESALINK_CTX {
+    fn new(method: &'a MESALINK_METHOD) -> MESALINK_CTX {
         MESALINK_CTX {
             magic: *MAGIC,
             methods: method,
@@ -584,9 +584,9 @@ pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
 /// SSL_CTX *SSL_CTX_new(const SSL_METHOD *method);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_CTX_new<'a>(method_ptr: *mut MESALINK_METHOD) -> *mut MESALINK_CTX<'a> {
+pub extern "C" fn mesalink_CTX_new<'a>(method_ptr: *const MESALINK_METHOD) -> *mut MESALINK_CTX<'a> {
     sanitize_ptr_return_null!(method_ptr);
-    let method = unsafe { &mut *method_ptr };
+    let method = unsafe { &*method_ptr };
     let context = MESALINK_CTX::new(method);
     Box::into_raw(Box::new(context))
 }

@@ -28,6 +28,7 @@ use rustls::TLSError;
 #[doc(hidden)]
 #[repr(C)]
 #[derive(Copy, Clone)]
+#[cfg_attr(feature = "error_strings", derive(Debug))]
 pub enum ErrorCode {
     // OpenSSL error codes
     SslErrorNone = 0,

@@ -31,16 +31,16 @@
  * limitations under the License.
  */
 
-extern crate base64;
 extern crate env_logger;
+extern crate libc;
+extern crate mesalink_internals;
 
 use std::env;
 use std::process;
 use std::net;
-use std::io;
-use libc;
-use mesalink::ssl::ssl::{ProtocolVersion, MESALINK_CTX, MESALINK_METHOD, MESALINK_SSL};
-use mesalink::ssl::err::ErrorCode;
+use std::io::Write;
+use mesalink_internals::ssl::{err, ssl};
+use mesalink_internals::ssl::err::ErrorCode;
 
 static BOGO_NACK: i32 = 89;
 
@@ -82,6 +82,10 @@ impl Options {
             check_close_notify: false,
             key_file: "".to_string(),
             cert_file: "".to_string(),
+            support_tls13: true,
+            support_tls12: true,
+            min_version: None,
+            max_version: None,
             read_size: 512,
         }
     }
@@ -113,7 +117,6 @@ fn quit_err(why: &str) -> ! {
 fn handle_err(err: ErrorCode) -> ! {
     use std::{thread, time};
 
-    println!("MesaLink error: {:?}", err);
     thread::sleep(time::Duration::from_millis(100));
 
     match err {
@@ -136,55 +139,67 @@ fn handle_err(err: ErrorCode) -> ! {
     }
 }
 
-fn setup_ctx(opts: &Options) -> *mut MESALINK_CTX {
-    let method = match (opts.tls12_supported(), opts.tls12_supported(), opts.server) {
-        (true, true, false) => mesalink_TLS_client_method(),
-        (true, true, true) => mesalink_TLS_server_method(),
-        (true, false, false) => mesalink_TLSv1_2_client_method(),
-        (true, false, true) => mesalink_TLSv1_2_server_method(),
-        (false, true, false) => mesalink_TLSv1_3_client_method(),
-        (false, true, true) => mesalink_TLSv1_3_server_method(),
+fn setup_ctx(opts: &Options) -> *mut ssl::MESALINK_CTX {
+    let method = match (opts.tls12_supported(), opts.tls13_supported(), opts.server) {
+        (true, true, false) => ssl::mesalink_TLS_client_method(),
+        (true, true, true) => ssl::mesalink_TLS_server_method(),
+        (true, false, false) => ssl::mesalink_TLSv1_2_client_method(),
+        (true, false, true) => ssl::mesalink_TLSv1_2_server_method(),
+        (false, true, false) => ssl::mesalink_TLSv1_3_client_method(),
+        (false, true, true) => ssl::mesalink_TLSv1_3_server_method(),
         _ => return std::ptr::null_mut(),
     };
-    let ctx = mesalink_CTX_new(method);
+    let ctx = ssl::mesalink_CTX_new(method);
     if opts.server {
-        SSL_CTX_use_certificate_chain_file(ctx, opts.cert_file, 0);
-        SSL_CTX_use_PrivateKey_file(ctx, opts.key_file, 0);
-        SSL_CTX_check_private_key(ctx);
+        ssl::mesalink_SSL_CTX_use_certificate_chain_file(
+            ctx,
+            opts.cert_file.as_ptr() as *const libc::c_char,
+            0,
+        );
+        ssl::mesalink_SSL_CTX_use_PrivateKey_file(
+            ctx,
+            opts.key_file.as_ptr() as *const libc::c_char,
+            0,
+        );
+        ssl::mesalink_SSL_CTX_check_private_key(ctx);
     }
     ctx
 }
 
-fn do_connection(opts: &Options, ctx: *mut MESALINK_CTX) {
+fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX) {
     use std::os::unix::io::AsRawFd;
-    let mut conn = net::TcpStream::connect(("localhost", opts.port)).expect("cannot connect");
+    let conn = net::TcpStream::connect(("localhost", opts.port)).expect("cannot connect");
     let mut sent_shutdown = false;
     let mut seen_eof = false;
 
-    let ssl: *mut MESALINK_SSL = mesalink_SSL_new(ctx);
+    let ssl: *mut ssl::MESALINK_SSL = ssl::mesalink_SSL_new(ctx);
 
-    mesalink_SSL_set_tlsext_host_name(ssl, opt.host_name);
-    mesalink_SSL_set_fd(ssl, conn.as_raw_fd());
+    ssl::mesalink_SSL_set_tlsext_host_name(ssl, opts.host_name.as_ptr() as *const libc::c_char);
+    ssl::mesalink_SSL_set_fd(ssl, conn.as_raw_fd());
 
-    if !opt.server {
-        mesalink_SSL_connect(ssl);
+    if !opts.server {
+        ssl::mesalink_SSL_connect(ssl);
     } else {
-        mesalink_SSL_accept(ssl);
+        ssl::mesalink_SSL_accept(ssl);
     }
 
-    if opt.shim_writes_first {
-        mesalink_SSL_write(
+    if opts.shim_writes_first {
+        ssl::mesalink_SSL_write(
             ssl,
             b"hello world\0".as_ptr() as *const libc::c_uchar,
             11 as libc::c_int,
         );
     }
 
-    let mut recvlen: libc::c_int = -1;
+    let mut len;
     let mut buf = [0u8; 1024];
     loop {
-        recvlen = mesalink_SSL_read(ssl, opts.read_size as libc::c_int);
-        if recvlen == 0 {
+        len = ssl::mesalink_SSL_read(
+            ssl,
+            buf.as_mut_ptr() as *mut libc::c_uchar,
+            opts.read_size as libc::c_int,
+        );
+        if len == 0 {
             if opts.check_close_notify {
                 if !seen_eof {
                     seen_eof = true;
@@ -195,21 +210,21 @@ fn do_connection(opts: &Options, ctx: *mut MESALINK_CTX) {
                 println!("EOF (plain)");
                 return;
             }
-        } else if recvlen < 0 {
-            let err: ErrorCode = ErrorCode::from(mesalink_ERR_get_error());
+        } else if len < 0 {
+            let err: ErrorCode = ErrorCode::from(err::mesalink_ERR_get_error());
             handle_err(err);
         }
 
         if opts.shim_shut_down && !sent_shutdown {
-            mesalink_SSL_shutdown(ssl);
-            send_shutdown = true;
+            ssl::mesalink_SSL_shutdown(ssl);
+            sent_shutdown = true;
         }
 
-        for b in bug.iter_mut() {
+        for b in buf.iter_mut() {
             *b ^= 0xff;
         }
 
-        mesalink_SSL_write(ssl, buf.as_ptr() as *const libc::c_uchar, recvlen);
+        ssl::mesalink_SSL_write(ssl, buf.as_ptr() as *const libc::c_uchar, len);
     }
 }
 
@@ -267,7 +282,6 @@ fn main() {
                     process::exit(BOGO_NACK);
                 }
             }
-            "-max-send-fragment" |
             "-max-cert-list" |
             "-expect-curve-id" |
             "-expect-resume-curve-id" |
@@ -401,7 +415,7 @@ fn main() {
     println!("opts {:?}", opts);
 
     for _ in 0..opts.resume_count + 1 {
-        let ssl_ctx: *mut MESALINK_CTX = setup_ctx(&opts);
+        let ssl_ctx = setup_ctx(&opts);
         do_connection(&opts, ssl_ctx);
     }
 }
