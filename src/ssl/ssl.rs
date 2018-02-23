@@ -94,14 +94,14 @@ impl MESALINK_CIPHER {
 #[repr(C)]
 pub struct MESALINK_METHOD {
     magic: [u8; MAGIC_SIZE],
-    tls_version: rustls::ProtocolVersion,
+    versions: Vec<rustls::ProtocolVersion>,
 }
 
 impl MESALINK_METHOD {
-    fn new(version: rustls::ProtocolVersion) -> MESALINK_METHOD {
+    fn new(versions: Vec<rustls::ProtocolVersion>) -> MESALINK_METHOD {
         MESALINK_METHOD {
             magic: *MAGIC,
-            tls_version: version,
+            versions: versions,
         }
     }
 }
@@ -121,18 +121,18 @@ impl MESALINK_METHOD {
 /// CA certificates and default ciphersuites. Support for configurable
 /// ciphersuites will be added soon in the next release.
 #[repr(C)]
-pub struct MESALINK_CTX {
+pub struct MESALINK_CTX<'a> {
     magic: [u8; MAGIC_SIZE],
-    methods: Option<Vec<rustls::ProtocolVersion>>,
+    methods: &'a mut MESALINK_METHOD,
     certificates: Option<Vec<rustls::Certificate>>,
     private_key: Option<rustls::PrivateKey>,
 }
 
-impl MESALINK_CTX {
-    fn new<'a>(method: &'a MESALINK_METHOD) -> MESALINK_CTX {
+impl<'a> MESALINK_CTX<'a> {
+    fn new(method: &'a mut MESALINK_METHOD) -> MESALINK_CTX {
         MESALINK_CTX {
             magic: *MAGIC,
-            methods: Some(vec![method.tls_version]),
+            methods: method,
             certificates: None,
             private_key: None,
         }
@@ -147,7 +147,7 @@ impl MESALINK_CTX {
 #[repr(C)]
 pub struct MESALINK_SSL<'a> {
     magic: [u8; MAGIC_SIZE],
-    context: &'a mut MESALINK_CTX,
+    context: &'a mut MESALINK_CTX<'a>,
     hostname: Option<&'a std::ffi::CStr>,
     io: Option<TcpStream>,
     session: Option<Box<Session>>,
@@ -156,7 +156,7 @@ pub struct MESALINK_SSL<'a> {
 }
 
 impl<'a> MESALINK_SSL<'a> {
-    fn new(ctx: &'a mut MESALINK_CTX) -> MESALINK_SSL {
+    fn new(ctx: &'a mut MESALINK_CTX<'a>) -> MESALINK_SSL<'a> {
         MESALINK_SSL {
             magic: *MAGIC,
             context: ctx,
@@ -421,10 +421,7 @@ pub extern "C" fn mesalink_TLSv1_1_client_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_2_client_method() -> *const MESALINK_METHOD {
-    let method = MESALINK_METHOD {
-        magic: *MAGIC,
-        tls_version: rustls::ProtocolVersion::TLSv1_2,
-    };
+    let method = MESALINK_METHOD::new(vec![rustls::ProtocolVersion::TLSv1_2]);
     Box::into_raw(Box::new(method))
 }
 
@@ -440,10 +437,26 @@ pub extern "C" fn mesalink_TLSv1_2_client_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_3_client_method() -> *const MESALINK_METHOD {
-    let method = MESALINK_METHOD {
-        magic: *MAGIC,
-        tls_version: rustls::ProtocolVersion::TLSv1_3,
-    };
+    let method = MESALINK_METHOD::new(vec![rustls::ProtocolVersion::TLSv1_3]);
+    Box::into_raw(Box::new(method))
+}
+
+/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
+/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
+/// pointers. Others simply return NULL.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const SSL_METHOD *TLSv1_client_method(void);
+/// ```
+///
+#[no_mangle]
+pub extern "C" fn mesalink_TLS_client_method() -> *const MESALINK_METHOD {
+    let method = MESALINK_METHOD::new(vec![
+        rustls::ProtocolVersion::TLSv1_2,
+        rustls::ProtocolVersion::TLSv1_3,
+    ]);
     Box::into_raw(Box::new(method))
 }
 
@@ -523,7 +536,7 @@ pub extern "C" fn mesalink_TLSv1_1_server_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_2_server_method() -> *const MESALINK_METHOD {
-    let method = MESALINK_METHOD::new(rustls::ProtocolVersion::TLSv1_2);
+    let method = MESALINK_METHOD::new(vec![rustls::ProtocolVersion::TLSv1_2]);
     Box::into_raw(Box::new(method))
 }
 
@@ -539,7 +552,26 @@ pub extern "C" fn mesalink_TLSv1_2_server_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_3_server_method() -> *const MESALINK_METHOD {
-    let method = MESALINK_METHOD::new(rustls::ProtocolVersion::TLSv1_3);
+    let method = MESALINK_METHOD::new(vec![rustls::ProtocolVersion::TLSv1_3]);
+    Box::into_raw(Box::new(method))
+}
+
+/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
+/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
+/// pointers. Others simply return NULL.
+///
+/// ```
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const SSL_METHOD *TLSv1_3_server_method(void);
+/// ```
+///
+#[no_mangle]
+pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
+    let method = MESALINK_METHOD::new(vec![
+        rustls::ProtocolVersion::TLSv1_2,
+        rustls::ProtocolVersion::TLSv1_3,
+    ]);
     Box::into_raw(Box::new(method))
 }
 
@@ -552,11 +584,10 @@ pub extern "C" fn mesalink_TLSv1_3_server_method() -> *const MESALINK_METHOD {
 /// SSL_CTX *SSL_CTX_new(const SSL_METHOD *method);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut MESALINK_CTX {
+pub extern "C" fn mesalink_CTX_new<'a>(method_ptr: *mut MESALINK_METHOD) -> *mut MESALINK_CTX<'a> {
     sanitize_ptr_return_null!(method_ptr);
-    let method = unsafe { &*method_ptr };
+    let method = unsafe { &mut *method_ptr };
     let context = MESALINK_CTX::new(method);
-    let _ = unsafe { Box::from_raw(method_ptr) }; // Always free the method object
     Box::into_raw(Box::new(context))
 }
 
@@ -707,7 +738,7 @@ pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX)
 /// SSL *SSL_new(SSL_CTX *ctx);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_new<'a>(ctx_ptr: *mut MESALINK_CTX) -> *mut MESALINK_SSL<'a> {
+pub extern "C" fn mesalink_SSL_new<'a>(ctx_ptr: *mut MESALINK_CTX<'a>) -> *mut MESALINK_SSL<'a> {
     sanitize_ptr_return_null!(ctx_ptr);
     let ctx = unsafe { &mut *ctx_ptr };
     let ssl = MESALINK_SSL::new(ctx);
@@ -738,10 +769,10 @@ pub extern "C" fn mesalink_SSL_get_SSL_CTX(ssl_ptr: *const MESALINK_SSL) -> *con
 /// SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_set_SSL_CTX(
-    ssl_ptr: *mut MESALINK_SSL,
-    ctx_ptr: *mut MESALINK_CTX,
-) -> *mut MESALINK_CTX {
+pub extern "C" fn mesalink_SSL_set_SSL_CTX<'a>(
+    ssl_ptr: *mut MESALINK_SSL<'a>,
+    ctx_ptr: *mut MESALINK_CTX<'a>,
+) -> *mut MESALINK_CTX<'a> {
     sanitize_ptr_return_null!(ssl_ptr);
     let ssl = unsafe { &mut *ssl_ptr };
     sanitize_ptr_return_null!(ctx_ptr);
@@ -1049,11 +1080,7 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
         if let Ok(hostname_str) = hostname.to_str() {
             if let Ok(dns_name) = webpki::DNSNameRef::try_from_ascii_str(hostname_str) {
                 let mut client_config = rustls::ClientConfig::new();
-                if let Some(ref versions) = ssl.context.methods {
-                    client_config.versions = versions.clone();
-                } else {
-                    // Use defaults if no TLS version is set
-                }
+                client_config.versions = ssl.context.methods.versions.clone();
                 client_config
                     .root_store
                     .add_server_trust_anchors(&TLS_SERVER_ROOTS);

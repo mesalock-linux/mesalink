@@ -30,9 +30,19 @@ webpki-roots = "0.14.0"
 libc = "0.2"
 lazy_static = "1.0.0"
 
+[dev-dependencies]
+base64 = "0.9"
+log = "0.4"
+env_logger = "0.4.2"
+
 [patch.crates-io]
 rustls = { path = "./rustls" }
 
 [profile.release]
 lto = true
 panic = "abort"
+
+[[example]]
+name = "mesalink_shim"
+path = "bogo/mesalink_shim.rs"
+required-features = ["error_strings", "tls13", "aesgcm", "chachapoly", "x25519", "ecdh", "ecdsa"]

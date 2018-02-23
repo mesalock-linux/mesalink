@@ -39,6 +39,7 @@ typedef MESALINK_SSL SSL;
 #define TLSv1_1_client_method mesalink_TLSv1_1_client_method
 #define TLSv1_2_client_method mesalink_TLSv1_2_client_method
 #define TLSv1_3_client_method mesalink_TLSv1_3_client_method
+#define TLS_client_method mesalink_TLS_client_method
 
 #define SSLv3_server_method mesalink_SSLv3_server_method
 #define SSLv23_server_method mesalink_SSLv3_server_method
@@ -46,6 +47,7 @@ typedef MESALINK_SSL SSL;
 #define TLSv1_1_server_method mesalink_TLSv1_1_server_method
 #define TLSv1_2_server_method mesalink_TLSv1_2_server_method
 #define TLSv1_3_server_method mesalink_TLSv1_3_server_method
+#define TLS_server_method mesalink_TLS_server_method
 
 #define SSL_CTX_new mesalink_CTX_new
 #define SSL_CTX_use_certificate_chain_file mesalink_SSL_CTX_use_certificate_chain_file

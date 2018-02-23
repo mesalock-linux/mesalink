@@ -186,12 +186,12 @@ impl From<TLSError> for ErrorCode {
                 got_type,
             } => ErrorCode::InappropriateHandshakeMessage,
             TLSError::CorruptMessage => ErrorCode::CorruptMessage,
-            TLSError::CorruptMessagePayload(_) => ErrorCode::CorruptMessagePayload,
+            TLSError::CorruptMessagePayload(_) => ErrorCode::CorruptMessagePayload, // TODO: extend to cover more specific types
             TLSError::NoCertificatesPresented => ErrorCode::NoCertificatesPresented,
             TLSError::DecryptError => ErrorCode::DecryptError,
             TLSError::PeerIncompatibleError(_) => ErrorCode::PeerIncompatibleError,
             TLSError::PeerMisbehavedError(_) => ErrorCode::PeerMisbehavedError,
-            TLSError::AlertReceived(_) => ErrorCode::AlertReceived,
+            TLSError::AlertReceived(_) => ErrorCode::AlertReceived, // TODO: extend to cover more specific alerts
             TLSError::WebPKIError(_) => ErrorCode::WebPKIError,
             TLSError::InvalidSCT(_) => ErrorCode::InvalidSCT,
             TLSError::General(_) => ErrorCode::General,
