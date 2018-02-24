@@ -42,6 +42,6 @@ lto = true
 panic = "abort"
 
 [[example]]
-name = "mesalink_shim"
-path = "bogo/mesalink_shim.rs"
+name = "bogo_shim"
+path = "bogo/bogo_shim.rs"
 required-features = ["error_strings", "tls13", "aesgcm", "chachapoly", "x25519", "ecdh", "ecdsa"]

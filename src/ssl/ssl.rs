@@ -39,7 +39,7 @@ use std::net::TcpStream;
 use std::io;
 use std::io::{Read, Write};
 use std::os::unix::io::{AsRawFd, FromRawFd};
-use libc::{c_char, c_int, c_uchar};
+use libc::{c_char, c_int, c_uchar, c_ulong};
 use rustls::{self, Session};
 use ring;
 use ring::rand::SecureRandom;
@@ -180,8 +180,8 @@ impl<'a> Read for MESALINK_SSL<'a> {
                     | ErrorCode::SslErrorWantWrite => ErrorCode::SslErrorNone,
                     _ => self.error,
                 };
-                match session.read(buf)? {
-                    0 => if session.wants_write() {
+                match session.read(buf) {
+                    Ok(0) => if session.wants_write() {
                         match session.write_tls(io) {
                             Ok(_) => (), // ignore the result
                             Err(e) => {
@@ -194,8 +194,13 @@ impl<'a> Read for MESALINK_SSL<'a> {
                     } else if session.wants_read() {
                         match session.read_tls(io) {
                             Ok(0) => {
-                                self.eof = true;
-                                return Ok(0); // EOF
+                                if !session.is_handshaking() {
+                                    self.eof = true;
+                                    return Ok(0); // EOF
+                                } else {
+                                    self.error = ErrorCode::UnexpectedEof;
+                                    return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
+                                }
                             }
                             Err(e) => {
                                 if e.kind() == io::ErrorKind::WouldBlock {
@@ -203,20 +208,25 @@ impl<'a> Read for MESALINK_SSL<'a> {
                                 }
                                 return Err(e);
                             }
-                            Ok(_) => if let Err(err) = session.process_new_packets() {
+                            Ok(_) => if let Err(tls_err) = session.process_new_packets() {
                                 if session.wants_write() {
                                     let _ = session.write_tls(io);
                                 }
-                                return Err(io::Error::new(io::ErrorKind::Other, err));
+                                self.error = ErrorCode::from(tls_err.clone());
+                                return Err(io::Error::new(io::ErrorKind::InvalidData, tls_err));
                             },
                         }
                     } else {
                         self.error = ErrorCode::SslErrorZeroReturn;
                         return Ok(0);
                     },
-                    n => {
+                    Ok(n) => {
                         self.error = ErrorCode::SslErrorNone;
                         return Ok(n);
+                    },
+                    Err(e) => {
+                        self.error = ErrorCode::from(e.raw_os_error().unwrap() as c_ulong);
+                        return Err(e);
                     }
                 }
             },
@@ -1161,7 +1171,7 @@ pub extern "C" fn mesalink_SSL_read(
         Ok(count) => count as c_int,
         Err(e) => match e.kind() {
             io::ErrorKind::WouldBlock => SslConstants::SslError as c_int,
-            _ => SslConstants::SslFailure as c_int,
+            _ => SslConstants::SslFailure as c_int, // call SSL_get_error to find out why
         },
     }
 }
