@@ -1,0 +1,14 @@
+#!/bin/sh
+
+set -e
+
+# a known-good commit
+COMMIT=9c33ae85621ef8e00a42309b5101e0bedd02b816
+
+rm -f runner.tar.gz
+wget https://boringssl.googlesource.com/boringssl/+archive/$COMMIT/ssl/test/runner.tar.gz
+mkdir -p bogo
+cd bogo/
+tar -xzf ../runner.tar.gz
+patch -p1 < ../patches/testerrormap.diff
+go test -c

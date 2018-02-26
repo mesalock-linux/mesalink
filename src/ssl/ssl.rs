@@ -212,6 +212,7 @@ impl<'a> Read for MESALINK_SSL<'a> {
                                 if session.wants_write() {
                                     let _ = session.write_tls(io);
                                 }
+                                println!("process_new_packets error: {:?}", tls_err);
                                 self.error = ErrorCode::from(tls_err.clone());
                                 return Err(io::Error::new(io::ErrorKind::InvalidData, tls_err));
                             },
@@ -737,6 +738,17 @@ pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX)
     }
     mesalink_push_error(ErrorCode::BadKey);
     SslConstants::SslFailure as c_int
+}
+
+///`SSL_CTX_set_verify` - set peer certificate verification parameters
+///
+/// ```
+/// void SSL_CTX_set_verify(SSL_CTX *ctx, int mode,
+///                         int (*verify_callback)(int, X509_STORE_CTX *));
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_CTX_set_verify() {
+    
 }
 
 /// `SSL_new` - create a new SSL structure which is needed to hold the data for a
