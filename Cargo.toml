@@ -13,7 +13,7 @@ name = "mesalink_internals"
 crate-type = ["lib", "staticlib"]
 
 [features]
-default = ["error_strings", "tls13", "aesgcm", "chachapoly", "x25519", "ecdh", "ecdsa"]
+default = ["error_strings", "tls13", "aesgcm", "chachapoly", "x25519", "ecdh", "ecdsa", "verifier"]
 error_strings = ["rustls/logging"]
 tls13 = ["rustls/tls13"]
 aesgcm = ["rustls/aesgcm"]
@@ -21,6 +21,7 @@ chachapoly = ["rustls/chachapoly"]
 x25519 = ["rustls/x25519"]
 ecdh = ["rustls/ecdh"]
 ecdsa = ["rustls/ecdsa"]
+verifier = ["rustls/dangerous_configuration"]
 
 [dependencies]
 rustls = { version = "0.12.0", default-features = false }
@@ -44,4 +45,4 @@ panic = "abort"
 [[example]]
 name = "bogo_shim"
 path = "bogo/bogo_shim.rs"
-required-features = ["error_strings", "tls13", "aesgcm", "chachapoly", "x25519", "ecdh", "ecdsa"]
+required-features = ["verifier", "error_strings", "tls13", "aesgcm", "chachapoly", "x25519", "ecdh", "ecdsa"]

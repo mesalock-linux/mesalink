@@ -163,6 +163,7 @@ fn setup_ctx(opts: &Options) -> *mut ssl::MESALINK_CTX {
         );
         ssl::mesalink_SSL_CTX_check_private_key(ctx);
     }
+    ssl::mesalink_SSL_CTX_set_verify(ctx, 0, None);
     ctx
 }
 

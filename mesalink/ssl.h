@@ -29,6 +29,12 @@ typedef struct MEASLINK_CTX MESALINK_CTX;
 typedef struct MESALINK_CIPHER MESALINK_CIPHER;
 typedef struct MESALINK_SSL MESALINK_SSL;
 
+typedef enum {
+    SSL_VERIFY_NONE = 0,
+    SSL_VERIFY_PEER = 1,
+    SSL_VERIFY_FAIL_IF_NO_PEER_CERT = 2,
+} SSL_VERIFY_MODES;
+
 MESALINK_API int mesalink_library_init(void);
 MESALINK_API int mesalink_add_ssl_algorithms(void);
 MESALINK_API void mesalink_SSL_load_error_strings(void);
@@ -56,6 +62,7 @@ MESALINK_API MESALINK_CTX *mesalink_CTX_new(const MESALINK_METHOD *);
 MESALINK_API int mesalink_SSL_CTX_use_certificate_chain_file(MESALINK_CTX *, const char *, int);
 MESALINK_API int mesalink_SSL_CTX_use_PrivateKey_file(MESALINK_CTX *, const char *, int);
 MESALINK_API int mesalink_SSL_CTX_check_private_key(const MESALINK_CTX *);
+MESALINK_API int mesalink_SSL_CTX_set_verify(MESALINK_CTX *, int, int (*cb)(int, MESALINK_CTX*));
 MESALINK_API void mesalink_CTX_free(MESALINK_CTX *);
 
 MESALINK_API MESALINK_SSL *mesalink_SSL_new(MESALINK_CTX *);

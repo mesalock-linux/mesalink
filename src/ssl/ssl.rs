@@ -106,6 +106,19 @@ impl MESALINK_METHOD {
     }
 }
 
+struct NoServerAuth {}
+impl rustls::ServerCertVerifier for NoServerAuth {
+    fn verify_server_cert(
+        &self,
+        _roots: &rustls::RootCertStore,
+        _certs: &[rustls::Certificate],
+        _hostname: webpki::DNSNameRef,
+        _ocsp: &[u8],
+    ) -> Result<rustls::ServerCertVerified, rustls::TLSError> {
+        Ok(rustls::ServerCertVerified::assertion())
+    }
+}
+
 /// A global context structure which is created by a server or a client once per
 /// program. It holds default values for `SSL` objects which are later created
 /// for individual connections.
@@ -126,6 +139,8 @@ pub struct MESALINK_CTX<'a> {
     methods: &'a MESALINK_METHOD,
     certificates: Option<Vec<rustls::Certificate>>,
     private_key: Option<rustls::PrivateKey>,
+    client_verifier: Option<Arc<rustls::ClientCertVerifier>>,
+    server_verifier: Option<Arc<rustls::ServerCertVerifier>>,
 }
 
 impl<'a> MESALINK_CTX<'a> {
@@ -135,6 +150,8 @@ impl<'a> MESALINK_CTX<'a> {
             methods: method,
             certificates: None,
             private_key: None,
+            client_verifier: None,
+            server_verifier: None,
         }
     }
 }
@@ -224,9 +241,13 @@ impl<'a> Read for MESALINK_SSL<'a> {
                     Ok(n) => {
                         self.error = ErrorCode::SslErrorNone;
                         return Ok(n);
-                    },
+                    }
                     Err(e) => {
-                        self.error = ErrorCode::from(e.raw_os_error().unwrap() as c_ulong);
+                        self.error = if let Some(raw_err) = e.raw_os_error() {
+                            ErrorCode::from(raw_err as c_ulong)
+                        } else {
+                            self.error
+                        };
                         return Err(e);
                     }
                 }
@@ -275,7 +296,7 @@ pub enum SslConstants {
     SslError = -1,
     SslFailure = 0,
     SslSuccess = 1,
-    ShutdownNotDone = 2,
+    SslShutdownNotDone = 2,
 }
 
 #[doc(hidden)]
@@ -284,6 +305,14 @@ pub enum Filetypes {
     FiletypePEM = 1,
     FiletypeASN = 2,
     FiletypeRaw = 3,
+}
+
+#[doc(hidden)]
+#[repr(C)]
+pub enum VerifyModes {
+    VerifyNone = 0,
+    VerifyPeer = 1,
+    VerifyFailIfNoPeerCert = 2,
 }
 
 macro_rules! sanitize_ptr_return_null {
@@ -595,7 +624,9 @@ pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
 /// SSL_CTX *SSL_CTX_new(const SSL_METHOD *method);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_CTX_new<'a>(method_ptr: *const MESALINK_METHOD) -> *mut MESALINK_CTX<'a> {
+pub extern "C" fn mesalink_CTX_new<'a>(
+    method_ptr: *const MESALINK_METHOD,
+) -> *mut MESALINK_CTX<'a> {
     sanitize_ptr_return_null!(method_ptr);
     let method = unsafe { &*method_ptr };
     let context = MESALINK_CTX::new(method);
@@ -740,15 +771,20 @@ pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX)
     SslConstants::SslFailure as c_int
 }
 
-///`SSL_CTX_set_verify` - set peer certificate verification parameters
-///
-/// ```
-/// void SSL_CTX_set_verify(SSL_CTX *ctx, int mode,
-///                         int (*verify_callback)(int, X509_STORE_CTX *));
-/// ```
+#[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_CTX_set_verify() {
-    
+pub extern "C" fn mesalink_SSL_CTX_set_verify(
+    ctx_ptr: *mut MESALINK_CTX,
+    mode: c_int,
+    _cb: Option<extern fn(c_int, *mut MESALINK_CTX) -> c_int>
+) -> c_int {
+    sanitize_ptr_return_fail!(ctx_ptr);
+    let ctx = unsafe { &mut *ctx_ptr };
+    if mode == VerifyModes::VerifyNone as c_int {
+        ctx.client_verifier = Some(Arc::new(rustls::NoClientAuth));
+        ctx.server_verifier = Some(Arc::new(NoServerAuth {}));
+    }
+    SslConstants::SslSuccess as c_int
 }
 
 /// `SSL_new` - create a new SSL structure which is needed to hold the data for a
@@ -1106,6 +1142,9 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
                 client_config
                     .root_store
                     .add_server_trust_anchors(&TLS_SERVER_ROOTS);
+                if let Some(ref verifier) = ssl.context.server_verifier {
+                    client_config.dangerous().set_certificate_verifier(verifier.clone());
+                } 
                 let mut session = rustls::ClientSession::new(&Arc::new(client_config), dns_name);
                 session.process_new_packets().unwrap();
                 ssl.session = Some(Box::new(session));
