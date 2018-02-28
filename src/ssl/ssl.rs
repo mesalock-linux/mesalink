@@ -45,7 +45,7 @@ use ring;
 use ring::rand::SecureRandom;
 use webpki;
 use webpki_roots::TLS_SERVER_ROOTS;
-use ssl::err::{Errno, MesalinkError, MesalinkBuiltinError, ErrorQueue};
+use ssl::err::{Errno, ErrorQueue};
 
 const MAGIC_SIZE: usize = 4;
 lazy_static! {
@@ -168,7 +168,7 @@ pub struct MESALINK_SSL<'a> {
     hostname: Option<&'a std::ffi::CStr>,
     io: Option<TcpStream>,
     session: Option<Box<Session>>,
-    error: MesalinkError,
+    error: Errno,
     eof: bool,
 }
 
@@ -180,7 +180,7 @@ impl<'a> MESALINK_SSL<'a> {
             hostname: None,
             io: None,
             session: None,
-            error: MesalinkError::default(),
+            error: Errno::default(),
             eof: false,
         }
     }
@@ -191,10 +191,10 @@ impl<'a> Read for MESALINK_SSL<'a> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => loop {
-                match self.error.as_errno() {
+                match self.error {
                     Errno::MesalinkErrorNone
                     | Errno::MesalinkErrorWantRead
-                    | Errno::MesalinkErrorWantWrite => self.error = MesalinkError::default(),
+                    | Errno::MesalinkErrorWantWrite => self.error = Errno::default(),
                     _ => (),
                 };
                 match session.read(buf) {
@@ -203,7 +203,7 @@ impl<'a> Read for MESALINK_SSL<'a> {
                             Ok(_) => (), // ignore the result
                             Err(e) => {
                                 if e.kind() == io::ErrorKind::WouldBlock {
-                                    self.error = MesalinkError::from(Errno::MesalinkErrorWantWrite);
+                                    self.error = Errno::MesalinkErrorWantWrite;
                                 }
                                 return Err(e);
                             }
@@ -215,13 +215,13 @@ impl<'a> Read for MESALINK_SSL<'a> {
                                     self.eof = true;
                                     return Ok(0); // EOF
                                 } else {
-                                    self.error = MesalinkError::from(Errno::IoErrorUnexpectedEof);
+                                    self.error = Errno::IoErrorUnexpectedEof;
                                     return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
                                 }
                             }
                             Err(e) => {
                                 if e.kind() == io::ErrorKind::WouldBlock {
-                                    self.error = MesalinkError::from(Errno::MesalinkErrorWantRead);
+                                    self.error = Errno::MesalinkErrorWantRead;
                                 }
                                 return Err(e);
                             }
@@ -230,16 +230,16 @@ impl<'a> Read for MESALINK_SSL<'a> {
                                     let _ = session.write_tls(io);
                                 }
                                 println!("process_new_packets error: {:?}", tls_err);
-                                self.error = MesalinkError::from(tls_err.clone());
+                                self.error = Errno::from(tls_err.clone());
                                 return Err(io::Error::new(io::ErrorKind::InvalidData, tls_err));
                             },
                         }
                     } else {
-                        self.error = MesalinkError::from(Errno::MesalinkErrorZeroReturn);
+                        self.error = Errno::MesalinkErrorZeroReturn;
                         return Ok(0);
                     },
                     Ok(n) => {
-                        self.error = MesalinkError::default();
+                        self.error = Errno::default();
                         return Ok(n);
                     }
                     Err(e) => {
@@ -248,7 +248,7 @@ impl<'a> Read for MESALINK_SSL<'a> {
                 }
             },
             _ => {
-                ErrorQueue::push_builtin_error(MesalinkBuiltinError::ErrorNullPointer);
+                ErrorQueue::push_error(Errno::MesalinkErrorNullPointer);
                 Err(io::Error::from(io::ErrorKind::Other))
             }
         }
@@ -265,7 +265,7 @@ impl<'a> Write for MESALINK_SSL<'a> {
                 Ok(len)
             }
             _ => {
-                ErrorQueue::push_builtin_error(MesalinkBuiltinError::ErrorNullPointer);
+                ErrorQueue::push_error(Errno::MesalinkErrorNullPointer);
                 Err(io::Error::from(io::ErrorKind::Other))
             }
         }
@@ -278,7 +278,7 @@ impl<'a> Write for MESALINK_SSL<'a> {
                 ret
             }
             _ => {
-                ErrorQueue::push_builtin_error(MesalinkBuiltinError::ErrorNullPointer);
+                ErrorQueue::push_error(Errno::MesalinkErrorNullPointer);
                 Err(io::Error::from(io::ErrorKind::Other))
             }
         }
@@ -313,13 +313,13 @@ pub enum VerifyModes {
 macro_rules! sanitize_ptr_return_null {
     ( $ptr_var:ident ) => {
         if $ptr_var.is_null() {
-            ErrorQueue::push_builtin_error(MesalinkBuiltinError::ErrorNullPointer);
+            ErrorQueue::push_error(Errno::MesalinkErrorNullPointer);
             return std::ptr::null_mut();
         }
         let obj = unsafe { &* $ptr_var };
         let magic = *MAGIC;
         if obj.magic != magic {
-            ErrorQueue::push_builtin_error(MesalinkBuiltinError::ErrorMalformedObject);
+            ErrorQueue::push_error(Errno::MesalinkErrorMalformedObject);
             return std::ptr::null_mut();
         }
     }
@@ -328,13 +328,13 @@ macro_rules! sanitize_ptr_return_null {
 macro_rules! sanitize_ptr_return_fail {
     ( $ptr_var:ident ) => {
         if $ptr_var.is_null() {
-            ErrorQueue::push_builtin_error(MesalinkBuiltinError::ErrorNullPointer);
+            ErrorQueue::push_error(Errno::MesalinkErrorNullPointer);
             return SslConstants::SslFailure as c_int;
         }
         let obj = unsafe { &*$ptr_var };
         let magic = *MAGIC;
         if obj.magic != magic {
-            ErrorQueue::push_builtin_error(MesalinkBuiltinError::ErrorMalformedObject);
+            ErrorQueue::push_error(Errno::MesalinkErrorMalformedObject);
             return SslConstants::SslFailure as c_int;
         }
     }
@@ -659,18 +659,18 @@ pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
                         return SslConstants::SslSuccess as c_int;
                     },
                     Err(_) => {
-                        ErrorQueue::push_errno(Errno::TLSErrorWebpkiBadDER);
+                        ErrorQueue::push_error(Errno::TLSErrorWebpkiBadDER);
                         return SslConstants::SslFailure as c_int;
                     },
                 }
             }
             Err(e) => {
-                ErrorQueue::push_io_error(e);
+                ErrorQueue::push_error(Errno::from(e));
                 return SslConstants::SslFailure as c_int;
             }
         }
     } else {
-        ErrorQueue::push_errno(Errno::IoErrorNotFound);
+        ErrorQueue::push_error(Errno::IoErrorNotFound);
         SslConstants::SslFailure as c_int
     }
 }
@@ -701,12 +701,12 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
                 if keys.is_ok() {
                     keys.unwrap()
                 } else {
-                    ErrorQueue::push_errno(Errno::TLSErrorWebpkiBadDER);
+                    ErrorQueue::push_error(Errno::TLSErrorWebpkiBadDER);
                     return SslConstants::SslFailure as c_int;
                 }
             }
             Err(e) => {
-                ErrorQueue::push_io_error(e);
+                ErrorQueue::push_error(Errno::from(e));
                 return SslConstants::SslFailure as c_int;
             }
         };
@@ -717,12 +717,12 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
                 if keys.is_ok() {
                     keys.unwrap()
                 } else {
-                    ErrorQueue::push_errno(Errno::TLSErrorWebpkiBadDER);
+                    ErrorQueue::push_error(Errno::TLSErrorWebpkiBadDER);
                     return SslConstants::SslFailure as c_int;
                 }
             }
             Err(e) => {
-                ErrorQueue::push_io_error(e);
+                ErrorQueue::push_error(Errno::from(e));
                 return SslConstants::SslFailure as c_int;
             }
         };
@@ -733,7 +733,7 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
         }
         return SslConstants::SslSuccess as c_int;
     } else {
-        ErrorQueue::push_errno(Errno::IoErrorNotFound);
+        ErrorQueue::push_error(Errno::IoErrorNotFound);
         SslConstants::SslFailure as c_int
     }
 }
@@ -758,7 +758,7 @@ pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX)
                 match certified_key.cross_check_end_entity_cert(None) {
                     Ok(_) => return SslConstants::SslSuccess as c_int,
                     Err(e) => {
-                        ErrorQueue::push_tls_error(e);
+                        ErrorQueue::push_error(Errno::from(e));
                         return SslConstants::SslFailure as c_int;
                     }
                 }
@@ -766,7 +766,7 @@ pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX)
         }
         _ => (),
     }
-    ErrorQueue::push_errno(Errno::TLSErrorWebpkiBadDER);
+    ErrorQueue::push_error(Errno::TLSErrorWebpkiBadDER);
     SslConstants::SslFailure as c_int
 }
 
@@ -863,7 +863,7 @@ pub extern "C" fn mesalink_SSL_get_current_cipher(
             None => std::ptr::null_mut(),
         },
         None => {
-            ErrorQueue::push_builtin_error(MesalinkBuiltinError::ErrorNullPointer);
+            ErrorQueue::push_error(Errno::MesalinkErrorNullPointer);
             std::ptr::null_mut()
         }
     }
@@ -1053,7 +1053,7 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
     sanitize_ptr_return_fail!(ssl_ptr);
     let ssl = unsafe { &mut *ssl_ptr };
     if hostname_ptr.is_null() {
-        ErrorQueue::push_builtin_error(MesalinkBuiltinError::ErrorNullPointer);
+        ErrorQueue::push_error(Errno::MesalinkErrorNullPointer);
         return SslConstants::SslFailure as c_int;
     }
     let hostname = unsafe { std::ffi::CStr::from_ptr(hostname_ptr) };
@@ -1115,7 +1115,7 @@ pub extern "C" fn mesalink_SSL_get_fd(ssl_ptr: *const MESALINK_SSL) -> c_int {
     match ssl.io {
         Some(ref socket) => socket.as_raw_fd(),
         None => {
-            ErrorQueue::push_builtin_error(MesalinkBuiltinError::ErrorNullPointer);;
+            ErrorQueue::push_error(Errno::MesalinkErrorNullPointer);
             SslConstants::SslFailure as c_int
         }
     }
@@ -1151,7 +1151,7 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
             }
         }
     }
-    ErrorQueue::push_builtin_error(MesalinkBuiltinError::ErrorNullPointer);
+    ErrorQueue::push_error(Errno::MesalinkErrorNullPointer);
     SslConstants::SslFailure as c_int
 }
 
@@ -1177,7 +1177,7 @@ pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
             SslConstants::SslSuccess as c_int
         }
         _ => {
-            ErrorQueue::push_builtin_error(MesalinkBuiltinError::ErrorNullPointer);;
+            ErrorQueue::push_error(Errno::MesalinkErrorNullPointer);
             SslConstants::SslFailure as c_int
         }
     }
@@ -1197,7 +1197,7 @@ pub extern "C" fn mesalink_SSL_get_error(ssl_ptr: *const MESALINK_SSL, ret: c_in
     }
     sanitize_ptr_return_fail!(ssl_ptr);
     let ssl = unsafe { &*ssl_ptr };
-    ssl.error.as_errno() as c_int
+    ssl.error as c_int
 }
 
 /// `SSL_read` - read `num` bytes from the specified `ssl` into the
@@ -1269,7 +1269,7 @@ pub extern "C" fn mesalink_SSL_shutdown(ssl_ptr: *mut MESALINK_SSL) -> c_int {
             SslConstants::SslSuccess as c_int
         }
         None => {
-            ErrorQueue::push_builtin_error(MesalinkBuiltinError::ErrorNullPointer);
+            ErrorQueue::push_error(Errno::MesalinkErrorNullPointer);
             SslConstants::SslFailure as c_int
         }
     }
@@ -1293,7 +1293,7 @@ pub extern "C" fn mesalink_SSL_get_version(ssl_ptr: *mut MESALINK_SSL) -> *const
             _ => CONST_NONE_STR.as_ptr() as *const c_char,
         },
         None => {
-            ErrorQueue::push_builtin_error(MesalinkBuiltinError::ErrorNullPointer);
+            ErrorQueue::push_error(Errno::MesalinkErrorNullPointer);
             std::ptr::null()
         }
     }

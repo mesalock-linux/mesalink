@@ -40,7 +40,7 @@ use std::process;
 use std::net;
 use std::io::Write;
 use mesalink_internals::ssl::{err, ssl};
-use mesalink_internals::ssl::err::ErrorCode;
+use mesalink_internals::ssl::err::Errno;
 
 static BOGO_NACK: i32 = 89;
 
@@ -114,24 +114,29 @@ fn quit_err(why: &str) -> ! {
     process::exit(1)
 }
 
-fn handle_err(err: ErrorCode) -> ! {
+fn handle_err(err: Errno) -> ! {
     use std::{thread, time};
 
     thread::sleep(time::Duration::from_millis(100));
 
     match err {
-        ErrorCode::InappropriateHandshakeMessage | ErrorCode::InappropriateMessage => {
+        Errno::TLSErrorInappropriateMessage | Errno::TLSErrorInappropriateHandshakeMessage => {
             quit(":UNEXPECTED_MESSAGE:")
         }
-        ErrorCode::AlertReceived => quit(":HANDSHAKE_FAILURE:"),
-        ErrorCode::CorruptMessagePayload => quit(":GARBAGE:"),
-        ErrorCode::CorruptMessage => quit(":GARBAGE:"),
-        ErrorCode::DecryptError => quit(":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:"),
-        ErrorCode::PeerIncompatibleError => quit(":INCOMPATIBLE:"),
-        ErrorCode::PeerMisbehavedError => quit(":PEER_MISBEHAVIOUR:"),
-        ErrorCode::NoCertificatesPresented => quit(":NO_CERTS:"),
-        ErrorCode::WebPKIError => quit(":BAD_SIGNATURE:"),
-        ErrorCode::PeerSentOversizedRecord => quit(":DATA_LENGTH_TOO_LONG:"),
+        Errno::TLSErrorAlertReceivedRecordOverflow => quit(":TLSV1_ALERT_RECORD_OVERFLOW:"),
+        Errno::TLSErrorAlertReceivedHandshakeFailure => quit(":HANDSHAKE_FAILURE:"),
+        Errno::TLSErrorCorruptMessagePayload => quit(":GARBAGE:"),
+        Errno::TLSErrorCorruptMessage => quit(":GARBAGE:"),
+        Errno::TLSErrorDecryptError => quit(":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:"),
+        Errno::TLSErrorPeerIncompatibleError => quit(":INCOMPATIBLE:"),
+        Errno::TLSErrorPeerMisbehavedError => quit(":PEER_MISBEHAVIOUR:"),
+        Errno::TLSErrorNoCertificatesPresented => quit(":NO_CERTS:"),
+        Errno::TLSErrorAlertReceivedUnexpectedMessage => quit(":BAD_ALERT:"),
+        Errno::TLSErrorAlertReceivedDecompressionFailure => quit(":SSLV3_ALERT_DECOMPRESSION_FAILURE:"),
+        Errno::TLSErrorWebpkiBadDER => quit(":CANNOT_PARSE_LEAF_CERT:"),
+        Errno::TLSErrorWebpkiInvalidSignatureForPublicKey => quit(":BAD_SIGNATURE:"),
+        Errno::TLSErrorWebpkiUnsupportedSignatureAlgorithmForPublicKey => quit(":WRONG_SIGNATURE_TYPE:"),
+        Errno::TLSErrorPeerSentOversizedRecord => quit(":DATA_LENGTH_TOO_LONG:"),
         _ => {
             println_err!("unhandled error: {:?}", err);
             quit(":FIXME:")
@@ -213,11 +218,11 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX) {
             opts.read_size as libc::c_int,
         );
         if len == 0 {
-            let error = ErrorCode::from(ssl::mesalink_SSL_get_error(ssl, len) as u32);
+            let error = Errno::from(ssl::mesalink_SSL_get_error(ssl, len) as u32);
             match error {
-                ErrorCode::SslErrorNone
-                | ErrorCode::SslErrorWantRead
-                | ErrorCode::SslErrorWantWrite => (),
+                Errno::MesalinkErrorNone
+                | Errno::MesalinkErrorWantRead
+                | Errno::MesalinkErrorWantWrite => (),
                 _ => handle_err(error),
             };
             if opts.check_close_notify {
@@ -232,7 +237,7 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX) {
                 return;
             }
         } else if len < 0 {
-            let err: ErrorCode = ErrorCode::from(err::mesalink_ERR_get_error());
+            let err: Errno = Errno::from(err::mesalink_ERR_get_error());
             handle_err(err);
         }
 
