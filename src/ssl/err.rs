@@ -52,6 +52,7 @@ use webpki;
 /// 0x03000a0f: TLS specific error, WebPKI error, Unknown certificate issuer
 #[repr(C)]
 #[derive(PartialEq, Clone, Copy)]
+#[cfg_attr(feature = "error_strings", derive(EnumToStr))]
 #[cfg_attr(feature = "error_strings", derive(Debug))]
 pub enum Errno {
     // OpenSSL error codes
@@ -158,7 +159,7 @@ pub enum Errno {
 
 impl Errno {
     pub fn as_str(&self) -> &'static str {
-        "test error string"
+        self.enum_to_str()
     }
 }
 

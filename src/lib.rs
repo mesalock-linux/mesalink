@@ -157,6 +157,9 @@ extern crate webpki_roots;
 #[macro_use]
 extern crate lazy_static;
 
+#[macro_use]
+extern crate enum_to_str_derive;
+
 /// The ssl module is the counterpart of the OpenSSL ssl library.
 pub mod ssl;
 
