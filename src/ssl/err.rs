@@ -158,7 +158,7 @@ pub enum Errno {
 }
 
 impl Errno {
-    pub fn as_str(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static [u8] {
         self.enum_to_str()
     }
 }

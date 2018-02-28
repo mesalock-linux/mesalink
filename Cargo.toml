@@ -30,7 +30,7 @@ webpki = "0.18.0-alpha"
 webpki-roots = "0.14.0"
 libc = "0.2"
 lazy_static = "1.0.0"
-enum_to_str_derive = "0.1.0"
+enum_to_str_derive = { git = "https://github.com/kevinis/enum_to_str_derive.git" }
 
 [dev-dependencies]
 log = "0.4"
