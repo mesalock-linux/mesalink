@@ -702,6 +702,16 @@ pub extern "C" fn mesalink_SSL_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut
     }
 }
 
+fn try_set_server_single_cert(ctx: &mut MESALINK_CTX) -> Result<(),()> {
+    match (&ctx.certificates, &ctx.private_key) {
+        (&Some(ref certs), &Some(ref key)) => {
+            ctx.server_config.set_single_cert(certs.clone(), key.clone());
+            Ok(())
+        }
+        _ => Err(()),
+    }
+}
+
 /// `SSL_CTX_use_certificate_chain_file` - load a certificate chain from file into
 /// ctx. The certificates must be in PEM format and must be sorted starting with
 /// the subject's certificate (actual client or server certificate), followed by
@@ -729,6 +739,7 @@ pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
                     match certs {
                         Ok(certs) => {
                             ctx.certificates = Some(certs);
+                            let _ = try_set_server_single_cert(ctx);
                             return SslConstants::SslSuccess as c_int;
                         }
                         Err(_) => {
@@ -808,6 +819,7 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
             } else {
                 ctx.private_key = Some(rsa_keys[0].clone())
             }
+            let _ = try_set_server_single_cert(ctx);
             return SslConstants::SslSuccess as c_int;
         } else {
             ErrorQueue::push_error(Errno::IoErrorNotFound);

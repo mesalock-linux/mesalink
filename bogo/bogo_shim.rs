@@ -163,7 +163,7 @@ fn setup_ctx(opts: &Options) -> *mut ssl::MESALINK_CTX {
         (false, true, true) => ssl::mesalink_TLSv1_3_server_method(),
         _ => return std::ptr::null_mut(),
     };
-    let ctx = ssl::mesalink_CTX_new(method);
+    let ctx = ssl::mesalink_SSL_CTX_new(method as *mut ssl::MESALINK_METHOD);
     if opts.server {
         if ssl::mesalink_SSL_CTX_use_certificate_chain_file(
             ctx,
