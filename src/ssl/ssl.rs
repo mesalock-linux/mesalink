@@ -1021,10 +1021,8 @@ fn suite_to_static_str(suite: u16) -> &'static [u8] {
 #[no_mangle]
 #[cfg(not(feature = "error_strings"))]
 pub extern "C" fn mesalink_SSL_CIPHER_get_name(
-    cipher_ptr: *const MESALINK_CIPHER,
+    _cipher_ptr: *mut MESALINK_CIPHER,
 ) -> *const c_char {
-    let _ = sanitize_ptr_for_ref(cipher_ptr)
-        .unwrap_or_else(|| return CONST_NONE_STR.as_ptr() as *const c_char);
     CONST_NOTBUILTIN_STR.as_ptr() as *const c_char
 }
 
