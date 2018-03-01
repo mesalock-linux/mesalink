@@ -16,8 +16,9 @@
 //! # Synopsis
 //! This sub-module implements the error-handling APIs of OpenSSL. MesaLink
 //! follows the same design as OpenSSL and uses a thread-local error queue. A
-//! failed API call typically returns -1 and pushes an error code into the error
-//! queue. The error code can be acquired by calling `ERR_get_error`.
+//! failed API call typically returns -1/0 and pushes an error code into the error
+//! queue. The error code can be acquired by calling `ERR_get_error` or
+//! `SSL_get_error`.
 
 use libc::{self, c_char, c_ulong, size_t};
 use std;
@@ -28,33 +29,26 @@ use rustls::TLSError;
 use rustls::internal::msgs::enums::{AlertDescription, ContentType};
 use webpki;
 
-/// MesaLink error code format MesaLink always use a 32-bit unsigned integer to
-/// represent error codes.
+/// MesaLink always use a 32-bit unsigned integer to represent error codes.
 ///
-///  32              28              16              8 0 1 2 3 4 5 6 7 0 1 2 3 4
-///  5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+/// ```
+///  7 6 5 4 3 2 1 0 7 6 5 4 3 2 1 0 7 6 5 4 3 2 1 0 7 6 5 4 3 2 1 0
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-/// |     source    |     unused    |     errno     |    sub errno  |
+/// |     source    |     unused    |     errno     |   sub errno   |
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// ```
 ///
 /// The highest 8 bits represent the source of the error. 0x1: the error comes
 /// from MesaLink itself. For example, a NULL or malformed SSL_CTX pointer is
 /// used. 0x2: the error comes from system I/O. For example, a certificate file
 /// is not found. 0x3: the error is TLS specific. For example, the remote server
-/// does not have a valid certifcate.
-///
-/// The lowest 16 bits represent the specific error, including 8 bites error
-/// number and 8 bits optional sub error number.
-///
-/// 0x00000200: MesaLink encounters a SSL_ERROR_WANT_READ error, This typically occus when
-/// the underlying socket is non-blocking.
-///
-/// 0x03000a0f: TLS specific error, WebPKI error, Unknown certificate issuer
+/// does not have a valid certifcate. The lowest 16 bits represent the specific
+/// error, including 8 bites error number and 8 bits optional sub error number.
+/// For a human-readable decription of an ErrorCode, call `ERR_reason_error_string`.
 #[repr(C)]
 #[derive(PartialEq, Clone, Copy)]
 #[cfg_attr(feature = "error_strings", derive(EnumToStr))]
-#[cfg_attr(feature = "error_strings", derive(Debug))]
-pub enum Errno {
+pub enum ErrorCode {
     // OpenSSL error codes
     MesalinkErrorNone = 0,
     MesalinkErrorZeroReturn = 1,
@@ -160,31 +154,42 @@ pub enum Errno {
     UndefinedError = 0xeeeeeeee,
 }
 
-impl Errno {
+#[doc(hidden)]
+impl ErrorCode {
+    #[cfg(feature="error_strings")]
     pub fn as_str(&self) -> &'static [u8] {
         self.enum_to_str()
     }
-}
 
-impl Default for Errno {
-    fn default() -> Errno {
-        Errno::MesalinkErrorNone
+    #[cfg(not(feature="error_strings"))]
+    pub fn as_str(&self) -> &'static [u8] {
+        b"Error string not built-in\0"
     }
 }
 
-impl From<u32> for Errno {
-    fn from(e: u32) -> Errno {
-        unsafe { std::mem::transmute::<u32, Errno>(e) }
+#[doc(hidden)]
+impl Default for ErrorCode {
+    fn default() -> ErrorCode {
+        ErrorCode::MesalinkErrorNone
     }
 }
 
-impl From<u64> for Errno {
-    fn from(e: u64) -> Errno {
+#[doc(hidden)]
+impl From<u32> for ErrorCode {
+    fn from(e: u32) -> ErrorCode {
+        unsafe { std::mem::transmute::<u32, ErrorCode>(e) }
+    }
+}
+
+#[doc(hidden)]
+impl From<u64> for ErrorCode {
+    fn from(e: u64) -> ErrorCode {
         let e = e as u32;
-        unsafe { std::mem::transmute::<u32, Errno>(e) }
+        unsafe { std::mem::transmute::<u32, ErrorCode>(e) }
     }
 }
 
+#[doc(hidden)]
 trait MesalinkErrorType {}
 
 #[doc(hidden)]
@@ -207,192 +212,195 @@ impl MesalinkErrorType for MesalinkBuiltinError {}
 impl MesalinkErrorType for TLSError {}
 impl MesalinkErrorType for std::io::Error {}
 
-impl<'a> From<&'a MesalinkBuiltinError> for Errno {
-    fn from(e: &'a MesalinkBuiltinError) -> Errno {
+#[doc(hidden)]
+impl<'a> From<&'a MesalinkBuiltinError> for ErrorCode {
+    fn from(e: &'a MesalinkBuiltinError) -> ErrorCode {
         match e {
-            &MesalinkBuiltinError::ErrorNone => Errno::MesalinkErrorNone,
-            &MesalinkBuiltinError::ErrorZeroReturn => Errno::MesalinkErrorZeroReturn,
-            &MesalinkBuiltinError::ErrorWantRead => Errno::MesalinkErrorWantRead,
-            &MesalinkBuiltinError::ErrorWantWrite => Errno::MesalinkErrorWantWrite,
-            &MesalinkBuiltinError::ErrorWantConnect => Errno::MesalinkErrorWantConnect,
-            &MesalinkBuiltinError::ErrorWantAccept => Errno::MesalinkErrorWantAccept,
-            &MesalinkBuiltinError::ErrorSyscall => Errno::MesalinkErrorSyscall,
-            &MesalinkBuiltinError::ErrorSsl => Errno::MesalinkErrorSsl,
-            &MesalinkBuiltinError::ErrorNullPointer => Errno::MesalinkErrorNullPointer,
-            &MesalinkBuiltinError::ErrorMalformedObject => Errno::MesalinkErrorMalformedObject,
+            &MesalinkBuiltinError::ErrorNone => ErrorCode::MesalinkErrorNone,
+            &MesalinkBuiltinError::ErrorZeroReturn => ErrorCode::MesalinkErrorZeroReturn,
+            &MesalinkBuiltinError::ErrorWantRead => ErrorCode::MesalinkErrorWantRead,
+            &MesalinkBuiltinError::ErrorWantWrite => ErrorCode::MesalinkErrorWantWrite,
+            &MesalinkBuiltinError::ErrorWantConnect => ErrorCode::MesalinkErrorWantConnect,
+            &MesalinkBuiltinError::ErrorWantAccept => ErrorCode::MesalinkErrorWantAccept,
+            &MesalinkBuiltinError::ErrorSyscall => ErrorCode::MesalinkErrorSyscall,
+            &MesalinkBuiltinError::ErrorSsl => ErrorCode::MesalinkErrorSsl,
+            &MesalinkBuiltinError::ErrorNullPointer => ErrorCode::MesalinkErrorNullPointer,
+            &MesalinkBuiltinError::ErrorMalformedObject => ErrorCode::MesalinkErrorMalformedObject,
         }
     }
 }
 
-impl<'a> From<&'a std::io::Error> for Errno {
-    fn from(e: &'a std::io::Error) -> Errno {
+#[doc(hidden)]
+impl<'a> From<&'a std::io::Error> for ErrorCode {
+    fn from(e: &'a std::io::Error) -> ErrorCode {
         match e.kind() {
-            ErrorKind::NotFound => Errno::IoErrorNotFound,
-            ErrorKind::PermissionDenied => Errno::IoErrorPermissionDenied,
-            ErrorKind::ConnectionRefused => Errno::IoErrorConnectionRefused,
-            ErrorKind::ConnectionReset => Errno::IoErrorConnectionReset,
-            ErrorKind::ConnectionAborted => Errno::IoErrorConnectionAborted,
-            ErrorKind::NotConnected => Errno::IoErrorNotConnected,
-            ErrorKind::AddrInUse => Errno::IoErrorAddrInUse,
-            ErrorKind::AddrNotAvailable => Errno::IoErrorAddrNotAvailable,
-            ErrorKind::BrokenPipe => Errno::IoErrorBrokenPipe,
-            ErrorKind::AlreadyExists => Errno::IoErrorAlreadyExists,
-            ErrorKind::WouldBlock => Errno::IoErrorWouldBlock,
-            ErrorKind::InvalidInput => Errno::IoErrorInvalidInput,
-            ErrorKind::InvalidData => Errno::IoErrorInvalidData,
-            ErrorKind::TimedOut => Errno::IoErrorTimedOut,
-            ErrorKind::WriteZero => Errno::IoErrorWriteZero,
-            ErrorKind::Interrupted => Errno::IoErrorInterrupted,
-            ErrorKind::Other => Errno::IoErrorOther,
-            ErrorKind::UnexpectedEof => Errno::IoErrorUnexpectedEof,
-            _ => Errno::UndefinedError,
+            ErrorKind::NotFound => ErrorCode::IoErrorNotFound,
+            ErrorKind::PermissionDenied => ErrorCode::IoErrorPermissionDenied,
+            ErrorKind::ConnectionRefused => ErrorCode::IoErrorConnectionRefused,
+            ErrorKind::ConnectionReset => ErrorCode::IoErrorConnectionReset,
+            ErrorKind::ConnectionAborted => ErrorCode::IoErrorConnectionAborted,
+            ErrorKind::NotConnected => ErrorCode::IoErrorNotConnected,
+            ErrorKind::AddrInUse => ErrorCode::IoErrorAddrInUse,
+            ErrorKind::AddrNotAvailable => ErrorCode::IoErrorAddrNotAvailable,
+            ErrorKind::BrokenPipe => ErrorCode::IoErrorBrokenPipe,
+            ErrorKind::AlreadyExists => ErrorCode::IoErrorAlreadyExists,
+            ErrorKind::WouldBlock => ErrorCode::IoErrorWouldBlock,
+            ErrorKind::InvalidInput => ErrorCode::IoErrorInvalidInput,
+            ErrorKind::InvalidData => ErrorCode::IoErrorInvalidData,
+            ErrorKind::TimedOut => ErrorCode::IoErrorTimedOut,
+            ErrorKind::WriteZero => ErrorCode::IoErrorWriteZero,
+            ErrorKind::Interrupted => ErrorCode::IoErrorInterrupted,
+            ErrorKind::Other => ErrorCode::IoErrorOther,
+            ErrorKind::UnexpectedEof => ErrorCode::IoErrorUnexpectedEof,
+            _ => ErrorCode::UndefinedError,
         }
     }
 }
 
+#[doc(hidden)]
 #[allow(unused_variables)]
-impl<'a> From<&'a TLSError> for Errno {
-    fn from(e: &'a TLSError) -> Errno {
+impl<'a> From<&'a TLSError> for ErrorCode {
+    fn from(e: &'a TLSError) -> ErrorCode {
         match e {
             &TLSError::InappropriateMessage {
                 ref expect_types,
                 ref got_type,
-            } => Errno::TLSErrorInappropriateMessage,
+            } => ErrorCode::TLSErrorInappropriateMessage,
             &TLSError::InappropriateHandshakeMessage {
                 ref expect_types,
                 ref got_type,
-            } => Errno::TLSErrorInappropriateHandshakeMessage,
-            &TLSError::CorruptMessage => Errno::TLSErrorCorruptMessage,
+            } => ErrorCode::TLSErrorInappropriateHandshakeMessage,
+            &TLSError::CorruptMessage => ErrorCode::TLSErrorCorruptMessage,
             &TLSError::CorruptMessagePayload(c) => match c {
-                ContentType::Alert => Errno::TLSErrorCorruptMessagePayloadAlert,
+                ContentType::Alert => ErrorCode::TLSErrorCorruptMessagePayloadAlert,
                 ContentType::ChangeCipherSpec => {
-                    Errno::TLSErrorCorruptMessagePayloadChangeCipherSpec
+                    ErrorCode::TLSErrorCorruptMessagePayloadChangeCipherSpec
                 }
-                ContentType::Handshake => Errno::TLSErrorCorruptMessagePayloadHandshake,
-                _ => Errno::TLSErrorCorruptMessagePayload,
+                ContentType::Handshake => ErrorCode::TLSErrorCorruptMessagePayloadHandshake,
+                _ => ErrorCode::TLSErrorCorruptMessagePayload,
             },
-            &TLSError::NoCertificatesPresented => Errno::TLSErrorNoCertificatesPresented,
-            &TLSError::DecryptError => Errno::TLSErrorDecryptError,
-            &TLSError::PeerIncompatibleError(_) => Errno::TLSErrorPeerIncompatibleError,
-            &TLSError::PeerMisbehavedError(_) => Errno::TLSErrorPeerMisbehavedError,
+            &TLSError::NoCertificatesPresented => ErrorCode::TLSErrorNoCertificatesPresented,
+            &TLSError::DecryptError => ErrorCode::TLSErrorDecryptError,
+            &TLSError::PeerIncompatibleError(_) => ErrorCode::TLSErrorPeerIncompatibleError,
+            &TLSError::PeerMisbehavedError(_) => ErrorCode::TLSErrorPeerMisbehavedError,
             &TLSError::AlertReceived(alert) => match alert {
-                AlertDescription::CloseNotify => Errno::TLSErrorAlertReceivedCloseNotify,
+                AlertDescription::CloseNotify => ErrorCode::TLSErrorAlertReceivedCloseNotify,
                 AlertDescription::UnexpectedMessage => {
-                    Errno::TLSErrorAlertReceivedUnexpectedMessage
+                    ErrorCode::TLSErrorAlertReceivedUnexpectedMessage
                 }
-                AlertDescription::BadRecordMac => Errno::TLSErrorAlertReceivedBadRecordMac,
-                AlertDescription::DecryptionFailed => Errno::TLSErrorAlertReceivedDecryptionFailed,
-                AlertDescription::RecordOverflow => Errno::TLSErrorAlertReceivedRecordOverflow,
+                AlertDescription::BadRecordMac => ErrorCode::TLSErrorAlertReceivedBadRecordMac,
+                AlertDescription::DecryptionFailed => ErrorCode::TLSErrorAlertReceivedDecryptionFailed,
+                AlertDescription::RecordOverflow => ErrorCode::TLSErrorAlertReceivedRecordOverflow,
                 AlertDescription::DecompressionFailure => {
-                    Errno::TLSErrorAlertReceivedDecompressionFailure
+                    ErrorCode::TLSErrorAlertReceivedDecompressionFailure
                 }
-                AlertDescription::HandshakeFailure => Errno::TLSErrorAlertReceivedHandshakeFailure,
-                AlertDescription::NoCertificate => Errno::TLSErrorAlertReceivedNoCertificate,
-                AlertDescription::BadCertificate => Errno::TLSErrorAlertReceivedBadCertificate,
+                AlertDescription::HandshakeFailure => ErrorCode::TLSErrorAlertReceivedHandshakeFailure,
+                AlertDescription::NoCertificate => ErrorCode::TLSErrorAlertReceivedNoCertificate,
+                AlertDescription::BadCertificate => ErrorCode::TLSErrorAlertReceivedBadCertificate,
                 AlertDescription::UnsupportedCertificate => {
-                    Errno::TLSErrorAlertReceivedUnsupportedCertificate
+                    ErrorCode::TLSErrorAlertReceivedUnsupportedCertificate
                 }
                 AlertDescription::CertificateRevoked => {
-                    Errno::TLSErrorAlertReceivedCertificateRevoked
+                    ErrorCode::TLSErrorAlertReceivedCertificateRevoked
                 }
                 AlertDescription::CertificateExpired => {
-                    Errno::TLSErrorAlertReceivedCertificateExpired
+                    ErrorCode::TLSErrorAlertReceivedCertificateExpired
                 }
                 AlertDescription::CertificateUnknown => {
-                    Errno::TLSErrorAlertReceivedCertificateUnknown
+                    ErrorCode::TLSErrorAlertReceivedCertificateUnknown
                 }
-                AlertDescription::IllegalParameter => Errno::TLSErrorAlertReceivedIllegalParameter,
-                AlertDescription::UnknownCA => Errno::TLSErrorAlertReceivedUnknownCA,
-                AlertDescription::AccessDenied => Errno::TLSErrorAlertReceivedAccessDenied,
-                AlertDescription::DecodeError => Errno::TLSErrorAlertReceivedDecodeError,
-                AlertDescription::DecryptError => Errno::TLSErrorAlertReceivedDecryptError,
+                AlertDescription::IllegalParameter => ErrorCode::TLSErrorAlertReceivedIllegalParameter,
+                AlertDescription::UnknownCA => ErrorCode::TLSErrorAlertReceivedUnknownCA,
+                AlertDescription::AccessDenied => ErrorCode::TLSErrorAlertReceivedAccessDenied,
+                AlertDescription::DecodeError => ErrorCode::TLSErrorAlertReceivedDecodeError,
+                AlertDescription::DecryptError => ErrorCode::TLSErrorAlertReceivedDecryptError,
                 AlertDescription::ExportRestriction => {
-                    Errno::TLSErrorAlertReceivedExportRestriction
+                    ErrorCode::TLSErrorAlertReceivedExportRestriction
                 }
-                AlertDescription::ProtocolVersion => Errno::TLSErrorAlertReceivedProtocolVersion,
+                AlertDescription::ProtocolVersion => ErrorCode::TLSErrorAlertReceivedProtocolVersion,
                 AlertDescription::InsufficientSecurity => {
-                    Errno::TLSErrorAlertReceivedInsufficientSecurity
+                    ErrorCode::TLSErrorAlertReceivedInsufficientSecurity
                 }
-                AlertDescription::InternalError => Errno::TLSErrorAlertReceivedInternalError,
+                AlertDescription::InternalError => ErrorCode::TLSErrorAlertReceivedInternalError,
                 AlertDescription::InappropriateFallback => {
-                    Errno::TLSErrorAlertReceivedInappropriateFallback
+                    ErrorCode::TLSErrorAlertReceivedInappropriateFallback
                 }
-                AlertDescription::UserCanceled => Errno::TLSErrorAlertReceivedUserCanceled,
-                AlertDescription::NoRenegotiation => Errno::TLSErrorAlertReceivedNoRenegotiation,
-                AlertDescription::MissingExtension => Errno::TLSErrorAlertReceivedMissingExtension,
+                AlertDescription::UserCanceled => ErrorCode::TLSErrorAlertReceivedUserCanceled,
+                AlertDescription::NoRenegotiation => ErrorCode::TLSErrorAlertReceivedNoRenegotiation,
+                AlertDescription::MissingExtension => ErrorCode::TLSErrorAlertReceivedMissingExtension,
                 AlertDescription::UnsupportedExtension => {
-                    Errno::TLSErrorAlertReceivedUnsupportedExtension
+                    ErrorCode::TLSErrorAlertReceivedUnsupportedExtension
                 }
                 AlertDescription::CertificateUnobtainable => {
-                    Errno::TLSErrorAlertReceivedCertificateUnobtainable
+                    ErrorCode::TLSErrorAlertReceivedCertificateUnobtainable
                 }
-                AlertDescription::UnrecognisedName => Errno::TLSErrorAlertReceivedUnrecognisedName,
+                AlertDescription::UnrecognisedName => ErrorCode::TLSErrorAlertReceivedUnrecognisedName,
                 AlertDescription::BadCertificateStatusResponse => {
-                    Errno::TLSErrorAlertReceivedBadCertificateStatusResponse
+                    ErrorCode::TLSErrorAlertReceivedBadCertificateStatusResponse
                 }
                 AlertDescription::BadCertificateHashValue => {
-                    Errno::TLSErrorAlertReceivedBadCertificateHashValue
+                    ErrorCode::TLSErrorAlertReceivedBadCertificateHashValue
                 }
                 AlertDescription::UnknownPSKIdentity => {
-                    Errno::TLSErrorAlertReceivedUnknownPSKIdentity
+                    ErrorCode::TLSErrorAlertReceivedUnknownPSKIdentity
                 }
                 AlertDescription::CertificateRequired => {
-                    Errno::TLSErrorAlertReceivedCertificateRequired
+                    ErrorCode::TLSErrorAlertReceivedCertificateRequired
                 }
                 AlertDescription::NoApplicationProtocol => {
-                    Errno::TLSErrorAlertReceivedNoApplicationProtocol
+                    ErrorCode::TLSErrorAlertReceivedNoApplicationProtocol
                 }
-                AlertDescription::Unknown(_) => Errno::TLSErrorAlertReceivedUnknown,
+                AlertDescription::Unknown(_) => ErrorCode::TLSErrorAlertReceivedUnknown,
             },
             &TLSError::WebPKIError(pki_err) => match pki_err {
-                webpki::Error::BadDER => Errno::TLSErrorWebpkiBadDER,
-                webpki::Error::BadDERTime => Errno::TLSErrorWebpkiBadDERTime,
-                webpki::Error::CAUsedAsEndEntity => Errno::TLSErrorWebpkiCAUsedAsEndEntity,
-                webpki::Error::CertExpired => Errno::TLSErrorWebpkiCertExpired,
-                webpki::Error::CertNotValidForName => Errno::TLSErrorWebpkiCertNotValidForName,
-                webpki::Error::CertNotValidYet => Errno::TLSErrorWebpkiCertNotValidYet,
-                webpki::Error::EndEntityUsedAsCA => Errno::TLSErrorWebpkiEndEntityUsedAsCA,
-                webpki::Error::ExtensionValueInvalid => Errno::TLSErrorWebpkiExtensionValueInvalid,
-                webpki::Error::InvalidCertValidity => Errno::TLSErrorWebpkiInvalidCertValidity,
+                webpki::Error::BadDER => ErrorCode::TLSErrorWebpkiBadDER,
+                webpki::Error::BadDERTime => ErrorCode::TLSErrorWebpkiBadDERTime,
+                webpki::Error::CAUsedAsEndEntity => ErrorCode::TLSErrorWebpkiCAUsedAsEndEntity,
+                webpki::Error::CertExpired => ErrorCode::TLSErrorWebpkiCertExpired,
+                webpki::Error::CertNotValidForName => ErrorCode::TLSErrorWebpkiCertNotValidForName,
+                webpki::Error::CertNotValidYet => ErrorCode::TLSErrorWebpkiCertNotValidYet,
+                webpki::Error::EndEntityUsedAsCA => ErrorCode::TLSErrorWebpkiEndEntityUsedAsCA,
+                webpki::Error::ExtensionValueInvalid => ErrorCode::TLSErrorWebpkiExtensionValueInvalid,
+                webpki::Error::InvalidCertValidity => ErrorCode::TLSErrorWebpkiInvalidCertValidity,
                 webpki::Error::InvalidSignatureForPublicKey => {
-                    Errno::TLSErrorWebpkiInvalidSignatureForPublicKey
+                    ErrorCode::TLSErrorWebpkiInvalidSignatureForPublicKey
                 }
                 webpki::Error::NameConstraintViolation => {
-                    Errno::TLSErrorWebpkiNameConstraintViolation
+                    ErrorCode::TLSErrorWebpkiNameConstraintViolation
                 }
                 webpki::Error::PathLenConstraintViolated => {
-                    Errno::TLSErrorWebpkiPathLenConstraintViolated
+                    ErrorCode::TLSErrorWebpkiPathLenConstraintViolated
                 }
                 webpki::Error::SignatureAlgorithmMismatch => {
-                    Errno::TLSErrorWebpkiSignatureAlgorithmMismatch
+                    ErrorCode::TLSErrorWebpkiSignatureAlgorithmMismatch
                 }
-                webpki::Error::RequiredEKUNotFound => Errno::TLSErrorWebpkiRequiredEKUNotFound,
-                webpki::Error::UnknownIssuer => Errno::TLSErrorWebpkiUnknownIssuer,
+                webpki::Error::RequiredEKUNotFound => ErrorCode::TLSErrorWebpkiRequiredEKUNotFound,
+                webpki::Error::UnknownIssuer => ErrorCode::TLSErrorWebpkiUnknownIssuer,
                 webpki::Error::UnsupportedCertVersion => {
-                    Errno::TLSErrorWebpkiUnsupportedCertVersion
+                    ErrorCode::TLSErrorWebpkiUnsupportedCertVersion
                 }
                 webpki::Error::UnsupportedCriticalExtension => {
-                    Errno::TLSErrorWebpkiUnsupportedCriticalExtension
+                    ErrorCode::TLSErrorWebpkiUnsupportedCriticalExtension
                 }
                 webpki::Error::UnsupportedSignatureAlgorithmForPublicKey => {
-                    Errno::TLSErrorWebpkiUnsupportedSignatureAlgorithmForPublicKey
+                    ErrorCode::TLSErrorWebpkiUnsupportedSignatureAlgorithmForPublicKey
                 }
                 webpki::Error::UnsupportedSignatureAlgorithm => {
-                    Errno::TLSErrorWebpkiUnsupportedSignatureAlgorithm
+                    ErrorCode::TLSErrorWebpkiUnsupportedSignatureAlgorithm
                 }
             },
-            &TLSError::InvalidSCT(_) => Errno::TLSErrorInvalidSCT,
-            &TLSError::General(_) => Errno::TLSErrorGeneral,
-            &TLSError::FailedToGetCurrentTime => Errno::TLSErrorFailedToGetCurrentTime,
-            &TLSError::InvalidDNSName(_) => Errno::TLSErrorInvalidDNSName,
-            &TLSError::HandshakeNotComplete => Errno::TLSErrorHandshakeNotComplete,
-            &TLSError::PeerSentOversizedRecord => Errno::TLSErrorPeerSentOversizedRecord,
+            &TLSError::InvalidSCT(_) => ErrorCode::TLSErrorInvalidSCT,
+            &TLSError::General(_) => ErrorCode::TLSErrorGeneral,
+            &TLSError::FailedToGetCurrentTime => ErrorCode::TLSErrorFailedToGetCurrentTime,
+            &TLSError::InvalidDNSName(_) => ErrorCode::TLSErrorInvalidDNSName,
+            &TLSError::HandshakeNotComplete => ErrorCode::TLSErrorHandshakeNotComplete,
+            &TLSError::PeerSentOversizedRecord => ErrorCode::TLSErrorPeerSentOversizedRecord,
         }
     }
 }
 
 thread_local! {
-    static ERROR_QUEUE: RefCell<VecDeque<Errno>> = RefCell::new(VecDeque::new());
+    static ERROR_QUEUE: RefCell<VecDeque<ErrorCode>> = RefCell::new(VecDeque::new());
 }
 
 /// `ERR_load_error_strings` - compatibility only
@@ -430,11 +438,11 @@ pub extern "C" fn mesalink_ERR_free_error_strings() {
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_error_string_n(
-    errno: c_ulong,
+    error_code: c_ulong,
     buf_ptr: *mut c_char,
     buf_len: size_t,
 ) -> *const c_char {
-    let src_ptr = mesalink_ERR_reason_error_string(errno);
+    let src_ptr = mesalink_ERR_reason_error_string(error_code);
     if !buf_ptr.is_null() {
         unsafe { libc::strncpy(buf_ptr, src_ptr, buf_len) }
     } else {
@@ -452,15 +460,15 @@ pub extern "C" fn mesalink_ERR_error_string_n(
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_reason_error_string(e: c_ulong) -> *const c_char {
-    let errno: Errno = Errno::from(e);
-    errno.as_str().as_ptr() as *const c_char
+    let error_code: ErrorCode = ErrorCode::from(e);
+    error_code.as_str().as_ptr() as *const c_char
 }
 
 #[doc(hidden)]
 pub struct ErrorQueue {}
 
 impl ErrorQueue {
-    pub fn push_error(e: Errno) {
+    pub fn push_error(e: ErrorCode) {
         ERROR_QUEUE.with(|f| {
             f.borrow_mut().push_back(e);
         });
@@ -528,15 +536,14 @@ pub extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
     let tid = std::thread::current().id();
     ERROR_QUEUE.with(|f| {
         let mut queue = f.borrow_mut();
-        for errno in queue.drain(0..) {
-            let description_c = std::ffi::CString::new(errno.as_str());
-            let errno_c = errno as c_ulong;
+        for err in queue.drain(0..) {
+            let description_c = std::ffi::CString::new(err.as_str());
             let _ = unsafe {
                 libc::fprintf(
                     fp,
                     b"[thread: %u]:[error code: 0x%x]:[%s]\n\0".as_ptr() as *const c_char,
                     tid,
-                    errno_c,
+                    err as c_ulong,
                     description_c,
                 )
             };

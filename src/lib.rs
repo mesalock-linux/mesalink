@@ -144,7 +144,7 @@ extern crate libc;
 // *ring* for cryptography
 extern crate ring;
 
-// rustls for TLS; only TLS 1.2 and 1.3 draft 18 are supported
+// rustls for TLS; only TLS 1.2 and 1.3 draft 22 are supported
 extern crate rustls;
 
 // webpki for certificate verification
@@ -157,8 +157,9 @@ extern crate webpki_roots;
 #[macro_use]
 extern crate lazy_static;
 
-#[macro_use]
-extern crate enum_to_str_derive;
+// enum_to_str_derive for human-readable error numbers
+#[cfg(feature="error_strings")]
+#[macro_use] extern crate enum_to_str_derive;
 
 /// The ssl module is the counterpart of the OpenSSL ssl library.
 pub mod ssl;
