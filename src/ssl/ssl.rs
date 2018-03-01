@@ -941,7 +941,9 @@ pub extern "C" fn mesalink_SSL_set_SSL_CTX<'a>(
     match (ctx_ret, ssl_ret) {
         (Ok(ctx), Ok(ssl)) => {
             ssl.context = ctx;
-            ssl.context
+            ssl.client_config = Arc::new(ctx.client_config.clone());
+            ssl.server_config = Arc::new(ctx.server_config.clone());
+            ssl.context as *const MESALINK_CTX
         }
         _ => std::ptr::null_mut(),
     }
