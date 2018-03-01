@@ -16,9 +16,131 @@
 //! # Synopsis
 //! This sub-module implements the error-handling APIs of OpenSSL. MesaLink
 //! follows the same design as OpenSSL and uses a thread-local error queue. A
-//! failed API call typically returns -1/0 and pushes an error code into the error
-//! queue. The error code can be acquired by calling `ERR_get_error` or
+//! failed API call typically returns -1/0 and pushes an error code into the
+//! error queue. The error code can be acquired by calling `ERR_get_error` or
 //! `SSL_get_error`.
+//!
+//! MesaLink always use a 32-bit unsigned integer to represent error codes.
+//!
+//! ```
+//!  7 6 5 4 3 2 1 0 7 6 5 4 3 2 1 0 7 6 5 4 3 2 1 0 7 6 5 4 3 2 1 0
+//! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//! |     source    |     unused    |     errno     |   sub errno   |
+//! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//! ```
+//!
+//! The highest 8 bits represent the source of the error. 0x1: the error comes
+//! from MesaLink itself. For example, a NULL or malformed SSL_CTX pointer is
+//! used. 0x2: the error comes from system I/O. For example, a certificate file
+//! is not found. 0x3: the error is TLS specific. For example, the remote server
+//! does not have a valid certifcate. The lowest 16 bits represent the specific
+//! error, including 8 bites error number and 8 bits optional sub error number.
+//! For a human-readable decription of an ErrorCode, call
+//! `ERR_reason_error_string`. An non-exhaustive list of error codes is as
+//! follows.
+//!
+//! ```c
+//!   MESALINK_ERROR_NONE = 0,
+//!   MESALINK_ERROR_ZERO_RETURN = 1,
+//!   MESALINK_ERROR_WANT_READ = 2,
+//!   MESALINK_ERROR_WANT_WRITE = 3,
+//!   MESALINK_ERROR_WANT_CONNECT = 7,
+//!   MESALINK_ERROR_WANT_ACCEPT = 8,
+//!   MESALINK_ERROR_SYSCALL = 5,
+//!   MESALINK_ERROR_SSL = 0x55,
+//!   MESALINK_ERROR_NULL_POINTER = 0xe0,
+//!   MESALINK_ERROR_MALFORMED_OBJECT = 0xe1,
+//!   IO_ERROR_NOT_FOUND = 0x02000001,
+//!   IO_ERROR_PERMISSION_DENIED = 0x02000002,
+//!   IO_ERROR_CONNECTION_REFUSED = 0x02000003,
+//!   IO_ERROR_CONNECTION_RESET = 0x02000004,
+//!   IO_ERROR_CONNECTION_ABORTED = 0x02000005,
+//!   IO_ERROR_NOT_CONNECTED = 0x02000006,
+//!   IO_ERROR_ADDR_IN_USE = 0x02000007,
+//!   IO_ERROR_ADDR_NOT_AVAILABLE = 0x02000008,
+//!   IO_ERROR_BROKEN_PIPE = 0x02000009,
+//!   IO_ERROR_ALREADY_EXISTS = 0x0200000a,
+//!   IO_ERROR_WOULD_BLOCK = 0x0200000b,
+//!   IO_ERROR_INVALID_INPUT = 0x0200000c,
+//!   IO_ERROR_INVALID_DATA = 0x0200000d,
+//!   IO_ERROR_TIMED_OUT = 0x0200000e,
+//!   IO_ERROR_WRITE_ZERO = 0x0200000f,
+//!   IO_ERROR_INTERRUPTED = 0x02000010,
+//!   IO_ERROR_OTHER = 0x02000011,
+//!   IO_ERROR_UNEXPECTED_EOF = 0x02000012,
+//!   TLS_ERROR_INAPPROPRIATE_MESSAGE = 0x03000100,
+//!   TLS_ERROR_INAPPROPRIATE_HANDSHAKE_MESSAGE = 0x03000200,
+//!   TLS_ERROR_CORRUPT_MESSAGE = 0x03000300,
+//!   TLS_ERROR_CORRUPT_MESSAGE_PAYLOAD = 0x03000400,
+//!   TLS_ERROR_CORRUPT_MESSAGE_PAYLOAD_ALERT = 0x03000401,
+//!   TLS_ERROR_CORRUPT_MESSAGE_PAYLOAD_CHANGE_CIPHER_SPEC = 0x03000402,
+//!   TLS_ERROR_CORRUPT_MESSAGE_PAYLOAD_HANDSHAKE = 0x03000403,
+//!   TLS_ERROR_NO_CERTIFICATES_PRESENTED = 0x03000500,
+//!   TLS_ERROR_DECRYPT_ERROR = 0x03000600,
+//!   TLS_ERROR_PEER_INCOMPATIBLE_ERROR = 0x03000700,
+//!   TLS_ERROR_PEER_MISBEHAVED_ERROR = 0x03000800,
+//!   TLS_ERROR_ALERT_RECEIVED_CLOSE_NOTIFY = 0x03000901,
+//!   TLS_ERROR_ALERT_RECEIVED_UNEXPECTED_MESSAGE = 0x03000902,
+//!   TLS_ERROR_ALERT_RECEIVED_BAD_RECORD_MAC = 0x03000903,
+//!   TLS_ERROR_ALERT_RECEIVED_DECRYPTION_FAILED = 0x03000904,
+//!   TLS_ERROR_ALERT_RECEIVED_RECORD_OVERFLOW = 0x03000905,
+//!   TLS_ERROR_ALERT_RECEIVED_DECOMPRESSION_FAILURE = 0x03000906,
+//!   TLS_ERROR_ALERT_RECEIVED_HANDSHAKE_FAILURE = 0x03000907,
+//!   TLS_ERROR_ALERT_RECEIVED_NO_CERTIFICATE = 0x03000908,
+//!   TLS_ERROR_ALERT_RECEIVED_BAD_CERTIFICATE = 0x03000909,
+//!   TLS_ERROR_ALERT_RECEIVED_UNSUPPORTED_CERTIFICATE = 0x0300090a,
+//!   TLS_ERROR_ALERT_RECEIVED_CERTIFICATE_REVOKED = 0x0300090b,
+//!   TLS_ERROR_ALERT_RECEIVED_CERTIFICATE_EXPIRED = 0x0300090c,
+//!   TLS_ERROR_ALERT_RECEIVED_CERTIFICATE_UNKNOWN = 0x0300090d,
+//!   TLS_ERROR_ALERT_RECEIVED_ILLEGAL_PARAMETER = 0x0300090e,
+//!   TLS_ERROR_ALERT_RECEIVED_UNKNOWN_CA = 0x0300090f,
+//!   TLS_ERROR_ALERT_RECEIVED_ACCESS_DENIED = 0x03000910,
+//!   TLS_ERROR_ALERT_RECEIVED_DECODE_ERROR = 0x03000911,
+//!   TLS_ERROR_ALERT_RECEIVED_DECRYPT_ERROR = 0x03000912,
+//!   TLS_ERROR_ALERT_RECEIVED_EXPORT_RESTRICTION = 0x03000913,
+//!   TLS_ERROR_ALERT_RECEIVED_PROTOCOL_VERSION = 0x03000914,
+//!   TLS_ERROR_ALERT_RECEIVED_INSUFFICIENT_SECURITY = 0x03000915,
+//!   TLS_ERROR_ALERT_RECEIVED_INTERNAL_ERROR = 0x03000916,
+//!   TLS_ERROR_ALERT_RECEIVED_INAPPROPRIATE_FALLBACK = 0x03000917,
+//!   TLS_ERROR_ALERT_RECEIVED_USER_CANCELED = 0x03000918,
+//!   TLS_ERROR_ALERT_RECEIVED_NO_RENEGOTIATION = 0x03000919,
+//!   TLS_ERROR_ALERT_RECEIVED_MISSING_EXTENSION = 0x0300091a,
+//!   TLS_ERROR_ALERT_RECEIVED_UNSUPPORTED_EXTENSION = 0x0300091b,
+//!   TLS_ERROR_ALERT_RECEIVED_CERTIFICATE_UNOBTAINABLE = 0x0300091c,
+//!   TLS_ERROR_ALERT_RECEIVED_UNRECOGNISED_NAME = 0x0300091d,
+//!   TLS_ERROR_ALERT_RECEIVED_BAD_CERTIFICATE_STATUS_RESPONSE = 0x0300091e,
+//!   TLS_ERROR_ALERT_RECEIVED_BAD_CERTIFICATE_HASH_VALUE = 0x0300091f,
+//!   TLS_ERROR_ALERT_RECEIVED_UNKNOWN_PSK_IDENTITY = 0x03000920,
+//!   TLS_ERROR_ALERT_RECEIVED_CERTIFICATE_REQUIRED = 0x03000921,
+//!   TLS_ERROR_ALERT_RECEIVED_NO_APPLICATION_PROTOCOL = 0x03000922,
+//!   TLS_ERROR_ALERT_RECEIVED_UNKNOWN = 0x030009ff,
+//!   TLS_ERROR_WEBPKI_BAD_DER = 0x03000a01,
+//!   TLS_ERROR_WEBPKI_BAD_DER_TIME = 0x03000a02,
+//!   TLS_ERROR_WEBPKI_CA_USED_AS_END_ENTITY = 0x03000a03,
+//!   TLS_ERROR_WEBPKI_CERT_EXPIRED = 0x03000a04,
+//!   TLS_ERROR_WEBPKI_CERT_NOT_VALID_FOR_NAME = 0x03000a05,
+//!   TLS_ERROR_WEBPKI_CERT_NOT_VALID_YET = 0x03000a06,
+//!   TLS_ERROR_WEBPKI_END_ENTITY_USED_AS_CA = 0x03000a07,
+//!   TLS_ERROR_WEBPKI_EXTENSION_VALUE_INVALID = 0x03000a08,
+//!   TLS_ERROR_WEBPKI_INVALID_CERT_VALIDITY = 0x03000a09,
+//!   TLS_ERROR_WEBPKI_INVALID_SIGNATURE_FOR_PUBLIC_KEY = 0x03000a0a,
+//!   TLS_ERROR_WEBPKI_NAME_CONSTRAINT_VIOLATION = 0x03000a0b,
+//!   TLS_ERROR_WEBPKI_PATH_LEN_CONSTRAINT_VIOLATED = 0x03000a0c,
+//!   TLS_ERROR_WEBPKI_SIGNATURE_ALGORITHM_MISMATCH = 0x03000a0d,
+//!   TLS_ERROR_WEBPKI_REQUIRED_EKU_NOT_FOUND = 0x03000a0e,
+//!   TLS_ERROR_WEBPKI_UNKNOWN_ISSUER = 0x03000a0f,
+//!   TLS_ERROR_WEBPKI_UNSUPPORTED_CERT_VERSION = 0x03000a10,
+//!   TLS_ERROR_WEBPKI_UNSUPPORTED_CRITICAL_EXTENSION = 0x03000a11,
+//!   TLS_ERROR_WEBPKI_UNSUPPORTED_SIGNATURE_ALGORITHM_FOR_PUBLIC_KEY = 0x03000a12,
+//!   TLS_ERROR_WEBPKI_UNSUPPORTED_SIGNATURE_ALGORITHM = 0x03000a13,
+//!   TLS_ERROR_INVALID_SCT = 0x03000b00,
+//!   TLS_ERROR_GENERAL = 0x03000c00,
+//!   TLS_ERROR_FAILED_TO_GET_CURRENT_TIME = 0x03000d00,
+//!   TLS_ERROR_INVALID_DNS_NAME = 0x03000e00,
+//!   TLS_ERROR_HANDSHAKE_NOT_COMPLETE = 0x03000f00,
+//!   TLS_ERROR_PEER_SENT_OVERSIZED_RECORD = 0x03001000,
+//!   UNDEFINED_ERROR = 0xeeeeeeee,
+//! ```
 
 use libc::{self, c_char, c_ulong, size_t};
 use std;
@@ -29,24 +151,9 @@ use rustls::TLSError;
 use rustls::internal::msgs::enums::{AlertDescription, ContentType};
 use webpki;
 
-/// MesaLink always use a 32-bit unsigned integer to represent error codes.
-///
-/// ```
-///  7 6 5 4 3 2 1 0 7 6 5 4 3 2 1 0 7 6 5 4 3 2 1 0 7 6 5 4 3 2 1 0
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-/// |     source    |     unused    |     errno     |   sub errno   |
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-/// ```
-///
-/// The highest 8 bits represent the source of the error. 0x1: the error comes
-/// from MesaLink itself. For example, a NULL or malformed SSL_CTX pointer is
-/// used. 0x2: the error comes from system I/O. For example, a certificate file
-/// is not found. 0x3: the error is TLS specific. For example, the remote server
-/// does not have a valid certifcate. The lowest 16 bits represent the specific
-/// error, including 8 bites error number and 8 bits optional sub error number.
-/// For a human-readable decription of an ErrorCode, call `ERR_reason_error_string`.
+#[doc(hidden)]
 #[repr(C)]
-#[derive(PartialEq, Clone, Copy)]
+#[derive(Clone, Copy)]
 #[cfg_attr(feature = "error_strings", derive(EnumToStr))]
 pub enum ErrorCode {
     // OpenSSL error codes
