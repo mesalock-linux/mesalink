@@ -489,8 +489,8 @@ pub extern "C" fn mesalink_TLSv1_3_client_method() -> *const MESALINK_METHOD {
 #[no_mangle]
 pub extern "C" fn mesalink_TLS_client_method() -> *const MESALINK_METHOD {
     let method = MESALINK_METHOD::new(vec![
-        rustls::ProtocolVersion::TLSv1_2,
         rustls::ProtocolVersion::TLSv1_3,
+        rustls::ProtocolVersion::TLSv1_2,
     ]);
     Box::into_raw(Box::new(method))
 }
@@ -604,8 +604,8 @@ pub extern "C" fn mesalink_TLSv1_3_server_method() -> *const MESALINK_METHOD {
 #[no_mangle]
 pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
     let method = MESALINK_METHOD::new(vec![
-        rustls::ProtocolVersion::TLSv1_2,
         rustls::ProtocolVersion::TLSv1_3,
+        rustls::ProtocolVersion::TLSv1_2,
     ]);
     Box::into_raw(Box::new(method))
 }
@@ -654,22 +654,24 @@ pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
                 let mut reader = std::io::BufReader::new(f);
                 let certs = rustls::internal::pemfile::certs(&mut reader);
                 match certs {
-                    Ok(certs) => { 
+                    Ok(certs) => {
                         ctx.certificates = Some(certs);
                         return SslConstants::SslSuccess as c_int;
-                    },
+                    }
                     Err(_) => {
                         ErrorQueue::push_error(Errno::TLSErrorWebpkiBadDER);
                         return SslConstants::SslFailure as c_int;
-                    },
+                    }
                 }
             }
             Err(e) => {
+                println!("file open error, {:?}", e);
                 ErrorQueue::push_error(Errno::from(e));
                 return SslConstants::SslFailure as c_int;
             }
         }
     } else {
+        println!("file name CStr conversion error");
         ErrorQueue::push_error(Errno::IoErrorNotFound);
         SslConstants::SslFailure as c_int
     }
@@ -775,7 +777,7 @@ pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX)
 pub extern "C" fn mesalink_SSL_CTX_set_verify(
     ctx_ptr: *mut MESALINK_CTX,
     mode: c_int,
-    _cb: Option<extern fn(c_int, *mut MESALINK_CTX) -> c_int>
+    _cb: Option<extern "C" fn(c_int, *mut MESALINK_CTX) -> c_int>,
 ) -> c_int {
     sanitize_ptr_return_fail!(ctx_ptr);
     let ctx = unsafe { &mut *ctx_ptr };
@@ -1121,6 +1123,28 @@ pub extern "C" fn mesalink_SSL_get_fd(ssl_ptr: *const MESALINK_SSL) -> c_int {
     }
 }
 
+struct ClientCacheWithoutKxHints(Arc<rustls::ClientSessionMemoryCache>);
+
+impl ClientCacheWithoutKxHints {
+    fn new() -> Arc<ClientCacheWithoutKxHints> {
+        Arc::new(ClientCacheWithoutKxHints(rustls::ClientSessionMemoryCache::new(32)))
+    }
+}
+
+impl rustls::StoresClientSessions for ClientCacheWithoutKxHints {
+    fn put(&self, key: Vec<u8>, value: Vec<u8>) -> bool {
+        if key.len() > 2 && key[0] == b'k' && key[1] == b'x' {
+            true
+        } else {
+            self.0.put(key, value)
+        }
+    }
+
+    fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
+        self.0.get(key)
+    }
+}
+
 /// `SSL_connect` - initiate the TLS handshake with a server. The communication
 /// channel must already have been set and assigned to the ssl with SSL_set_fd.
 ///
@@ -1137,13 +1161,19 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
         if let Ok(hostname_str) = hostname.to_str() {
             if let Ok(dns_name) = webpki::DNSNameRef::try_from_ascii_str(hostname_str) {
                 let mut client_config = rustls::ClientConfig::new();
-                client_config.versions = ssl.context.methods.versions.clone();
+                client_config.versions.clear();
+                for v in ssl.context.methods.versions.iter() {
+                    client_config.versions.push(*v);
+                }
                 client_config
                     .root_store
                     .add_server_trust_anchors(&TLS_SERVER_ROOTS);
+                client_config.set_persistence(ClientCacheWithoutKxHints::new());
                 if let Some(ref verifier) = ssl.context.server_verifier {
-                    client_config.dangerous().set_certificate_verifier(verifier.clone());
-                } 
+                    client_config
+                        .dangerous()
+                        .set_certificate_verifier(verifier.clone());
+                }
                 let mut session = rustls::ClientSession::new(&Arc::new(client_config), dns_name);
                 session.process_new_packets().unwrap();
                 ssl.session = Some(Box::new(session));
@@ -1169,6 +1199,12 @@ pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     sanitize_ptr_return_fail!(ssl_ptr);
     let ssl = unsafe { &mut *ssl_ptr };
     let mut server_config = rustls::ServerConfig::new(rustls::NoClientAuth::new());
+    server_config.versions.clear();
+    for v in ssl.context.methods.versions.iter() {
+        server_config.versions.push(*v);
+    }
+    server_config.ticketer = rustls::Ticketer::new(); // Enable ticketing for server
+    server_config.set_persistence(rustls::ServerSessionMemoryCache::new(32));
     match (&ssl.context.certificates, &ssl.context.private_key) {
         (&Some(ref certs), &Some(ref key)) => {
             server_config.set_single_cert(certs.clone(), key.clone());

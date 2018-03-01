@@ -25,7 +25,7 @@ use std::io::ErrorKind;
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use rustls::TLSError;
-use rustls::internal::msgs::enums::AlertDescription;
+use rustls::internal::msgs::enums::{AlertDescription, ContentType};
 use webpki;
 
 /// MesaLink error code format MesaLink always use a 32-bit unsigned integer to
@@ -46,7 +46,7 @@ use webpki;
 /// The lowest 16 bits represent the specific error, including 8 bites error
 /// number and 8 bits optional sub error number.
 ///
-/// 0x01000200: MesaLink encounters a SSL_ERROR_WANT_READ error, This typically occus when
+/// 0x00000200: MesaLink encounters a SSL_ERROR_WANT_READ error, This typically occus when
 /// the underlying socket is non-blocking.
 ///
 /// 0x03000a0f: TLS specific error, WebPKI error, Unknown certificate issuer
@@ -90,6 +90,9 @@ pub enum Errno {
     TLSErrorInappropriateHandshakeMessage = 0x03000200,
     TLSErrorCorruptMessage = 0x03000300,
     TLSErrorCorruptMessagePayload = 0x03000400,
+    TLSErrorCorruptMessagePayloadAlert = 0x03000401,
+    TLSErrorCorruptMessagePayloadChangeCipherSpec = 0x03000402,
+    TLSErrorCorruptMessagePayloadHandshake = 0x03000403,
     TLSErrorNoCertificatesPresented = 0x03000500,
     TLSErrorDecryptError = 0x03000600,
     TLSErrorPeerIncompatibleError = 0x03000700,
@@ -260,7 +263,14 @@ impl From<TLSError> for Errno {
                 got_type,
             } => Errno::TLSErrorInappropriateHandshakeMessage,
             TLSError::CorruptMessage => Errno::TLSErrorCorruptMessage,
-            TLSError::CorruptMessagePayload(_) => Errno::TLSErrorCorruptMessagePayload,
+            TLSError::CorruptMessagePayload(c) => match c {
+                ContentType::Alert => Errno::TLSErrorCorruptMessagePayloadAlert,
+                ContentType::ChangeCipherSpec => {
+                    Errno::TLSErrorCorruptMessagePayloadChangeCipherSpec
+                }
+                ContentType::Handshake => Errno::TLSErrorCorruptMessagePayloadHandshake,
+                _ => Errno::TLSErrorCorruptMessagePayload,
+            },
             TLSError::NoCertificatesPresented => Errno::TLSErrorNoCertificatesPresented,
             TLSError::DecryptError => Errno::TLSErrorDecryptError,
             TLSError::PeerIncompatibleError(_) => Errno::TLSErrorPeerIncompatibleError,

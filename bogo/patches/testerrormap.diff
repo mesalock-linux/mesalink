@@ -1,20 +1,22 @@
-Support a map of test names to expected errors.
-
-diff -ru vanilla/runner.go bogo/runner.go
---- vanilla/runner.go	2016-08-17 23:45:12.000000000 +0100
-+++ bogo/runner.go	2016-08-22 23:25:37.911319366 +0100
-@@ -78,6 +78,10 @@
- 	// “:NO_SHARED_CIPHER:” (a BoringSSL error string) to something
+diff -ru original/runner.go bogo/runner.go
+--- original/runner.go	2017-12-28 16:24:49.000000000 +0000
++++ bogo/runner.go	2017-12-29 13:53:29.061166983 +0000
+@@ -83,6 +83,14 @@
  	// like “SSL_ERROR_NO_CYPHER_OVERLAP”.
  	ErrorMap map[string]string
-+
+ 
 +	// TestErrorMap maps from full test names to the correct error
 +	// string for the shim in question.
 +	TestErrorMap map[string]string
- }
- 
- var shimConfig ShimConfiguration
-@@ -766,7 +770,11 @@
++
++	// TestLocalErrorMap maps from full test names to the correct local
++	// error string for the shim in question.
++	TestLocalErrorMap map[string]string
++
+ 	// HalfRTTTickets is the number of half-RTT tickets the client should
+ 	// expect before half-RTT data when testing 0-RTT.
+ 	HalfRTTTickets int
+@@ -939,7 +947,11 @@
  	}
  }
  
@@ -27,7 +29,22 @@ diff -ru vanilla/runner.go bogo/runner.go
  	if translated, ok := shimConfig.ErrorMap[errorStr]; ok {
  		return translated
  	}
-@@ -936,7 +944,7 @@
+@@ -951,6 +963,14 @@
+ 	return errorStr
+ }
+ 
++func translateExpectedLocalError(testName string, localError string) string {
++	if translated, ok := shimConfig.TestLocalErrorMap[testName]; ok {
++		return translated
++	}
++
++	return localError
++}
++
+ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
+ 	// Help debugging panics on the Go side.
+ 	defer func() {
+@@ -1215,15 +1235,16 @@
  	}
  
  	failed := err != nil || childErr != nil
@@ -35,4 +52,15 @@ diff -ru vanilla/runner.go bogo/runner.go
 +	expectedError := translateExpectedError(test.name, test.expectedError)
  	correctFailure := len(expectedError) == 0 || strings.Contains(stderr, expectedError)
  
++	var expectedLocalError = translateExpectedLocalError(test.name, test.expectedLocalError)
  	localError := "none"
+ 	if err != nil {
+ 		localError = err.Error()
+ 	}
+-	if len(test.expectedLocalError) != 0 {
+-		correctFailure = correctFailure && strings.Contains(localError, test.expectedLocalError)
++	if len(expectedLocalError) != 0 {
++		correctFailure = correctFailure && strings.Contains(localError, expectedLocalError)
+ 	}
+ 
+ 	if failed != test.shouldFail || failed && !correctFailure || mustFail {

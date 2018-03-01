@@ -39,6 +39,7 @@ use std::env;
 use std::process;
 use std::net;
 use std::io::Write;
+use std::ffi::CString;
 use mesalink_internals::ssl::{err, ssl};
 use mesalink_internals::ssl::err::Errno;
 
@@ -100,7 +101,7 @@ impl Options {
     }
 
     fn tls12_supported(&self) -> bool {
-        self.support_tls12 && self.version_allowed(0x0302)
+        self.support_tls12 && self.version_allowed(0x0303)
     }
 }
 
@@ -125,6 +126,9 @@ fn handle_err(err: Errno) -> ! {
         }
         Errno::TLSErrorAlertReceivedRecordOverflow => quit(":TLSV1_ALERT_RECORD_OVERFLOW:"),
         Errno::TLSErrorAlertReceivedHandshakeFailure => quit(":HANDSHAKE_FAILURE:"),
+        Errno::TLSErrorCorruptMessagePayloadAlert => quit(":BAD_ALERT:"),
+        Errno::TLSErrorCorruptMessagePayloadChangeCipherSpec => quit(":BAD_CHANGE_CIPHER_SPEC:"),
+        Errno::TLSErrorCorruptMessagePayloadHandshake => quit(":BAD_HANDSHAKE_MSG:"),
         Errno::TLSErrorCorruptMessagePayload => quit(":GARBAGE:"),
         Errno::TLSErrorCorruptMessage => quit(":GARBAGE:"),
         Errno::TLSErrorDecryptError => quit(":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:"),
@@ -132,11 +136,16 @@ fn handle_err(err: Errno) -> ! {
         Errno::TLSErrorPeerMisbehavedError => quit(":PEER_MISBEHAVIOUR:"),
         Errno::TLSErrorNoCertificatesPresented => quit(":NO_CERTS:"),
         Errno::TLSErrorAlertReceivedUnexpectedMessage => quit(":BAD_ALERT:"),
-        Errno::TLSErrorAlertReceivedDecompressionFailure => quit(":SSLV3_ALERT_DECOMPRESSION_FAILURE:"),
+        Errno::TLSErrorAlertReceivedDecompressionFailure => {
+            quit(":SSLV3_ALERT_DECOMPRESSION_FAILURE:")
+        }
         Errno::TLSErrorWebpkiBadDER => quit(":CANNOT_PARSE_LEAF_CERT:"),
         Errno::TLSErrorWebpkiInvalidSignatureForPublicKey => quit(":BAD_SIGNATURE:"),
-        Errno::TLSErrorWebpkiUnsupportedSignatureAlgorithmForPublicKey => quit(":WRONG_SIGNATURE_TYPE:"),
+        Errno::TLSErrorWebpkiUnsupportedSignatureAlgorithmForPublicKey => {
+            quit(":WRONG_SIGNATURE_TYPE:")
+        }
         Errno::TLSErrorPeerSentOversizedRecord => quit(":DATA_LENGTH_TOO_LONG:"),
+        Errno::TLSErrorAlertReceivedProtocolVersion => quit(":PEER_MISBEHAVIOUR:"),
         _ => {
             println_err!("unhandled error: {:?}", err);
             quit(":FIXME:")
@@ -156,17 +165,28 @@ fn setup_ctx(opts: &Options) -> *mut ssl::MESALINK_CTX {
     };
     let ctx = ssl::mesalink_CTX_new(method);
     if opts.server {
-        ssl::mesalink_SSL_CTX_use_certificate_chain_file(
+        if ssl::mesalink_SSL_CTX_use_certificate_chain_file(
             ctx,
-            opts.cert_file.as_ptr() as *const libc::c_char,
+            CString::new(opts.cert_file.clone()).unwrap().as_ptr() as *const libc::c_char,
             0,
-        );
-        ssl::mesalink_SSL_CTX_use_PrivateKey_file(
+        ) != 1
+        {
+            println!("mesalink_SSL_CTX_use_certificate_chain_file failed");
+            println!("{:?}", Errno::from(err::mesalink_ERR_peek_last_error()));
+        }
+        if ssl::mesalink_SSL_CTX_use_PrivateKey_file(
             ctx,
-            opts.key_file.as_ptr() as *const libc::c_char,
+            CString::new(opts.key_file.clone()).unwrap().as_ptr() as *const libc::c_char,
             0,
-        );
-        ssl::mesalink_SSL_CTX_check_private_key(ctx);
+        ) != 1
+        {
+            println!("mesalink_SSL_CTX_use_PrivateKey_file failed");
+            println!("{:?}", Errno::from(err::mesalink_ERR_peek_last_error()));
+        }
+        if ssl::mesalink_SSL_CTX_check_private_key(ctx) != 1 {
+            println!("mesalink_SSL_CTX_check_private_key failed");
+            println!("{:?}", Errno::from(err::mesalink_ERR_peek_last_error()));
+        }
     }
     ssl::mesalink_SSL_CTX_set_verify(ctx, 0, None);
     ctx
@@ -194,11 +214,14 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX) {
     }
 
     if !opts.server {
-        if ssl::mesalink_SSL_connect(ssl) == 0 {
+        if ssl::mesalink_SSL_connect(ssl) != 1 {
             println!("mesalink_SSL_connect failed\n");
         }
     } else {
-        ssl::mesalink_SSL_accept(ssl);
+        if ssl::mesalink_SSL_accept(ssl) != 1 {
+            println!("mesalink_SSL_accept failed");
+            println!("{:?}", Errno::from(err::mesalink_ERR_peek_last_error()));
+        }
     }
 
     if opts.shim_writes_first {
@@ -220,9 +243,9 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX) {
         if len == 0 {
             let error = Errno::from(ssl::mesalink_SSL_get_error(ssl, len) as u32);
             match error {
-                Errno::MesalinkErrorNone
-                | Errno::MesalinkErrorWantRead
-                | Errno::MesalinkErrorWantWrite => (),
+                Errno::MesalinkErrorNone => (),
+                Errno::MesalinkErrorWantRead
+                | Errno::MesalinkErrorWantWrite => continue,
                 _ => handle_err(error),
             };
             if opts.check_close_notify {
@@ -297,6 +320,7 @@ fn main() {
             }
             "-max-send-fragment" => {
                 println!("not checking {}; disabled for MesaLink", arg);
+                process::exit(BOGO_NACK);
             }
             "-read-size" => {
                 opts.read_size = args.remove(0).parse::<usize>().unwrap();
@@ -321,6 +345,7 @@ fn main() {
             "-expect-client-ca-list" |
             "-expect-msg-callback" => {
                 println!("not checking {} {}; NYI", arg, args.remove(0));
+                process::exit(BOGO_NACK);
             }
 
             "-expect-secure-renegotiation" |
@@ -334,13 +359,20 @@ fn main() {
             "-export-context" |
             "-use-export-context" => {
                 println!("not checking {}; disabled for MesaLink", arg);
+                process::exit(BOGO_NACK);
             }
 
+            "-async" |
             "-ocsp-response" |
             "-select-alpn" |
             "-require-any-client-certificate" |
-            "-verify-peer" => {
+            "-verify-peer" |
+            "-signed-cert-timestamps" | 
+            "-advertise-alpn" |
+            "-use-null-client-ca-list" |
+            "-enable-signed-cert-timestamps" => {
                 println!("not checking {}; disabled for MesaLink", arg);
+                process::exit(BOGO_NACK);
             }
             "-shim-writes-first" => {
                 opts.shim_writes_first = true;
@@ -354,11 +386,6 @@ fn main() {
             "-host-name" => {
                 opts.host_name = args.remove(0);
                 opts.use_sni = true;
-            }
-            "-advertise-alpn" |
-            "-use-null-client-ca-list" |
-            "-enable-signed-cert-timestamps" => {
-                println!("not checking {}; disabled for MesaLink", arg);
             }
 
             // defaults:
@@ -426,7 +453,8 @@ fn main() {
             "-no-op-extra-handshake" |
             "-on-resume-enable-early-data" |
             "-read-with-unfinished-write" |
-            "-expect-peer-cert-file" => {
+            "-expect-peer-cert-file" |
+            "-enable-short-header" => {
                 println!("NYI option {:?}", arg);
                 process::exit(BOGO_NACK);
             }
@@ -440,9 +468,9 @@ fn main() {
 
     println!("opts {:?}", opts);
 
+    let ctx = setup_ctx(&opts);
     for _ in 0..opts.resume_count + 1 {
-        let ctx = setup_ctx(&opts);
         do_connection(&opts, ctx);
-        ssl::mesalink_CTX_free(ctx);
     }
+    ssl::mesalink_CTX_free(ctx);
 }
