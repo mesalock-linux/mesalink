@@ -229,7 +229,7 @@ pub struct MESALINK_SSL<'a> {
     context: &'a MESALINK_CTX,
     client_config: Arc<rustls::ClientConfig>,
     server_config: Arc<rustls::ServerConfig>,
-    hostname: Option<&'a std::ffi::CStr>,
+    hostname: Option<webpki::DNSNameRef<'a>>,
     io: Option<TcpStream>,
     session: Option<Box<Session>>,
     error: Errno,
@@ -706,10 +706,11 @@ pub extern "C" fn mesalink_SSL_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut
     }
 }
 
-fn try_set_server_single_cert(ctx: &mut MESALINK_CTX) -> Result<(),()> {
+fn try_set_server_single_cert(ctx: &mut MESALINK_CTX) -> Result<(), ()> {
     match (&ctx.certificates, &ctx.private_key) {
         (&Some(ref certs), &Some(ref key)) => {
-            ctx.server_config.set_single_cert(certs.clone(), key.clone());
+            ctx.server_config
+                .set_single_cert(certs.clone(), key.clone());
             Ok(())
         }
         _ => Err(()),
@@ -970,7 +971,7 @@ pub extern "C" fn mesalink_SSL_get_current_cipher(
                 None => std::ptr::null_mut(),
             },
             None => {
-                ErrorQueue::push_error(Errno::MesalinkErrorNullPointer);
+                ErrorQueue::push_error(Errno::IoErrorInvalidInput);
                 std::ptr::null_mut()
             }
         }
@@ -1154,12 +1155,17 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
             ErrorQueue::push_error(Errno::MesalinkErrorNullPointer);
             return SslConstants::SslFailure as c_int;
         }
-        let hostname = unsafe { std::ffi::CStr::from_ptr(hostname_ptr) };
-        ssl.hostname = Some(hostname);
-        SslConstants::SslSuccess as c_int
-    } else {
-        SslConstants::SslFailure as c_int
+        let hostname_cstr = unsafe { std::ffi::CStr::from_ptr(hostname_ptr) };
+        if let Ok(hostname_str) = hostname_cstr.to_str() {
+            if let Ok(dnsname) = webpki::DNSNameRef::try_from_ascii_str(hostname_str) {
+                ssl.hostname = Some(dnsname);
+                return SslConstants::SslSuccess as c_int;
+            }
+        } else {
+            ErrorQueue::push_error(Errno::IoErrorInvalidInput);
+        }
     }
+    SslConstants::SslFailure as c_int
 }
 
 /// `SSL_get_servername` - return a servername extension value of the specified
@@ -1178,8 +1184,14 @@ pub extern "C" fn mesalink_SSL_get_servername(
 ) -> *const c_char {
     if let Ok(ssl) = sanitize_ptr_for_mut_ref(ssl_ptr) {
         match ssl.hostname {
-            Some(hostname_cstr) => return hostname_cstr.as_ptr(),
-            _ => (),
+            Some(hostname) => {
+                let hostname_str: &str = hostname.into();
+                match std::ffi::CString::new(hostname_str) {
+                    Ok(cstr) => return cstr.as_ptr() as *const c_char,
+                    Err(_) => ErrorQueue::push_error(Errno::IoErrorInvalidInput),
+                }
+            }
+            _ => ErrorQueue::push_error(Errno::IoErrorInvalidData),
         }
     }
     std::ptr::null()
@@ -1218,7 +1230,7 @@ pub extern "C" fn mesalink_SSL_get_fd(ssl_ptr: *mut MESALINK_SSL) -> c_int {
         match ssl.io {
             Some(ref socket) => return socket.as_raw_fd(),
             None => {
-                ErrorQueue::push_error(Errno::MesalinkErrorNullPointer);
+                ErrorQueue::push_error(Errno::IoErrorInvalidInput);
             }
         }
     }
@@ -1237,17 +1249,14 @@ pub extern "C" fn mesalink_SSL_get_fd(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     if let Ok(ssl) = sanitize_ptr_for_mut_ref(ssl_ptr) {
         if let Some(hostname) = ssl.hostname {
-            if let Ok(hostname_str) = hostname.to_str() {
-                if let Ok(dns_name) = webpki::DNSNameRef::try_from_ascii_str(hostname_str) {
-                    let mut session = rustls::ClientSession::new(&ssl.client_config, dns_name);
-                    session.process_new_packets().unwrap();
-                    ssl.session = Some(Box::new(session));
-                    return SslConstants::SslSuccess as c_int;
-                }
-            }
+            let mut session = rustls::ClientSession::new(&ssl.client_config, hostname);
+            session.process_new_packets().unwrap();
+            ssl.session = Some(Box::new(session));
+            return SslConstants::SslSuccess as c_int;
+        } else {
+            ErrorQueue::push_error(Errno::IoErrorInvalidInput);
         }
     }
-    ErrorQueue::push_error(Errno::MesalinkErrorNullPointer);
     SslConstants::SslFailure as c_int
 }
 
@@ -1362,7 +1371,7 @@ pub extern "C" fn mesalink_SSL_shutdown(ssl_ptr: *mut MESALINK_SSL) -> c_int {
                 SslConstants::SslSuccess as c_int
             }
             None => {
-                ErrorQueue::push_error(Errno::MesalinkErrorNullPointer);
+                ErrorQueue::push_error(Errno::IoErrorInvalidInput);
                 SslConstants::SslFailure as c_int
             }
         }
@@ -1388,7 +1397,7 @@ pub extern "C" fn mesalink_SSL_get_version(ssl_ptr: *mut MESALINK_SSL) -> *const
                 _ => CONST_NONE_STR.as_ptr() as *const c_char,
             },
             None => {
-                ErrorQueue::push_error(Errno::MesalinkErrorNullPointer);
+                ErrorQueue::push_error(Errno::IoErrorInvalidInput);
                 std::ptr::null()
             }
         }
