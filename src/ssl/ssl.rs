@@ -176,12 +176,10 @@ impl rustls::StoresClientSessions for ClientCacheWithoutKxHints {
 #[repr(C)]
 pub struct MESALINK_CTX {
     magic: [u8; MAGIC_SIZE],
-    client_config: Arc<rustls::ClientConfig>,
-    server_config: Arc<rustls::ServerConfig>,
+    client_config: rustls::ClientConfig,
+    server_config: rustls::ServerConfig,
     certificates: Option<Vec<rustls::Certificate>>,
     private_key: Option<rustls::PrivateKey>,
-    client_verifier: Option<Arc<rustls::ClientCertVerifier>>,
-    server_verifier: Option<Arc<rustls::ServerCertVerifier>>,
 }
 
 impl<'a> MesalinkOpaquePointerType for MESALINK_CTX {
@@ -203,8 +201,6 @@ impl<'a> MESALINK_CTX {
             server_config.versions.push(*v);
         }
 
-        //client_config.dangerous().set_certificate_verifier(verifier.clone());
-
         client_config.set_persistence(ClientCacheWithoutKxHints::new());
         server_config.set_persistence(rustls::ServerSessionMemoryCache::new(32));
         client_config
@@ -214,12 +210,10 @@ impl<'a> MESALINK_CTX {
 
         MESALINK_CTX {
             magic: *MAGIC,
-            client_config: Arc::new(client_config),
-            server_config: Arc::new(server_config),
+            client_config: client_config,
+            server_config: server_config,
             certificates: None,
             private_key: None,
-            client_verifier: None,
-            server_verifier: None,
         }
     }
 }
@@ -232,7 +226,9 @@ impl<'a> MESALINK_CTX {
 #[repr(C)]
 pub struct MESALINK_SSL<'a> {
     magic: [u8; MAGIC_SIZE],
-    context: &'a mut MESALINK_CTX,
+    context: &'a MESALINK_CTX,
+    client_config: Arc<rustls::ClientConfig>,
+    server_config: Arc<rustls::ServerConfig>,
     hostname: Option<&'a std::ffi::CStr>,
     io: Option<TcpStream>,
     session: Option<Box<Session>>,
@@ -251,6 +247,8 @@ impl<'a> MESALINK_SSL<'a> {
         MESALINK_SSL {
             magic: *MAGIC,
             context: ctx,
+            client_config: Arc::new(ctx.client_config.clone()),
+            server_config: Arc::new(ctx.server_config.clone()),
             hostname: None,
             io: None,
             session: None,
@@ -863,8 +861,9 @@ pub extern "C" fn mesalink_SSL_CTX_set_verify(
 ) -> c_int {
     if let Ok(ctx) = sanitize_ptr_for_mut_ref(ctx_ptr) {
         if mode == VerifyModes::VerifyNone as c_int {
-            ctx.client_verifier = Some(Arc::new(rustls::NoClientAuth));
-            ctx.server_verifier = Some(Arc::new(NoServerAuth {}));
+            ctx.client_config
+                .dangerous()
+                .set_certificate_verifier(Arc::new(NoServerAuth {}));
         }
         SslConstants::SslSuccess as c_int
     } else {
@@ -919,7 +918,7 @@ pub extern "C" fn mesalink_SSL_get_SSL_CTX(ssl_ptr: *mut MESALINK_SSL) -> *const
 pub extern "C" fn mesalink_SSL_set_SSL_CTX<'a>(
     ssl_ptr: *mut MESALINK_SSL<'a>,
     ctx_ptr: *mut MESALINK_CTX,
-) -> *mut MESALINK_CTX {
+) -> *const MESALINK_CTX {
     let ctx_ret = sanitize_ptr_for_mut_ref(ctx_ptr);
     let ssl_ret = sanitize_ptr_for_mut_ref(ssl_ptr);
     match (ctx_ret, ssl_ret) {
@@ -1225,7 +1224,7 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
             if let Ok(hostname_str) = hostname.to_str() {
                 if let Ok(dns_name) = webpki::DNSNameRef::try_from_ascii_str(hostname_str) {
                     let mut session =
-                        rustls::ClientSession::new(&ssl.context.client_config, dns_name);
+                        rustls::ClientSession::new(&ssl.client_config, dns_name);
                     session.process_new_packets().unwrap();
                     ssl.session = Some(Box::new(session));
                     return SslConstants::SslSuccess as c_int;
@@ -1249,7 +1248,7 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     if let Ok(ssl) = sanitize_ptr_for_mut_ref(ssl_ptr) {
-        let session = rustls::ServerSession::new(&ssl.context.server_config);
+        let session = rustls::ServerSession::new(&ssl.server_config);
         ssl.session = Some(Box::new(session));
         return SslConstants::SslSuccess as c_int;
     } else {
