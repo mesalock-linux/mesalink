@@ -305,7 +305,6 @@ impl<'a> Read for MESALINK_SSL<'a> {
                                 if session.wants_write() {
                                     let _ = session.write_tls(io);
                                 }
-                                println!("process_new_packets error: {:?}", tls_err);
                                 self.error = Errno::from(&tls_err);
                                 return Err(io::Error::new(io::ErrorKind::InvalidData, tls_err));
                             },
@@ -754,13 +753,11 @@ pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
                     }
                 }
                 Err(e) => {
-                    println!("file open error, {:?}", e);
                     ErrorQueue::push_error(Errno::from(&e));
                     return SslConstants::SslFailure as c_int;
                 }
             }
         } else {
-            println!("file name CStr conversion error");
             ErrorQueue::push_error(Errno::IoErrorNotFound);
             SslConstants::SslFailure as c_int
         }

@@ -14,7 +14,7 @@
  */
 
 /* This file is a test shim for the BoringSSL-Go ('bogo') TLS test suite,
- * which is based upon the Rustls implementation in bogo_shim.rs:
+ * which is in part based upon the Rustls implementation in bogo_shim.rs:
  *
  * Copyright 2016-2018 Joseph Birr-Pixton <jpixton@gmail.com>
  *
@@ -146,7 +146,6 @@ fn handle_err(err: Errno) -> ! {
         }
         Errno::TLSErrorPeerSentOversizedRecord => quit(":DATA_LENGTH_TOO_LONG:"),
         Errno::TLSErrorAlertReceivedProtocolVersion => quit(":PEER_MISBEHAVIOUR:"),
-        Errno::IoErrorConnectionReset => quit(":CLOSE_WITHOUT_CLOSE_NOTIFY:"),
         _ => {
             println_err!("unhandled error: {:?}", err);
             quit(":FIXME:")
@@ -172,8 +171,8 @@ fn setup_ctx(opts: &Options) -> *mut ssl::MESALINK_CTX {
             0,
         ) != 1
         {
-            println!("mesalink_SSL_CTX_use_certificate_chain_file failed");
-            println!("{:?}", Errno::from(err::mesalink_ERR_peek_last_error()));
+            println_err!("mesalink_SSL_CTX_use_certificate_chain_file failed");
+            println_err!("{:?}", Errno::from(err::mesalink_ERR_peek_last_error()));
         }
         if ssl::mesalink_SSL_CTX_use_PrivateKey_file(
             ctx,
@@ -181,12 +180,12 @@ fn setup_ctx(opts: &Options) -> *mut ssl::MESALINK_CTX {
             0,
         ) != 1
         {
-            println!("mesalink_SSL_CTX_use_PrivateKey_file failed");
-            println!("{:?}", Errno::from(err::mesalink_ERR_peek_last_error()));
+            println_err!("mesalink_SSL_CTX_use_PrivateKey_file failed");
+            println_err!("{:?}", Errno::from(err::mesalink_ERR_peek_last_error()));
         }
         if ssl::mesalink_SSL_CTX_check_private_key(ctx) != 1 {
-            println!("mesalink_SSL_CTX_check_private_key failed");
-            println!("{:?}", Errno::from(err::mesalink_ERR_peek_last_error()));
+            println_err!("mesalink_SSL_CTX_check_private_key failed");
+            println_err!("{:?}", Errno::from(err::mesalink_ERR_peek_last_error()));
         }
     }
     ssl::mesalink_SSL_CTX_set_verify(ctx, 0, None);
@@ -202,27 +201,25 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX) {
     let ssl: *mut ssl::MESALINK_SSL = ssl::mesalink_SSL_new(ctx);
 
     if ssl.is_null() {
-        println!("MESALINK_SSL is null\n");
-        return;
+        quit_err("MESALINK_SSL is null");
     }
 
     if ssl::mesalink_SSL_set_tlsext_host_name(ssl, opts.host_name.as_ptr() as *const libc::c_char)
-        == 0
+        != 1
     {
-        println!("mesalink_SSL_set_tlsext_host_name failed\n");
+        quit_err("mesalink_SSL_set_tlsext_host_name failed\n");
     }
-    if ssl::mesalink_SSL_set_fd(ssl, conn.as_raw_fd()) == 0 {
-        println!("mesalink_SSL_set_fd failed\n");
+    if ssl::mesalink_SSL_set_fd(ssl, conn.as_raw_fd()) != 1 {
+        quit_err("mesalink_SSL_set_fd failed\n");
     }
 
     if !opts.server {
         if ssl::mesalink_SSL_connect(ssl) != 1 {
-            println!("mesalink_SSL_connect failed\n");
+            quit_err("mesalink_SSL_connect failed");
         }
     } else {
         if ssl::mesalink_SSL_accept(ssl) != 1 {
-            println!("mesalink_SSL_accept failed");
-            println!("{:?}", Errno::from(err::mesalink_ERR_peek_last_error()));
+            quit_err("mesalink_SSL_accept failed");
         }
     }
 
@@ -244,7 +241,6 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX) {
         );
         if len == 0 {
             let error = Errno::from(ssl::mesalink_SSL_get_error(ssl, len) as u32);
-            println!("SSL_read error: {:?}", error);
             match error {
                 Errno::MesalinkErrorNone => (),
                 Errno::MesalinkErrorWantRead | Errno::MesalinkErrorWantWrite => continue,
@@ -255,6 +251,9 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX) {
                     println!("EOF (tls)");
                     return;
                 }
+                Errno::IoErrorConnectionReset => if opts.check_close_notify {
+                    quit_err(":CLOSE_WITHOUT_CLOSE_NOTIFY:")
+                },
                 _ => handle_err(error),
             };
             if opts.check_close_notify {
@@ -350,12 +349,13 @@ fn main() {
             "-expect-ocsp-response" |
             "-expect-signed-cert-timestamps" |
             "-expect-certificate-types" |
-            "-expect-client-ca-list" |
             "-expect-msg-callback" => {
                 println!("not checking {} {}; NYI", arg, args.remove(0));
+            }
+            "-expect-client-ca-list" => {
+                println!("not checking {} {}; NYI; disabled for MesaLink", arg, args.remove(0));
                 process::exit(BOGO_NACK);
             }
-
             "-expect-secure-renegotiation" |
             "-expect-no-session-id" |
             "-expect-session-id" => {
@@ -460,8 +460,7 @@ fn main() {
             "-no-op-extra-handshake" |
             "-on-resume-enable-early-data" |
             "-read-with-unfinished-write" |
-            "-expect-peer-cert-file" |
-            "-enable-short-header" => {
+            "-expect-peer-cert-file" => {
                 println!("NYI option {:?}", arg);
                 process::exit(BOGO_NACK);
             }

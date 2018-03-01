@@ -78,12 +78,12 @@
     "Draft-Downgrade-Server": "not implemented; TODO",
     "*ALPN*": "MesaLink NYI",
     "*ClientAuth*": "MesaLink NYI",
-    "*CertificateVerify*": "MesaLink NYI",
     "*CertificateRequest*": "MesaLink NYI",
     "ServerCipherFilter-ECDSA": "Rustls NYI",
     "ECDSACurveMismatch-Sign-TLS13": "Rustls NYI",
     "Agree-Digest-*": "MesaLink NYI",
-    "UnsolicitedServerNameAck-*": ""
+    "UnsolicitedServerNameAck-*": "",
+    "Unclean-Shutdown-Alert": "Bogo bug?"
   },
   "ErrorMap": {
     ":HTTP_REQUEST:": ":GARBAGE:",
