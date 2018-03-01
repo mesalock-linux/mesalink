@@ -146,6 +146,7 @@ fn handle_err(err: Errno) -> ! {
         }
         Errno::TLSErrorPeerSentOversizedRecord => quit(":DATA_LENGTH_TOO_LONG:"),
         Errno::TLSErrorAlertReceivedProtocolVersion => quit(":PEER_MISBEHAVIOUR:"),
+        Errno::IoErrorConnectionReset => quit(":CLOSE_WITHOUT_CLOSE_NOTIFY:"),
         _ => {
             println_err!("unhandled error: {:?}", err);
             quit(":FIXME:")
@@ -202,6 +203,7 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX) {
 
     if ssl.is_null() {
         println!("MESALINK_SSL is null\n");
+        return;
     }
 
     if ssl::mesalink_SSL_set_tlsext_host_name(ssl, opts.host_name.as_ptr() as *const libc::c_char)
@@ -242,10 +244,17 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX) {
         );
         if len == 0 {
             let error = Errno::from(ssl::mesalink_SSL_get_error(ssl, len) as u32);
+            println!("SSL_read error: {:?}", error);
             match error {
                 Errno::MesalinkErrorNone => (),
-                Errno::MesalinkErrorWantRead
-                | Errno::MesalinkErrorWantWrite => continue,
+                Errno::MesalinkErrorWantRead | Errno::MesalinkErrorWantWrite => continue,
+                Errno::IoErrorConnectionAborted => {
+                    if opts.check_close_notify {
+                        println!("close notify ok");
+                    }
+                    println!("EOF (tls)");
+                    return;
+                }
                 _ => handle_err(error),
             };
             if opts.check_close_notify {
@@ -256,7 +265,6 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX) {
                 }
             } else {
                 println!("EOF (plain)");
-                ssl::mesalink_SSL_free(ssl);
                 return;
             }
         } else if len < 0 {
@@ -362,7 +370,6 @@ fn main() {
                 process::exit(BOGO_NACK);
             }
 
-            "-async" |
             "-ocsp-response" |
             "-select-alpn" |
             "-require-any-client-certificate" |

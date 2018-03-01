@@ -80,8 +80,10 @@
     "*ClientAuth*": "MesaLink NYI",
     "*CertificateVerify*": "MesaLink NYI",
     "*CertificateRequest*": "MesaLink NYI",
-    "Agree-Digest-Default": "",
-    "*Async*": "MesaLink temporarily disabled"
+    "ServerCipherFilter-ECDSA": "Rustls NYI",
+    "ECDSACurveMismatch-Sign-TLS13": "Rustls NYI",
+    "Agree-Digest-*": "MesaLink NYI",
+    "UnsolicitedServerNameAck-*": ""
   },
   "ErrorMap": {
     ":HTTP_REQUEST:": ":GARBAGE:",

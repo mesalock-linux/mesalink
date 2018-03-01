@@ -207,25 +207,25 @@ impl MesalinkErrorType for MesalinkBuiltinError {}
 impl MesalinkErrorType for TLSError {}
 impl MesalinkErrorType for std::io::Error {}
 
-impl From<MesalinkBuiltinError> for Errno {
-    fn from(e: MesalinkBuiltinError) -> Errno {
+impl<'a> From<&'a MesalinkBuiltinError> for Errno {
+    fn from(e: &'a MesalinkBuiltinError) -> Errno {
         match e {
-            MesalinkBuiltinError::ErrorNone => Errno::MesalinkErrorNone,
-            MesalinkBuiltinError::ErrorZeroReturn => Errno::MesalinkErrorZeroReturn,
-            MesalinkBuiltinError::ErrorWantRead => Errno::MesalinkErrorWantRead,
-            MesalinkBuiltinError::ErrorWantWrite => Errno::MesalinkErrorWantWrite,
-            MesalinkBuiltinError::ErrorWantConnect => Errno::MesalinkErrorWantConnect,
-            MesalinkBuiltinError::ErrorWantAccept => Errno::MesalinkErrorWantAccept,
-            MesalinkBuiltinError::ErrorSyscall => Errno::MesalinkErrorSyscall,
-            MesalinkBuiltinError::ErrorSsl => Errno::MesalinkErrorSsl,
-            MesalinkBuiltinError::ErrorNullPointer => Errno::MesalinkErrorNullPointer,
-            MesalinkBuiltinError::ErrorMalformedObject => Errno::MesalinkErrorMalformedObject,
+            &MesalinkBuiltinError::ErrorNone => Errno::MesalinkErrorNone,
+            &MesalinkBuiltinError::ErrorZeroReturn => Errno::MesalinkErrorZeroReturn,
+            &MesalinkBuiltinError::ErrorWantRead => Errno::MesalinkErrorWantRead,
+            &MesalinkBuiltinError::ErrorWantWrite => Errno::MesalinkErrorWantWrite,
+            &MesalinkBuiltinError::ErrorWantConnect => Errno::MesalinkErrorWantConnect,
+            &MesalinkBuiltinError::ErrorWantAccept => Errno::MesalinkErrorWantAccept,
+            &MesalinkBuiltinError::ErrorSyscall => Errno::MesalinkErrorSyscall,
+            &MesalinkBuiltinError::ErrorSsl => Errno::MesalinkErrorSsl,
+            &MesalinkBuiltinError::ErrorNullPointer => Errno::MesalinkErrorNullPointer,
+            &MesalinkBuiltinError::ErrorMalformedObject => Errno::MesalinkErrorMalformedObject,
         }
     }
 }
 
-impl From<std::io::Error> for Errno {
-    fn from(e: std::io::Error) -> Errno {
+impl<'a> From<&'a std::io::Error> for Errno {
+    fn from(e: &'a std::io::Error) -> Errno {
         match e.kind() {
             ErrorKind::NotFound => Errno::IoErrorNotFound,
             ErrorKind::PermissionDenied => Errno::IoErrorPermissionDenied,
@@ -251,19 +251,19 @@ impl From<std::io::Error> for Errno {
 }
 
 #[allow(unused_variables)]
-impl From<TLSError> for Errno {
-    fn from(e: TLSError) -> Errno {
+impl<'a> From<&'a TLSError> for Errno {
+    fn from(e: &'a TLSError) -> Errno {
         match e {
-            TLSError::InappropriateMessage {
-                expect_types,
-                got_type,
+            &TLSError::InappropriateMessage {
+                ref expect_types,
+                ref got_type,
             } => Errno::TLSErrorInappropriateMessage,
-            TLSError::InappropriateHandshakeMessage {
-                expect_types,
-                got_type,
+            &TLSError::InappropriateHandshakeMessage {
+                ref expect_types,
+                ref got_type,
             } => Errno::TLSErrorInappropriateHandshakeMessage,
-            TLSError::CorruptMessage => Errno::TLSErrorCorruptMessage,
-            TLSError::CorruptMessagePayload(c) => match c {
+            &TLSError::CorruptMessage => Errno::TLSErrorCorruptMessage,
+            &TLSError::CorruptMessagePayload(c) => match c {
                 ContentType::Alert => Errno::TLSErrorCorruptMessagePayloadAlert,
                 ContentType::ChangeCipherSpec => {
                     Errno::TLSErrorCorruptMessagePayloadChangeCipherSpec
@@ -271,11 +271,11 @@ impl From<TLSError> for Errno {
                 ContentType::Handshake => Errno::TLSErrorCorruptMessagePayloadHandshake,
                 _ => Errno::TLSErrorCorruptMessagePayload,
             },
-            TLSError::NoCertificatesPresented => Errno::TLSErrorNoCertificatesPresented,
-            TLSError::DecryptError => Errno::TLSErrorDecryptError,
-            TLSError::PeerIncompatibleError(_) => Errno::TLSErrorPeerIncompatibleError,
-            TLSError::PeerMisbehavedError(_) => Errno::TLSErrorPeerMisbehavedError,
-            TLSError::AlertReceived(alert) => match alert {
+            &TLSError::NoCertificatesPresented => Errno::TLSErrorNoCertificatesPresented,
+            &TLSError::DecryptError => Errno::TLSErrorDecryptError,
+            &TLSError::PeerIncompatibleError(_) => Errno::TLSErrorPeerIncompatibleError,
+            &TLSError::PeerMisbehavedError(_) => Errno::TLSErrorPeerMisbehavedError,
+            &TLSError::AlertReceived(alert) => match alert {
                 AlertDescription::CloseNotify => Errno::TLSErrorAlertReceivedCloseNotify,
                 AlertDescription::UnexpectedMessage => {
                     Errno::TLSErrorAlertReceivedUnexpectedMessage
@@ -344,7 +344,7 @@ impl From<TLSError> for Errno {
                 }
                 AlertDescription::Unknown(_) => Errno::TLSErrorAlertReceivedUnknown,
             },
-            TLSError::WebPKIError(pki_err) => match pki_err {
+            &TLSError::WebPKIError(pki_err) => match pki_err {
                 webpki::Error::BadDER => Errno::TLSErrorWebpkiBadDER,
                 webpki::Error::BadDERTime => Errno::TLSErrorWebpkiBadDERTime,
                 webpki::Error::CAUsedAsEndEntity => Errno::TLSErrorWebpkiCAUsedAsEndEntity,
@@ -381,12 +381,12 @@ impl From<TLSError> for Errno {
                     Errno::TLSErrorWebpkiUnsupportedSignatureAlgorithm
                 }
             },
-            TLSError::InvalidSCT(_) => Errno::TLSErrorInvalidSCT,
-            TLSError::General(_) => Errno::TLSErrorGeneral,
-            TLSError::FailedToGetCurrentTime => Errno::TLSErrorFailedToGetCurrentTime,
-            TLSError::InvalidDNSName(_) => Errno::TLSErrorInvalidDNSName,
-            TLSError::HandshakeNotComplete => Errno::TLSErrorHandshakeNotComplete,
-            TLSError::PeerSentOversizedRecord => Errno::TLSErrorPeerSentOversizedRecord,
+            &TLSError::InvalidSCT(_) => Errno::TLSErrorInvalidSCT,
+            &TLSError::General(_) => Errno::TLSErrorGeneral,
+            &TLSError::FailedToGetCurrentTime => Errno::TLSErrorFailedToGetCurrentTime,
+            &TLSError::InvalidDNSName(_) => Errno::TLSErrorInvalidDNSName,
+            &TLSError::HandshakeNotComplete => Errno::TLSErrorHandshakeNotComplete,
+            &TLSError::PeerSentOversizedRecord => Errno::TLSErrorPeerSentOversizedRecord,
         }
     }
 }

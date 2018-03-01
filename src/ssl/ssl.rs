@@ -276,6 +276,8 @@ impl<'a> Read for MESALINK_SSL<'a> {
                             Err(e) => {
                                 if e.kind() == io::ErrorKind::WouldBlock {
                                     self.error = Errno::MesalinkErrorWantWrite;
+                                } else {
+                                    self.error = Errno::from(&e);
                                 }
                                 return Err(e);
                             }
@@ -294,6 +296,8 @@ impl<'a> Read for MESALINK_SSL<'a> {
                             Err(e) => {
                                 if e.kind() == io::ErrorKind::WouldBlock {
                                     self.error = Errno::MesalinkErrorWantRead;
+                                } else {
+                                    self.error = Errno::from(&e);
                                 }
                                 return Err(e);
                             }
@@ -302,7 +306,7 @@ impl<'a> Read for MESALINK_SSL<'a> {
                                     let _ = session.write_tls(io);
                                 }
                                 println!("process_new_packets error: {:?}", tls_err);
-                                self.error = Errno::from(tls_err.clone());
+                                self.error = Errno::from(&tls_err);
                                 return Err(io::Error::new(io::ErrorKind::InvalidData, tls_err));
                             },
                         }
@@ -315,6 +319,7 @@ impl<'a> Read for MESALINK_SSL<'a> {
                         return Ok(n);
                     }
                     Err(e) => {
+                        self.error = Errno::from(&e);
                         return Err(e);
                     }
                 }
@@ -750,7 +755,7 @@ pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
                 }
                 Err(e) => {
                     println!("file open error, {:?}", e);
-                    ErrorQueue::push_error(Errno::from(e));
+                    ErrorQueue::push_error(Errno::from(&e));
                     return SslConstants::SslFailure as c_int;
                 }
             }
@@ -794,7 +799,7 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
                     }
                 }
                 Err(e) => {
-                    ErrorQueue::push_error(Errno::from(e));
+                    ErrorQueue::push_error(Errno::from(&e));
                     return SslConstants::SslFailure as c_int;
                 }
             };
@@ -810,7 +815,7 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
                     }
                 }
                 Err(e) => {
-                    ErrorQueue::push_error(Errno::from(e));
+                    ErrorQueue::push_error(Errno::from(&e));
                     return SslConstants::SslFailure as c_int;
                 }
             };
@@ -849,7 +854,7 @@ pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX)
                     match certified_key.cross_check_end_entity_cert(None) {
                         Ok(_) => return SslConstants::SslSuccess as c_int,
                         Err(e) => {
-                            ErrorQueue::push_error(Errno::from(e));
+                            ErrorQueue::push_error(Errno::from(&e));
                             return SslConstants::SslFailure as c_int;
                         }
                     }
