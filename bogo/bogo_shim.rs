@@ -41,7 +41,7 @@ use std::net;
 use std::io::Write;
 use std::ffi::CString;
 use mesalink_internals::ssl::{err, ssl};
-use mesalink_internals::ssl::err::Errno;
+use mesalink_internals::ssl::err::ErrorCode;
 
 static BOGO_NACK: i32 = 89;
 
@@ -115,39 +115,40 @@ fn quit_err(why: &str) -> ! {
     process::exit(1)
 }
 
-fn handle_err(err: Errno) -> ! {
+fn handle_err(err: ErrorCode) -> ! {
     use std::{thread, time};
 
     thread::sleep(time::Duration::from_millis(100));
 
     match err {
-        Errno::TLSErrorInappropriateMessage | Errno::TLSErrorInappropriateHandshakeMessage => {
-            quit(":UNEXPECTED_MESSAGE:")
+        ErrorCode::TLSErrorInappropriateMessage
+        | ErrorCode::TLSErrorInappropriateHandshakeMessage => quit(":UNEXPECTED_MESSAGE:"),
+        ErrorCode::TLSErrorAlertReceivedRecordOverflow => quit(":TLSV1_ALERT_RECORD_OVERFLOW:"),
+        ErrorCode::TLSErrorAlertReceivedHandshakeFailure => quit(":HANDSHAKE_FAILURE:"),
+        ErrorCode::TLSErrorCorruptMessagePayloadAlert => quit(":BAD_ALERT:"),
+        ErrorCode::TLSErrorCorruptMessagePayloadChangeCipherSpec => {
+            quit(":BAD_CHANGE_CIPHER_SPEC:")
         }
-        Errno::TLSErrorAlertReceivedRecordOverflow => quit(":TLSV1_ALERT_RECORD_OVERFLOW:"),
-        Errno::TLSErrorAlertReceivedHandshakeFailure => quit(":HANDSHAKE_FAILURE:"),
-        Errno::TLSErrorCorruptMessagePayloadAlert => quit(":BAD_ALERT:"),
-        Errno::TLSErrorCorruptMessagePayloadChangeCipherSpec => quit(":BAD_CHANGE_CIPHER_SPEC:"),
-        Errno::TLSErrorCorruptMessagePayloadHandshake => quit(":BAD_HANDSHAKE_MSG:"),
-        Errno::TLSErrorCorruptMessagePayload => quit(":GARBAGE:"),
-        Errno::TLSErrorCorruptMessage => quit(":GARBAGE:"),
-        Errno::TLSErrorDecryptError => quit(":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:"),
-        Errno::TLSErrorPeerIncompatibleError => quit(":INCOMPATIBLE:"),
-        Errno::TLSErrorPeerMisbehavedError => quit(":PEER_MISBEHAVIOUR:"),
-        Errno::TLSErrorNoCertificatesPresented => quit(":NO_CERTS:"),
-        Errno::TLSErrorAlertReceivedUnexpectedMessage => quit(":BAD_ALERT:"),
-        Errno::TLSErrorAlertReceivedDecompressionFailure => {
+        ErrorCode::TLSErrorCorruptMessagePayloadHandshake => quit(":BAD_HANDSHAKE_MSG:"),
+        ErrorCode::TLSErrorCorruptMessagePayload => quit(":GARBAGE:"),
+        ErrorCode::TLSErrorCorruptMessage => quit(":GARBAGE:"),
+        ErrorCode::TLSErrorDecryptError => quit(":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:"),
+        ErrorCode::TLSErrorPeerIncompatibleError => quit(":INCOMPATIBLE:"),
+        ErrorCode::TLSErrorPeerMisbehavedError => quit(":PEER_MISBEHAVIOUR:"),
+        ErrorCode::TLSErrorNoCertificatesPresented => quit(":NO_CERTS:"),
+        ErrorCode::TLSErrorAlertReceivedUnexpectedMessage => quit(":BAD_ALERT:"),
+        ErrorCode::TLSErrorAlertReceivedDecompressionFailure => {
             quit(":SSLV3_ALERT_DECOMPRESSION_FAILURE:")
         }
-        Errno::TLSErrorWebpkiBadDER => quit(":CANNOT_PARSE_LEAF_CERT:"),
-        Errno::TLSErrorWebpkiInvalidSignatureForPublicKey => quit(":BAD_SIGNATURE:"),
-        Errno::TLSErrorWebpkiUnsupportedSignatureAlgorithmForPublicKey => {
+        ErrorCode::TLSErrorWebpkiBadDER => quit(":CANNOT_PARSE_LEAF_CERT:"),
+        ErrorCode::TLSErrorWebpkiInvalidSignatureForPublicKey => quit(":BAD_SIGNATURE:"),
+        ErrorCode::TLSErrorWebpkiUnsupportedSignatureAlgorithmForPublicKey => {
             quit(":WRONG_SIGNATURE_TYPE:")
         }
-        Errno::TLSErrorPeerSentOversizedRecord => quit(":DATA_LENGTH_TOO_LONG:"),
-        Errno::TLSErrorAlertReceivedProtocolVersion => quit(":PEER_MISBEHAVIOUR:"),
+        ErrorCode::TLSErrorPeerSentOversizedRecord => quit(":DATA_LENGTH_TOO_LONG:"),
+        ErrorCode::TLSErrorAlertReceivedProtocolVersion => quit(":PEER_MISBEHAVIOUR:"),
         _ => {
-            println_err!("unhandled error: {:?}", err);
+            println_err!("unhandled error: {:?}", err.as_str());
             quit(":FIXME:")
         }
     }
@@ -172,7 +173,7 @@ fn setup_ctx(opts: &Options) -> *mut ssl::MESALINK_CTX {
         ) != 1
         {
             println_err!("mesalink_SSL_CTX_use_certificate_chain_file failed");
-            println_err!("{:?}", Errno::from(err::mesalink_ERR_peek_last_error()));
+            println_err!("{:?}", ErrorCode::from(err::mesalink_ERR_peek_last_error()));
         }
         if ssl::mesalink_SSL_CTX_use_PrivateKey_file(
             ctx,
@@ -181,11 +182,11 @@ fn setup_ctx(opts: &Options) -> *mut ssl::MESALINK_CTX {
         ) != 1
         {
             println_err!("mesalink_SSL_CTX_use_PrivateKey_file failed");
-            println_err!("{:?}", Errno::from(err::mesalink_ERR_peek_last_error()));
+            println_err!("{:?}", ErrorCode::from(err::mesalink_ERR_peek_last_error()));
         }
         if ssl::mesalink_SSL_CTX_check_private_key(ctx) != 1 {
             println_err!("mesalink_SSL_CTX_check_private_key failed");
-            println_err!("{:?}", Errno::from(err::mesalink_ERR_peek_last_error()));
+            println_err!("{:?}", ErrorCode::from(err::mesalink_ERR_peek_last_error()));
         }
     }
     ssl::mesalink_SSL_CTX_set_verify(ctx, 0, None);
@@ -240,18 +241,18 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX) {
             opts.read_size as libc::c_int,
         );
         if len == 0 {
-            let error = Errno::from(ssl::mesalink_SSL_get_error(ssl, len) as u32);
+            let error = ErrorCode::from(ssl::mesalink_SSL_get_error(ssl, len) as u32);
             match error {
-                Errno::MesalinkErrorNone => (),
-                Errno::MesalinkErrorWantRead | Errno::MesalinkErrorWantWrite => continue,
-                Errno::IoErrorConnectionAborted => {
+                ErrorCode::MesalinkErrorNone => (),
+                ErrorCode::MesalinkErrorWantRead | ErrorCode::MesalinkErrorWantWrite => continue,
+                ErrorCode::IoErrorConnectionAborted => {
                     if opts.check_close_notify {
                         println!("close notify ok");
                     }
                     println!("EOF (tls)");
                     return;
                 }
-                Errno::IoErrorConnectionReset => if opts.check_close_notify {
+                ErrorCode::IoErrorConnectionReset => if opts.check_close_notify {
                     quit_err(":CLOSE_WITHOUT_CLOSE_NOTIFY:")
                 },
                 _ => handle_err(error),
@@ -267,7 +268,7 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX) {
                 return;
             }
         } else if len < 0 {
-            let err: Errno = Errno::from(err::mesalink_ERR_get_error());
+            let err: ErrorCode = ErrorCode::from(err::mesalink_ERR_get_error());
             handle_err(err);
         }
 

@@ -58,7 +58,7 @@
 //!   specially crafted x509 certificate can cause a single out of bounds byte
 //!   overwrite in wolfSSL through 3.10.2 resulting in potential certificate
 //!   validation vulnerabilities, denial of service and possible remote code
-//!   execution. 
+//!   execution.
 //! * [CVE-2017-8854](https://www.cvedetails.com/cve/CVE-2017-8854/): wolfSSL
 //!   before 3.10.2 has an out-of-bounds memory access with loading crafted DH
 //!   parameters, aka a buffer overflow triggered by a malformed temporary DH
@@ -75,7 +75,7 @@
 //! ```
 //!
 //! CMake support will be introduced in future releases.
-//! 
+//!
 //! ## Examples
 //! MesaLink comes with two examples that demonstrate a TLS client and a TLS
 //! server.
@@ -106,13 +106,13 @@
 //! ```
 //!
 //! ### A sample run of the server example program
-//! 
+//!
 //! This example comes with a pair of certificate and private key. The
 //! certificate file is in PEM format and contains a chain of certificates from
 //! the server's certificate to the root CA certificate. The private key file
 //! contains a PKCS8-encoded private key in PEM format. Once the server is up
 //! and running, open [https://127.0.0.1:8443](https://127.0.0.1:8443) and
-//! expect to see the hello message. 
+//! expect to see the hello message.
 //!
 //! ```
 //! $ ./examples/server/server
@@ -124,7 +124,7 @@
 //! GET / HTTP/1.1
 //! Host: 127.0.0.1:8443
 //! Connection: keep-alive
-//! User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/537.36 
+//! User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/537.36
 //! (KHTML, like Gecko) Chrome/63.0.3239.84 Safari/537.36
 //! Upgrade-Insecure-Requests: 1
 //! Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng
@@ -135,8 +135,8 @@
 //!
 
 #![deny(trivial_numeric_casts, unstable_features, unused_qualifications)]
-#![forbid(anonymous_parameters, unused_extern_crates, unused_import_braces,
-          unused_results, variant_size_differences, warnings)]
+#![forbid(anonymous_parameters, unused_extern_crates, unused_import_braces, unused_results,
+          variant_size_differences, warnings)]
 
 // libc for libc bindings
 extern crate libc;
@@ -158,8 +158,9 @@ extern crate webpki_roots;
 extern crate lazy_static;
 
 // enum_to_str_derive for human-readable error numbers
-#[cfg(feature="error_strings")]
-#[macro_use] extern crate enum_to_str_derive;
+#[cfg(feature = "error_strings")]
+#[macro_use]
+extern crate enum_to_str_derive;
 
 /// The ssl module is the counterpart of the OpenSSL ssl library.
 pub mod ssl;

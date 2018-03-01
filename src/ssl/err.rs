@@ -155,6 +155,7 @@ use webpki;
 #[repr(C)]
 #[derive(Clone, Copy)]
 #[cfg_attr(feature = "error_strings", derive(EnumToStr))]
+#[cfg_attr(feature = "error_strings", derive(Debug))]
 pub enum ErrorCode {
     // OpenSSL error codes
     MesalinkErrorNone = 0,
@@ -263,12 +264,12 @@ pub enum ErrorCode {
 
 #[doc(hidden)]
 impl ErrorCode {
-    #[cfg(feature="error_strings")]
+    #[cfg(feature = "error_strings")]
     pub fn as_str(&self) -> &'static [u8] {
         self.enum_to_str()
     }
 
-    #[cfg(not(feature="error_strings"))]
+    #[cfg(not(feature = "error_strings"))]
     pub fn as_str(&self) -> &'static [u8] {
         b"Error string not built-in\0"
     }
@@ -496,12 +497,16 @@ impl<'a> From<&'a TLSError> for ErrorCode {
                     ErrorCode::TLSErrorAlertReceivedUnexpectedMessage
                 }
                 AlertDescription::BadRecordMac => ErrorCode::TLSErrorAlertReceivedBadRecordMac,
-                AlertDescription::DecryptionFailed => ErrorCode::TLSErrorAlertReceivedDecryptionFailed,
+                AlertDescription::DecryptionFailed => {
+                    ErrorCode::TLSErrorAlertReceivedDecryptionFailed
+                }
                 AlertDescription::RecordOverflow => ErrorCode::TLSErrorAlertReceivedRecordOverflow,
                 AlertDescription::DecompressionFailure => {
                     ErrorCode::TLSErrorAlertReceivedDecompressionFailure
                 }
-                AlertDescription::HandshakeFailure => ErrorCode::TLSErrorAlertReceivedHandshakeFailure,
+                AlertDescription::HandshakeFailure => {
+                    ErrorCode::TLSErrorAlertReceivedHandshakeFailure
+                }
                 AlertDescription::NoCertificate => ErrorCode::TLSErrorAlertReceivedNoCertificate,
                 AlertDescription::BadCertificate => ErrorCode::TLSErrorAlertReceivedBadCertificate,
                 AlertDescription::UnsupportedCertificate => {
@@ -516,7 +521,9 @@ impl<'a> From<&'a TLSError> for ErrorCode {
                 AlertDescription::CertificateUnknown => {
                     ErrorCode::TLSErrorAlertReceivedCertificateUnknown
                 }
-                AlertDescription::IllegalParameter => ErrorCode::TLSErrorAlertReceivedIllegalParameter,
+                AlertDescription::IllegalParameter => {
+                    ErrorCode::TLSErrorAlertReceivedIllegalParameter
+                }
                 AlertDescription::UnknownCA => ErrorCode::TLSErrorAlertReceivedUnknownCA,
                 AlertDescription::AccessDenied => ErrorCode::TLSErrorAlertReceivedAccessDenied,
                 AlertDescription::DecodeError => ErrorCode::TLSErrorAlertReceivedDecodeError,
@@ -524,7 +531,9 @@ impl<'a> From<&'a TLSError> for ErrorCode {
                 AlertDescription::ExportRestriction => {
                     ErrorCode::TLSErrorAlertReceivedExportRestriction
                 }
-                AlertDescription::ProtocolVersion => ErrorCode::TLSErrorAlertReceivedProtocolVersion,
+                AlertDescription::ProtocolVersion => {
+                    ErrorCode::TLSErrorAlertReceivedProtocolVersion
+                }
                 AlertDescription::InsufficientSecurity => {
                     ErrorCode::TLSErrorAlertReceivedInsufficientSecurity
                 }
@@ -533,15 +542,21 @@ impl<'a> From<&'a TLSError> for ErrorCode {
                     ErrorCode::TLSErrorAlertReceivedInappropriateFallback
                 }
                 AlertDescription::UserCanceled => ErrorCode::TLSErrorAlertReceivedUserCanceled,
-                AlertDescription::NoRenegotiation => ErrorCode::TLSErrorAlertReceivedNoRenegotiation,
-                AlertDescription::MissingExtension => ErrorCode::TLSErrorAlertReceivedMissingExtension,
+                AlertDescription::NoRenegotiation => {
+                    ErrorCode::TLSErrorAlertReceivedNoRenegotiation
+                }
+                AlertDescription::MissingExtension => {
+                    ErrorCode::TLSErrorAlertReceivedMissingExtension
+                }
                 AlertDescription::UnsupportedExtension => {
                     ErrorCode::TLSErrorAlertReceivedUnsupportedExtension
                 }
                 AlertDescription::CertificateUnobtainable => {
                     ErrorCode::TLSErrorAlertReceivedCertificateUnobtainable
                 }
-                AlertDescription::UnrecognisedName => ErrorCode::TLSErrorAlertReceivedUnrecognisedName,
+                AlertDescription::UnrecognisedName => {
+                    ErrorCode::TLSErrorAlertReceivedUnrecognisedName
+                }
                 AlertDescription::BadCertificateStatusResponse => {
                     ErrorCode::TLSErrorAlertReceivedBadCertificateStatusResponse
                 }
@@ -567,7 +582,9 @@ impl<'a> From<&'a TLSError> for ErrorCode {
                 webpki::Error::CertNotValidForName => ErrorCode::TLSErrorWebpkiCertNotValidForName,
                 webpki::Error::CertNotValidYet => ErrorCode::TLSErrorWebpkiCertNotValidYet,
                 webpki::Error::EndEntityUsedAsCA => ErrorCode::TLSErrorWebpkiEndEntityUsedAsCA,
-                webpki::Error::ExtensionValueInvalid => ErrorCode::TLSErrorWebpkiExtensionValueInvalid,
+                webpki::Error::ExtensionValueInvalid => {
+                    ErrorCode::TLSErrorWebpkiExtensionValueInvalid
+                }
                 webpki::Error::InvalidCertValidity => ErrorCode::TLSErrorWebpkiInvalidCertValidity,
                 webpki::Error::InvalidSignatureForPublicKey => {
                     ErrorCode::TLSErrorWebpkiInvalidSignatureForPublicKey
