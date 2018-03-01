@@ -391,7 +391,7 @@ where
         return Err(());
     }
     let obj_ref: &T = unsafe { &*ptr };
-    if obj_ref.check_magic() {
+    if !obj_ref.check_magic() {
         ErrorQueue::push_error(Errno::MesalinkErrorMalformedObject);
         return Err(());
     }
@@ -407,7 +407,7 @@ where
         return Err(());
     }
     let obj_ref: &mut T = unsafe { &mut *ptr };
-    if obj_ref.check_magic() {
+    if !obj_ref.check_magic() {
         ErrorQueue::push_error(Errno::MesalinkErrorMalformedObject);
         return Err(());
     }
@@ -693,7 +693,7 @@ pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
 /// SSL_CTX *SSL_CTX_new(const SSL_METHOD *method);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut MESALINK_CTX {
+pub extern "C" fn mesalink_SSL_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut MESALINK_CTX {
     if let Ok(method) = sanitize_ptr_for_ref(method_ptr) {
         let context = MESALINK_CTX::new(method);
         Box::into_raw(Box::new(context))
@@ -1223,8 +1223,7 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
         if let Some(hostname) = ssl.hostname {
             if let Ok(hostname_str) = hostname.to_str() {
                 if let Ok(dns_name) = webpki::DNSNameRef::try_from_ascii_str(hostname_str) {
-                    let mut session =
-                        rustls::ClientSession::new(&ssl.client_config, dns_name);
+                    let mut session = rustls::ClientSession::new(&ssl.client_config, dns_name);
                     session.process_new_packets().unwrap();
                     ssl.session = Some(Box::new(session));
                     return SslConstants::SslSuccess as c_int;
