@@ -63,7 +63,7 @@ MESALINK_API int mesalink_SSL_CTX_use_certificate_chain_file(MESALINK_CTX *, con
 MESALINK_API int mesalink_SSL_CTX_use_PrivateKey_file(MESALINK_CTX *, const char *, int);
 MESALINK_API int mesalink_SSL_CTX_check_private_key(const MESALINK_CTX *);
 MESALINK_API int mesalink_SSL_CTX_set_verify(MESALINK_CTX *, int, int (*cb)(int, MESALINK_CTX*));
-MESALINK_API void mesalink_CTX_free(MESALINK_CTX *);
+MESALINK_API void mesalink_SSL_CTX_free(MESALINK_CTX *);
 
 MESALINK_API MESALINK_SSL *mesalink_SSL_new(MESALINK_CTX *);
 MESALINK_API MESALINK_CIPHER *mesalink_SSL_get_current_cipher(MESALINK_SSL *);

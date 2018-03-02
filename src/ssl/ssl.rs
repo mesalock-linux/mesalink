@@ -1390,7 +1390,7 @@ pub extern "C" fn mesalink_SSL_get_version(ssl_ptr: *mut MESALINK_SSL) -> *const
 /// void SSL_CTX_free(SSL_CTX *ctx);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_CTX_free(ctx_ptr: *mut MESALINK_CTX) {
+pub extern "C" fn mesalink_SSL_CTX_free(ctx_ptr: *mut MESALINK_CTX) {
     if sanitize_ptr_for_mut_ref(ctx_ptr).is_ok() {
         let _ = unsafe { Box::from_raw(ctx_ptr) };
     }
