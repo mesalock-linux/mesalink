@@ -700,6 +700,7 @@ pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
 pub extern "C" fn mesalink_SSL_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut MESALINK_CTX {
     if let Ok(method) = sanitize_ptr_for_ref(method_ptr) {
         let context = MESALINK_CTX::new(method);
+        let _ = unsafe { Box::from_raw(method_ptr) };
         Box::into_raw(Box::new(context))
     } else {
         std::ptr::null_mut()
