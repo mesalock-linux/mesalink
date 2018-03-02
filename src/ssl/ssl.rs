@@ -34,14 +34,15 @@
 //! used to shut down the connection.
 
 use std;
-use std::sync::Arc;
+use std::sync;
 use std::net;
 use std::io::{self, Read, Write};
 use std::os::unix::io::{AsRawFd, FromRawFd};
 use std::ptr;
 use libc::{c_char, c_int, c_uchar};
 use rustls::{self, Session};
-use ring::{self, rand::SecureRandom};
+use ring;
+use ring::rand::SecureRandom;
 use webpki;
 use ssl::err::{ErrorCode, ErrorQueue};
 
@@ -137,11 +138,11 @@ impl rustls::ServerCertVerifier for NoServerAuth {
     }
 }
 
-struct ClientCacheWithoutKxHints(Arc<rustls::ClientSessionMemoryCache>);
+struct ClientCacheWithoutKxHints(sync::Arc<rustls::ClientSessionMemoryCache>);
 
 impl ClientCacheWithoutKxHints {
-    fn new() -> Arc<ClientCacheWithoutKxHints> {
-        Arc::new(ClientCacheWithoutKxHints(
+    fn new() -> sync::Arc<ClientCacheWithoutKxHints> {
+        sync::Arc::new(ClientCacheWithoutKxHints(
             rustls::ClientSessionMemoryCache::new(32),
         ))
     }
@@ -231,8 +232,8 @@ impl<'a> MESALINK_CTX {
 pub struct MESALINK_SSL<'a> {
     magic: [u8; MAGIC_SIZE],
     context: &'a MESALINK_CTX,
-    client_config: Arc<rustls::ClientConfig>,
-    server_config: Arc<rustls::ServerConfig>,
+    client_config: sync::Arc<rustls::ClientConfig>,
+    server_config: sync::Arc<rustls::ServerConfig>,
     hostname: Option<webpki::DNSNameRef<'a>>,
     io: Option<net::TcpStream>,
     session: Option<Box<Session>>,
@@ -251,8 +252,8 @@ impl<'a> MESALINK_SSL<'a> {
         MESALINK_SSL {
             magic: *MAGIC,
             context: ctx,
-            client_config: Arc::new(ctx.client_config.clone()),
-            server_config: Arc::new(ctx.server_config.clone()),
+            client_config: sync::Arc::new(ctx.client_config.clone()),
+            server_config: sync::Arc::new(ctx.server_config.clone()),
             hostname: None,
             io: None,
             session: None,
@@ -283,6 +284,7 @@ impl<'a> Read for MESALINK_SSL<'a> {
                                 } else {
                                     self.error = ErrorCode::from(&e);
                                 }
+                                ErrorQueue::push_error(self.error);
                                 return Err(e);
                             }
                         }
@@ -294,6 +296,7 @@ impl<'a> Read for MESALINK_SSL<'a> {
                                     return Ok(0); // EOF
                                 } else {
                                     self.error = ErrorCode::IoErrorUnexpectedEof;
+                                    ErrorQueue::push_error(self.error);
                                     return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
                                 }
                             }
@@ -303,6 +306,7 @@ impl<'a> Read for MESALINK_SSL<'a> {
                                 } else {
                                     self.error = ErrorCode::from(&e);
                                 }
+                                ErrorQueue::push_error(self.error);
                                 return Err(e);
                             }
                             Ok(_) => if let Err(tls_err) = session.process_new_packets() {
@@ -310,11 +314,13 @@ impl<'a> Read for MESALINK_SSL<'a> {
                                     let _ = session.write_tls(io);
                                 }
                                 self.error = ErrorCode::from(&tls_err);
+                                ErrorQueue::push_error(self.error);
                                 return Err(io::Error::new(io::ErrorKind::InvalidData, tls_err));
                             },
                         }
                     } else {
                         self.error = ErrorCode::MesalinkErrorZeroReturn;
+                        ErrorQueue::push_error(self.error);
                         return Ok(0);
                     },
                     Ok(n) => {
@@ -323,12 +329,13 @@ impl<'a> Read for MESALINK_SSL<'a> {
                     }
                     Err(e) => {
                         self.error = ErrorCode::from(&e);
+                        ErrorQueue::push_error(self.error);
                         return Err(e);
                     }
                 }
             },
             _ => {
-                ErrorQueue::push_error(ErrorCode::MesalinkErrorNullPointer);
+                ErrorQueue::push_error(ErrorCode::IoErrorInvalidInput);
                 Err(io::Error::from(io::ErrorKind::Other))
             }
         }
@@ -350,6 +357,7 @@ impl<'a> Write for MESALINK_SSL<'a> {
             }
         }
     }
+
     fn flush(&mut self) -> io::Result<()> {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => {
@@ -777,12 +785,12 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
             let rsa_keys = match std::fs::File::open(filename) {
                 Ok(f) => {
                     let mut reader = io::BufReader::new(f);
-                    let keys = rustls::internal::pemfile::rsa_private_keys(&mut reader);
-                    if keys.is_ok() {
-                        keys.unwrap()
-                    } else {
-                        ErrorQueue::push_error(ErrorCode::TLSErrorWebpkiBadDER);
-                        return SSL_FAILURE;
+                    match rustls::internal::pemfile::rsa_private_keys(&mut reader) {
+                        Ok(keys) => keys,
+                        Err(_) => {
+                            ErrorQueue::push_error(ErrorCode::TLSErrorWebpkiBadDER);
+                            return SSL_FAILURE;
+                        }
                     }
                 }
                 Err(e) => {
@@ -793,12 +801,12 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
             let pk8_keys = match std::fs::File::open(filename) {
                 Ok(f) => {
                     let mut reader = io::BufReader::new(f);
-                    let keys = rustls::internal::pemfile::pkcs8_private_keys(&mut reader);
-                    if keys.is_ok() {
-                        keys.unwrap()
-                    } else {
-                        ErrorQueue::push_error(ErrorCode::TLSErrorWebpkiBadDER);
-                        return SSL_FAILURE;
+                    match rustls::internal::pemfile::pkcs8_private_keys(&mut reader) {
+                        Ok(keys) => keys,
+                        Err(_) => {
+                            ErrorQueue::push_error(ErrorCode::TLSErrorWebpkiBadDER);
+                            return SSL_FAILURE;
+                        }
                     }
                 }
                 Err(e) => {
@@ -837,7 +845,7 @@ pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX)
             (&Some(ref certs), &Some(ref key)) => {
                 if let Ok(rsa_key) = rustls::sign::RSASigningKey::new(key) {
                     let certified_key =
-                        rustls::sign::CertifiedKey::new(certs.clone(), Arc::new(Box::new(rsa_key)));
+                        rustls::sign::CertifiedKey::new(certs.clone(), sync::Arc::new(Box::new(rsa_key)));
                     match certified_key.cross_check_end_entity_cert(None) {
                         Ok(_) => return SSL_SUCCESS,
                         Err(e) => {
@@ -867,7 +875,7 @@ pub extern "C" fn mesalink_SSL_CTX_set_verify(
         if mode == VerifyModes::VerifyNone as c_int {
             ctx.client_config
                 .dangerous()
-                .set_certificate_verifier(Arc::new(NoServerAuth {}));
+                .set_certificate_verifier(sync::Arc::new(NoServerAuth {}));
         }
         SSL_SUCCESS
     } else {
@@ -928,8 +936,8 @@ pub extern "C" fn mesalink_SSL_set_SSL_CTX<'a>(
     match (ctx_ret, ssl_ret) {
         (Ok(ctx), Ok(ssl)) => {
             ssl.context = ctx;
-            ssl.client_config = Arc::new(ctx.client_config.clone());
-            ssl.server_config = Arc::new(ctx.server_config.clone());
+            ssl.client_config = sync::Arc::new(ctx.client_config.clone());
+            ssl.server_config = sync::Arc::new(ctx.server_config.clone());
             ssl.context as *const MESALINK_CTX
         }
         _ => ptr::null_mut(),
@@ -1206,7 +1214,10 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     if let Ok(ssl) = sanitize_ptr_for_mut_ref(ssl_ptr) {
         if let Some(hostname) = ssl.hostname {
             let mut session = rustls::ClientSession::new(&ssl.client_config, hostname);
-            session.process_new_packets().unwrap();
+            match session.process_new_packets() {
+                Ok(_) => (),
+                Err(e) => ErrorQueue::push_error(ErrorCode::from(&e)),
+            }
             ssl.session = Some(Box::new(session));
             return SSL_SUCCESS;
         } else {
@@ -1246,7 +1257,7 @@ pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_error(ssl_ptr: *mut MESALINK_SSL, ret: c_int) -> c_int {
     if ret > 0 {
-        return 0;
+        return ErrorCode::MesalinkErrorNone as c_int;
     }
     if let Ok(ssl) = sanitize_ptr_for_mut_ref(ssl_ptr) {
         ssl.error as c_int
@@ -1274,8 +1285,11 @@ pub extern "C" fn mesalink_SSL_read(
         match ssl.read(buf) {
             Ok(count) => count as c_int,
             Err(e) => match e.kind() {
-                io::ErrorKind::WouldBlock => SSL_ERROR,
-                _ => SSL_FAILURE, // call SSL_get_error to find out why
+                // ErrorCode has been pushed in queue by io::Read::read()
+                io::ErrorKind::WouldBlock => {
+                    SSL_ERROR
+                },
+                _ => SSL_FAILURE,
             },
         }
     } else {
@@ -1302,8 +1316,14 @@ pub extern "C" fn mesalink_SSL_write(
         match ssl.write(buf) {
             Ok(count) => count as c_int,
             Err(e) => match e.kind() {
-                io::ErrorKind::WouldBlock => SSL_ERROR,
-                _ => SSL_FAILURE,
+                io::ErrorKind::WouldBlock => {
+                    ErrorQueue::push_error(ErrorCode::MesalinkErrorWantWrite);
+                    SSL_ERROR
+                },
+                _ => {
+                    ErrorQueue::push_error(ErrorCode::from(&e));
+                    SSL_FAILURE
+                },
             },
         }
     } else {
