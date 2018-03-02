@@ -143,13 +143,16 @@
 //! ```
 
 use libc::{self, c_char, c_ulong, size_t};
-use std;
-use std::io::ErrorKind;
+use std::io;
+use rustls;
+use webpki;
+
 use std::cell::RefCell;
 use std::collections::VecDeque;
-use rustls::TLSError;
-use rustls::internal::msgs::enums::{AlertDescription, ContentType};
-use webpki;
+
+thread_local! {
+    static ERROR_QUEUE: RefCell<VecDeque<ErrorCode>> = RefCell::new(VecDeque::new());
+}
 
 #[doc(hidden)]
 #[repr(C)]
@@ -417,8 +420,8 @@ pub enum MesalinkBuiltinError {
 }
 
 impl MesalinkErrorType for MesalinkBuiltinError {}
-impl MesalinkErrorType for TLSError {}
-impl MesalinkErrorType for std::io::Error {}
+impl MesalinkErrorType for rustls::TLSError {}
+impl MesalinkErrorType for io::Error {}
 
 #[doc(hidden)]
 impl<'a> From<&'a MesalinkBuiltinError> for ErrorCode {
@@ -439,27 +442,27 @@ impl<'a> From<&'a MesalinkBuiltinError> for ErrorCode {
 }
 
 #[doc(hidden)]
-impl<'a> From<&'a std::io::Error> for ErrorCode {
-    fn from(e: &'a std::io::Error) -> ErrorCode {
+impl<'a> From<&'a io::Error> for ErrorCode {
+    fn from(e: &'a io::Error) -> ErrorCode {
         match e.kind() {
-            ErrorKind::NotFound => ErrorCode::IoErrorNotFound,
-            ErrorKind::PermissionDenied => ErrorCode::IoErrorPermissionDenied,
-            ErrorKind::ConnectionRefused => ErrorCode::IoErrorConnectionRefused,
-            ErrorKind::ConnectionReset => ErrorCode::IoErrorConnectionReset,
-            ErrorKind::ConnectionAborted => ErrorCode::IoErrorConnectionAborted,
-            ErrorKind::NotConnected => ErrorCode::IoErrorNotConnected,
-            ErrorKind::AddrInUse => ErrorCode::IoErrorAddrInUse,
-            ErrorKind::AddrNotAvailable => ErrorCode::IoErrorAddrNotAvailable,
-            ErrorKind::BrokenPipe => ErrorCode::IoErrorBrokenPipe,
-            ErrorKind::AlreadyExists => ErrorCode::IoErrorAlreadyExists,
-            ErrorKind::WouldBlock => ErrorCode::IoErrorWouldBlock,
-            ErrorKind::InvalidInput => ErrorCode::IoErrorInvalidInput,
-            ErrorKind::InvalidData => ErrorCode::IoErrorInvalidData,
-            ErrorKind::TimedOut => ErrorCode::IoErrorTimedOut,
-            ErrorKind::WriteZero => ErrorCode::IoErrorWriteZero,
-            ErrorKind::Interrupted => ErrorCode::IoErrorInterrupted,
-            ErrorKind::Other => ErrorCode::IoErrorOther,
-            ErrorKind::UnexpectedEof => ErrorCode::IoErrorUnexpectedEof,
+            io::ErrorKind::NotFound => ErrorCode::IoErrorNotFound,
+            io::ErrorKind::PermissionDenied => ErrorCode::IoErrorPermissionDenied,
+            io::ErrorKind::ConnectionRefused => ErrorCode::IoErrorConnectionRefused,
+            io::ErrorKind::ConnectionReset => ErrorCode::IoErrorConnectionReset,
+            io::ErrorKind::ConnectionAborted => ErrorCode::IoErrorConnectionAborted,
+            io::ErrorKind::NotConnected => ErrorCode::IoErrorNotConnected,
+            io::ErrorKind::AddrInUse => ErrorCode::IoErrorAddrInUse,
+            io::ErrorKind::AddrNotAvailable => ErrorCode::IoErrorAddrNotAvailable,
+            io::ErrorKind::BrokenPipe => ErrorCode::IoErrorBrokenPipe,
+            io::ErrorKind::AlreadyExists => ErrorCode::IoErrorAlreadyExists,
+            io::ErrorKind::WouldBlock => ErrorCode::IoErrorWouldBlock,
+            io::ErrorKind::InvalidInput => ErrorCode::IoErrorInvalidInput,
+            io::ErrorKind::InvalidData => ErrorCode::IoErrorInvalidData,
+            io::ErrorKind::TimedOut => ErrorCode::IoErrorTimedOut,
+            io::ErrorKind::WriteZero => ErrorCode::IoErrorWriteZero,
+            io::ErrorKind::Interrupted => ErrorCode::IoErrorInterrupted,
+            io::ErrorKind::Other => ErrorCode::IoErrorOther,
+            io::ErrorKind::UnexpectedEof => ErrorCode::IoErrorUnexpectedEof,
             _ => ErrorCode::UndefinedError,
         }
     }
@@ -467,8 +470,10 @@ impl<'a> From<&'a std::io::Error> for ErrorCode {
 
 #[doc(hidden)]
 #[allow(unused_variables)]
-impl<'a> From<&'a TLSError> for ErrorCode {
-    fn from(e: &'a TLSError) -> ErrorCode {
+impl<'a> From<&'a rustls::TLSError> for ErrorCode {
+    fn from(e: &'a rustls::TLSError) -> ErrorCode {
+        use rustls::TLSError;
+        use rustls::internal::msgs::enums::{AlertDescription, ContentType};
         match e {
             &TLSError::InappropriateMessage {
                 ref expect_types,
@@ -623,10 +628,6 @@ impl<'a> From<&'a TLSError> for ErrorCode {
     }
 }
 
-thread_local! {
-    static ERROR_QUEUE: RefCell<VecDeque<ErrorCode>> = RefCell::new(VecDeque::new());
-}
-
 /// `ERR_load_error_strings` - compatibility only
 ///
 /// ```
@@ -757,11 +758,12 @@ pub extern "C" fn mesalink_ERR_clear_error() {
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
-    let tid = std::thread::current().id();
+    use std::{ffi, thread};
+    let tid = thread::current().id();
     ERROR_QUEUE.with(|f| {
         let mut queue = f.borrow_mut();
         for err in queue.drain(0..) {
-            let description_c = std::ffi::CString::new(err.as_str());
+            let description_c = ffi::CString::new(err.as_str());
             let _ = unsafe {
                 libc::fprintf(
                     fp,

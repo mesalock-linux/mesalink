@@ -35,16 +35,14 @@
 
 use std;
 use std::sync::Arc;
-use std::net::TcpStream;
-use std::io;
-use std::io::{Read, Write};
+use std::net;
+use std::io::{self, Read, Write};
 use std::os::unix::io::{AsRawFd, FromRawFd};
+use std::ptr;
 use libc::{c_char, c_int, c_uchar};
 use rustls::{self, Session};
-use ring;
-use ring::rand::SecureRandom;
+use ring::{self, rand::SecureRandom};
 use webpki;
-use webpki_roots::TLS_SERVER_ROOTS;
 use ssl::err::{ErrorCode, ErrorQueue};
 
 const MAGIC_SIZE: usize = 4;
@@ -207,9 +205,11 @@ impl<'a> MESALINK_CTX {
 
         client_config.set_persistence(ClientCacheWithoutKxHints::new());
         server_config.set_persistence(rustls::ServerSessionMemoryCache::new(32));
+
+        use webpki_roots;
         client_config
             .root_store
-            .add_server_trust_anchors(&TLS_SERVER_ROOTS);
+            .add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
         server_config.ticketer = rustls::Ticketer::new(); // Enable ticketing for server
 
         MESALINK_CTX {
@@ -234,7 +234,7 @@ pub struct MESALINK_SSL<'a> {
     client_config: Arc<rustls::ClientConfig>,
     server_config: Arc<rustls::ServerConfig>,
     hostname: Option<webpki::DNSNameRef<'a>>,
-    io: Option<TcpStream>,
+    io: Option<net::TcpStream>,
     session: Option<Box<Session>>,
     error: ErrorCode,
     eof: bool,
@@ -337,7 +337,7 @@ impl<'a> Read for MESALINK_SSL<'a> {
 
 #[doc(hidden)]
 impl<'a> Write for MESALINK_SSL<'a> {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => {
                 let len = session.write(buf)?;
@@ -350,7 +350,7 @@ impl<'a> Write for MESALINK_SSL<'a> {
             }
         }
     }
-    fn flush(&mut self) -> std::io::Result<()> {
+    fn flush(&mut self) -> io::Result<()> {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => {
                 let ret = session.flush();
@@ -465,7 +465,7 @@ pub extern "C" fn mesalink_SSL_load_error_strings() {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_SSLv3_client_method() -> *const MESALINK_METHOD {
-    let p: *const MESALINK_METHOD = std::ptr::null();
+    let p: *const MESALINK_METHOD = ptr::null();
     p
 }
 
@@ -481,8 +481,7 @@ pub extern "C" fn mesalink_SSLv3_client_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_SSLv23_client_method() -> *const MESALINK_METHOD {
-    let p: *const MESALINK_METHOD = std::ptr::null();
-    p
+    mesalink_SSLv3_client_method()
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -497,8 +496,7 @@ pub extern "C" fn mesalink_SSLv23_client_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_client_method() -> *const MESALINK_METHOD {
-    let p: *const MESALINK_METHOD = std::ptr::null();
-    p
+    mesalink_SSLv3_client_method()
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -513,8 +511,7 @@ pub extern "C" fn mesalink_TLSv1_client_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_1_client_method() -> *const MESALINK_METHOD {
-    let p: *const MESALINK_METHOD = std::ptr::null();
-    p
+    mesalink_SSLv3_client_method()
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -580,8 +577,7 @@ pub extern "C" fn mesalink_TLS_client_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_SSLv3_server_method() -> *const MESALINK_METHOD {
-    let p: *const MESALINK_METHOD = std::ptr::null();
-    p
+    mesalink_SSLv3_client_method()
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -596,8 +592,7 @@ pub extern "C" fn mesalink_SSLv3_server_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_SSLv23_server_method() -> *const MESALINK_METHOD {
-    let p: *const MESALINK_METHOD = std::ptr::null();
-    p
+    mesalink_SSLv3_client_method()
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -612,8 +607,7 @@ pub extern "C" fn mesalink_SSLv23_server_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_server_method() -> *const MESALINK_METHOD {
-    let p: *const MESALINK_METHOD = std::ptr::null();
-    p
+    mesalink_SSLv3_client_method()
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -628,8 +622,7 @@ pub extern "C" fn mesalink_TLSv1_server_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_1_server_method() -> *const MESALINK_METHOD {
-    let p: *const MESALINK_METHOD = std::ptr::null();
-    p
+    mesalink_SSLv3_client_method()
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -698,7 +691,7 @@ pub extern "C" fn mesalink_SSL_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut
         let _ = unsafe { Box::from_raw(method_ptr) };
         Box::into_raw(Box::new(context))
     } else {
-        std::ptr::null_mut()
+        ptr::null_mut()
     }
 }
 
@@ -735,7 +728,7 @@ pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
         if let Ok(filename) = filename_cstr.to_str() {
             match std::fs::File::open(filename) {
                 Ok(f) => {
-                    let mut reader = std::io::BufReader::new(f);
+                    let mut reader = io::BufReader::new(f);
                     let certs = rustls::internal::pemfile::certs(&mut reader);
                     match certs {
                         Ok(certs) => {
@@ -783,7 +776,7 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
         if let Ok(filename) = filename_cstr.to_str() {
             let rsa_keys = match std::fs::File::open(filename) {
                 Ok(f) => {
-                    let mut reader = std::io::BufReader::new(f);
+                    let mut reader = io::BufReader::new(f);
                     let keys = rustls::internal::pemfile::rsa_private_keys(&mut reader);
                     if keys.is_ok() {
                         keys.unwrap()
@@ -799,7 +792,7 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
             };
             let pk8_keys = match std::fs::File::open(filename) {
                 Ok(f) => {
-                    let mut reader = std::io::BufReader::new(f);
+                    let mut reader = io::BufReader::new(f);
                     let keys = rustls::internal::pemfile::pkcs8_private_keys(&mut reader);
                     if keys.is_ok() {
                         keys.unwrap()
@@ -896,7 +889,7 @@ pub extern "C" fn mesalink_SSL_new<'a>(ctx_ptr: *mut MESALINK_CTX) -> *mut MESAL
         let ssl = MESALINK_SSL::new(ctx);
         Box::into_raw(Box::new(ssl))
     } else {
-        std::ptr::null_mut()
+        ptr::null_mut()
     }
 }
 
@@ -914,7 +907,7 @@ pub extern "C" fn mesalink_SSL_get_SSL_CTX(ssl_ptr: *mut MESALINK_SSL) -> *const
         let ctx_ptr: *const MESALINK_CTX = ssl.context;
         ctx_ptr
     } else {
-        std::ptr::null()
+        ptr::null()
     }
 }
 
@@ -939,7 +932,7 @@ pub extern "C" fn mesalink_SSL_set_SSL_CTX<'a>(
             ssl.server_config = Arc::new(ctx.server_config.clone());
             ssl.context as *const MESALINK_CTX
         }
-        _ => std::ptr::null_mut(),
+        _ => ptr::null_mut(),
     }
 }
 
@@ -964,15 +957,15 @@ pub extern "C" fn mesalink_SSL_get_current_cipher(
                     let cipher = MESALINK_CIPHER::new(cs);
                     Box::into_raw(Box::new(cipher)) // Allocates memory!
                 }
-                None => std::ptr::null_mut(),
+                None => ptr::null_mut(),
             },
             None => {
                 ErrorQueue::push_error(ErrorCode::IoErrorInvalidInput);
-                std::ptr::null_mut()
+                ptr::null_mut()
             }
         }
     } else {
-        std::ptr::null_mut()
+        ptr::null_mut()
     }
 }
 
@@ -1035,7 +1028,7 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_bits(
     bits_ptr: *mut c_int,
 ) -> c_int {
     if let Ok(ciphersuite) = sanitize_ptr_for_ref(cipher_ptr) {
-        unsafe { std::ptr::write(bits_ptr, ciphersuite.ciphersuite.enc_key_len as c_int) };
+        unsafe { ptr::write(bits_ptr, ciphersuite.ciphersuite.enc_key_len as c_int) };
         SSL_SUCCESS
     } else {
         SSL_FAILURE
@@ -1172,7 +1165,7 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> c_int {
     if let Ok(ssl) = sanitize_ptr_for_mut_ref(ssl_ptr) {
-        let socket = unsafe { TcpStream::from_raw_fd(fd) };
+        let socket = unsafe { net::TcpStream::from_raw_fd(fd) };
         ssl.io = Some(socket);
         SSL_SUCCESS
     } else {
@@ -1361,11 +1354,11 @@ pub extern "C" fn mesalink_SSL_get_version(ssl_ptr: *mut MESALINK_SSL) -> *const
             },
             None => {
                 ErrorQueue::push_error(ErrorCode::IoErrorInvalidInput);
-                std::ptr::null()
+                ptr::null()
             }
         }
     } else {
-        std::ptr::null()
+        ptr::null()
     }
 }
 
