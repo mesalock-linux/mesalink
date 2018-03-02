@@ -15,8 +15,8 @@
 
 /* ssl.h defines the compatibility layer for OpenSSL */
 
-#ifndef MESALINK_OPENSSL_H
-#define MESALINK_OPENSSL_H
+#ifndef MESALINK_OPENSSL_SSL_H
+#define MESALINK_OPENSSL_SSL_H
 
 #include <mesalink/ssl.h>
 
@@ -82,4 +82,5 @@ typedef MESALINK_SSL SSL;
 #ifdef __cplusplus
 } /* extern C */
 #endif
-#endif /* MESALINK_OPENSSL_H */
+
+#endif /* MESALINK_OPENSSL_SSL_H */

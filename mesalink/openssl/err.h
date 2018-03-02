@@ -13,6 +13,13 @@
  *
  */
 
+#ifndef MESALINK_OPENSSL_ERR_H
+#define MESALINK_OPENSSL_ERR_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <mesalink/ssl.h>
 #include <mesalink/err.h>
 
@@ -45,3 +52,9 @@
 #define ERR_clear_error mesalink_ERR_clear_error
 
 #define ERR_print_errors_fp mesalink_ERR_print_errors_fp
+
+#ifdef __cplusplus
+} /* extern C */
+#endif
+
+#endif /* MESALINK_OPENSSL_ERR_H */
