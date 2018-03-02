@@ -844,8 +844,10 @@ pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX)
         match (&ctx.certificates, &ctx.private_key) {
             (&Some(ref certs), &Some(ref key)) => {
                 if let Ok(rsa_key) = rustls::sign::RSASigningKey::new(key) {
-                    let certified_key =
-                        rustls::sign::CertifiedKey::new(certs.clone(), sync::Arc::new(Box::new(rsa_key)));
+                    let certified_key = rustls::sign::CertifiedKey::new(
+                        certs.clone(),
+                        sync::Arc::new(Box::new(rsa_key)),
+                    );
                     match certified_key.cross_check_end_entity_cert(None) {
                         Ok(_) => return SSL_SUCCESS,
                         Err(e) => {
@@ -1286,9 +1288,7 @@ pub extern "C" fn mesalink_SSL_read(
             Ok(count) => count as c_int,
             Err(e) => match e.kind() {
                 // ErrorCode has been pushed in queue by io::Read::read()
-                io::ErrorKind::WouldBlock => {
-                    SSL_ERROR
-                },
+                io::ErrorKind::WouldBlock => SSL_ERROR,
                 _ => SSL_FAILURE,
             },
         }
@@ -1319,11 +1319,11 @@ pub extern "C" fn mesalink_SSL_write(
                 io::ErrorKind::WouldBlock => {
                     ErrorQueue::push_error(ErrorCode::MesalinkErrorWantWrite);
                     SSL_ERROR
-                },
+                }
                 _ => {
                     ErrorQueue::push_error(ErrorCode::from(&e));
                     SSL_FAILURE
-                },
+                }
             },
         }
     } else {
