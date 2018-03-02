@@ -1166,35 +1166,6 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
     SslConstants::SslFailure as c_int
 }
 
-/// `SSL_get_servername` - return a servername extension value of the specified
-/// type if provided in the Client Hello or NULL. The `type` argument is not
-/// used.
-///
-/// ```
-/// #include <mesalink/openssl/ssl.h>
-///
-/// const char *SSL_get_servername(const SSL *s, const int type);
-/// ```
-#[no_mangle]
-pub extern "C" fn mesalink_SSL_get_servername(
-    ssl_ptr: *mut MESALINK_SSL,
-    _type: c_int,
-) -> *const c_char {
-    if let Ok(ssl) = sanitize_ptr_for_mut_ref(ssl_ptr) {
-        match ssl.hostname {
-            Some(hostname) => {
-                let hostname_str: &str = hostname.into();
-                match std::ffi::CString::new(hostname_str) {
-                    Ok(cstr) => return cstr.as_ptr() as *const c_char,
-                    Err(_) => ErrorQueue::push_error(ErrorCode::IoErrorInvalidInput),
-                }
-            }
-            _ => ErrorQueue::push_error(ErrorCode::IoErrorInvalidData),
-        }
-    }
-    std::ptr::null()
-}
-
 /// `SSL_set_fd` - set the file descriptor fd as the input/output facility for the
 /// TLS/SSL (encrypted) side of ssl. fd will typically be the socket file
 /// descriptor of a network connection.
