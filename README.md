@@ -168,6 +168,12 @@ $ make && make install
 We have tested git 2.16.2 linked with MesaLink-powered libcurl and everything goes
 well!
 
+## BoringSSL SSL tests
+[BoGo](https://github.com/google/boringssl/tree/master/ssl/test) is BoringSSL's
+protocol level test suite. We have ported BoGo for testing the functionality and
+compatibility of MesaLink. To run BoGo test cases, run `runme` in the `bogo`
+directory.
+
 ## Crypto benchmarks
 MesaLink's underlying crypto library is
 [**Ring**](https://github.com/briansmith/ring), a safe and fast crypto using
