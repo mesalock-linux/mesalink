@@ -13,13 +13,16 @@
  *
  */
 
-/* ISC License (ISC)
+/* This file is a test shim for the BoringSSL-Go ('bogo') TLS test suite,
+ * which is in part based upon the Rustls implementation in bogo_shim.rs.
+ *
+ * ISC License (ISC)
  * Copyright (c) 2016, Joseph Birr-Pixton <jpixton@gmail.com>
- * 
+ *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
  * above copyright notice and this permission notice appear in all copies.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
  * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
@@ -201,24 +204,29 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX) {
     let ssl: *mut ssl::MESALINK_SSL = ssl::mesalink_SSL_new(ctx);
 
     if ssl.is_null() {
+        ssl::mesalink_SSL_free(ssl);
         quit_err("MESALINK_SSL is null");
     }
 
     if ssl::mesalink_SSL_set_tlsext_host_name(ssl, opts.host_name.as_ptr() as *const libc::c_char)
         != 1
     {
+        ssl::mesalink_SSL_free(ssl);
         quit_err("mesalink_SSL_set_tlsext_host_name failed\n");
     }
     if ssl::mesalink_SSL_set_fd(ssl, conn.as_raw_fd()) != 1 {
+        ssl::mesalink_SSL_free(ssl);
         quit_err("mesalink_SSL_set_fd failed\n");
     }
 
     if !opts.server {
         if ssl::mesalink_SSL_connect(ssl) != 1 {
+            ssl::mesalink_SSL_free(ssl);
             quit_err("mesalink_SSL_connect failed");
         }
     } else {
         if ssl::mesalink_SSL_accept(ssl) != 1 {
+            ssl::mesalink_SSL_free(ssl);
             quit_err("mesalink_SSL_accept failed");
         }
     }
@@ -249,9 +257,11 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX) {
                         println!("close notify ok");
                     }
                     println!("EOF (tls)");
+                    ssl::mesalink_SSL_free(ssl);
                     return;
                 }
                 ErrorCode::IoErrorConnectionReset => if opts.check_close_notify {
+                    ssl::mesalink_SSL_free(ssl);
                     quit_err(":CLOSE_WITHOUT_CLOSE_NOTIFY:")
                 },
                 _ => handle_err(error),
@@ -260,9 +270,11 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX) {
                 if !seen_eof {
                     seen_eof = true;
                 } else {
+                    ssl::mesalink_SSL_free(ssl);
                     quit_err(":CLOSE_WITHOUT_CLOSE_NOTIFY:");
                 }
             } else {
+                ssl::mesalink_SSL_free(ssl);
                 println!("EOF (plain)");
                 return;
             }
@@ -282,6 +294,7 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX) {
 
         ssl::mesalink_SSL_write(ssl, buf.as_ptr() as *const libc::c_uchar, len);
     }
+    // unreachable
 }
 
 fn main() {
@@ -478,5 +491,5 @@ fn main() {
     for _ in 0..opts.resume_count + 1 {
         do_connection(&opts, ctx);
     }
-    ssl::mesalink_CTX_free(ctx);
+    ssl::mesalink_SSL_CTX_free(ctx);
 }
