@@ -758,6 +758,9 @@ pub extern "C" fn mesalink_ERR_clear_error() {
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
+    if fp.is_null() {
+        return;
+    }
     use std::{ffi, thread};
     let tid = thread::current().id();
     ERROR_QUEUE.with(|f| {
