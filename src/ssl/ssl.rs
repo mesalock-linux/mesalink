@@ -67,6 +67,9 @@ const SSL_ERROR: c_int = SslConstants::SslError as c_int;
 const SSL_FAILURE: c_int = SslConstants::SslFailure as c_int;
 const SSL_SUCCESS: c_int = SslConstants::SslSuccess as c_int;
 
+const CLIENT_CACHE_SIZE: usize = 32;
+const SERVER_CACHE_SIZE: usize = 128;
+
 #[cfg(not(feature = "error_strings"))]
 const CONST_NOTBUILTIN_STR: &'static [u8] = b"(Ciphersuite string not built-in)\0";
 
@@ -138,27 +141,30 @@ impl rustls::ServerCertVerifier for NoServerAuth {
     }
 }
 
-struct ClientCacheWithoutKxHints(sync::Arc<rustls::ClientSessionMemoryCache>);
+struct MesalinkClientSessionCache {
+    cache: sync::Arc<rustls::ClientSessionMemoryCache>,
+}
 
-impl ClientCacheWithoutKxHints {
-    fn new() -> sync::Arc<ClientCacheWithoutKxHints> {
-        sync::Arc::new(ClientCacheWithoutKxHints(
-            rustls::ClientSessionMemoryCache::new(32),
-        ))
+impl MesalinkClientSessionCache {
+    fn new(cache_size: usize) -> sync::Arc<MesalinkClientSessionCache> {
+        let session_cache = MesalinkClientSessionCache {
+            cache: rustls::ClientSessionMemoryCache::new(cache_size),
+        };
+        sync::Arc::new(session_cache)
     }
 }
 
-impl rustls::StoresClientSessions for ClientCacheWithoutKxHints {
+impl rustls::StoresClientSessions for MesalinkClientSessionCache {
     fn put(&self, key: Vec<u8>, value: Vec<u8>) -> bool {
         if key.len() > 2 && key[0] == b'k' && key[1] == b'x' {
             true
         } else {
-            self.0.put(key, value)
+            self.cache.put(key, value)
         }
     }
 
     fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
-        self.0.get(key)
+        self.cache.get(key)
     }
 }
 
@@ -204,8 +210,8 @@ impl<'a> MESALINK_CTX {
             server_config.versions.push(*v);
         }
 
-        client_config.set_persistence(ClientCacheWithoutKxHints::new());
-        server_config.set_persistence(rustls::ServerSessionMemoryCache::new(32));
+        client_config.set_persistence(MesalinkClientSessionCache::new(CLIENT_CACHE_SIZE));
+        server_config.set_persistence(rustls::ServerSessionMemoryCache::new(SERVER_CACHE_SIZE));
 
         use webpki_roots;
         client_config
