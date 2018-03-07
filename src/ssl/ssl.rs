@@ -45,6 +45,7 @@ use ssl::err::{ErrorCode, ErrorQueue};
 use std::io::{Read, Write};
 use std::os::unix::io::{AsRawFd, FromRawFd};
 use ring::rand::SecureRandom;
+use rustls::Session;
 
 const MAGIC_SIZE: usize = 4;
 lazy_static! {

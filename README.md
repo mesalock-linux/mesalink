@@ -203,7 +203,7 @@ certificate file is in the PEM format and contains a chain of certificates from
 the server's certificate to the root CA certificate. The private key file
 contains a PKCS8-encoded private key in the PEM format. Once the server is up
 and running, open [https://127.0.0.1:8443](https://127.0.0.1:8443) and expect to
-see the hello message. 
+see the hello message.
 
 ```
 $ ./examples/server/server
@@ -215,7 +215,7 @@ $ ./server 8443 certificates private_key
 GET / HTTP/1.1
 Host: 127.0.0.1:8443
 Connection: keep-alive
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/537.36 
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/537.36
 (KHTML, like Gecko) Chrome/63.0.3239.84 Safari/537.36
 Upgrade-Insecure-Requests: 1
 Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng
