@@ -150,7 +150,7 @@ fn handle_err(err: ErrorCode) -> ! {
         ErrorCode::TLSErrorPeerSentOversizedRecord => quit(":DATA_LENGTH_TOO_LONG:"),
         ErrorCode::TLSErrorAlertReceivedProtocolVersion => quit(":PEER_MISBEHAVIOUR:"),
         _ => {
-            println_err!("unhandled error: {:?}", err.as_str());
+            println_err!("unhandled error: {:?}", err);
             quit(":FIXME:")
         }
     }
@@ -387,7 +387,7 @@ fn main() {
             "-select-alpn" |
             "-require-any-client-certificate" |
             "-verify-peer" |
-            "-signed-cert-timestamps" | 
+            "-signed-cert-timestamps" |
             "-advertise-alpn" |
             "-use-null-client-ca-list" |
             "-enable-signed-cert-timestamps" => {
