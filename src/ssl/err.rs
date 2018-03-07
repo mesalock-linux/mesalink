@@ -149,7 +149,6 @@ use webpki;
 
 use std::cell::RefCell;
 use std::collections::VecDeque;
-
 thread_local! {
     static ERROR_QUEUE: RefCell<VecDeque<ErrorCode>> = RefCell::new(VecDeque::new());
 }

@@ -33,23 +33,24 @@
 //! read and write data on the TLS connection. Finally, `SSL_shutdown` can be
 //! used to shut down the connection.
 
-use std;
-use std::sync;
-use std::net;
-use std::io::{self, Read, Write};
-use std::os::unix::io::{AsRawFd, FromRawFd};
-use std::ptr;
+// Module imports
+use std::{ffi, fs, io, net, ptr, slice, sync};
 use libc::{c_char, c_int, c_uchar};
-use rustls::{self, Session};
-use ring::rand::{SecureRandom, SystemRandom};
+use rustls::{self, internal, sign};
+use ring::rand;
 use webpki;
 use ssl::err::{ErrorCode, ErrorQueue};
+
+// Trait imports
+use std::io::{Read, Write};
+use std::os::unix::io::{AsRawFd, FromRawFd};
+use ring::rand::SecureRandom;
 
 const MAGIC_SIZE: usize = 4;
 lazy_static! {
     static ref MAGIC: [u8; MAGIC_SIZE] = {
         let mut number = [0u8; MAGIC_SIZE];
-        if SystemRandom::new().fill(&mut number).is_ok() {
+        if rand::SystemRandom::new().fill(&mut number).is_ok() {
             number
         } else {
             panic!("Getrandom error");
@@ -730,12 +731,12 @@ pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
     _format: c_int,
 ) -> c_int {
     if let Ok(ctx) = sanitize_ptr_for_mut_ref(ctx_ptr) {
-        let filename_cstr = unsafe { std::ffi::CStr::from_ptr(filename_ptr) };
+        let filename_cstr = unsafe { ffi::CStr::from_ptr(filename_ptr) };
         if let Ok(filename) = filename_cstr.to_str() {
-            match std::fs::File::open(filename) {
+            match fs::File::open(filename) {
                 Ok(f) => {
                     let mut reader = io::BufReader::new(f);
-                    let certs = rustls::internal::pemfile::certs(&mut reader);
+                    let certs = internal::pemfile::certs(&mut reader);
                     match certs {
                         Ok(certs) => {
                             ctx.certificates = Some(certs);
@@ -778,12 +779,12 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
     _format: c_int,
 ) -> c_int {
     if let Ok(ctx) = sanitize_ptr_for_mut_ref(ctx_ptr) {
-        let filename_cstr = unsafe { std::ffi::CStr::from_ptr(filename_ptr) };
+        let filename_cstr = unsafe { ffi::CStr::from_ptr(filename_ptr) };
         if let Ok(filename) = filename_cstr.to_str() {
-            let rsa_keys = match std::fs::File::open(filename) {
+            let rsa_keys = match fs::File::open(filename) {
                 Ok(f) => {
                     let mut reader = io::BufReader::new(f);
-                    match rustls::internal::pemfile::rsa_private_keys(&mut reader) {
+                    match internal::pemfile::rsa_private_keys(&mut reader) {
                         Ok(keys) => keys,
                         Err(_) => {
                             ErrorQueue::push_error(ErrorCode::TLSErrorWebpkiBadDER);
@@ -796,10 +797,10 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
                     return SSL_FAILURE;
                 }
             };
-            let pk8_keys = match std::fs::File::open(filename) {
+            let pk8_keys = match fs::File::open(filename) {
                 Ok(f) => {
                     let mut reader = io::BufReader::new(f);
-                    match rustls::internal::pemfile::pkcs8_private_keys(&mut reader) {
+                    match internal::pemfile::pkcs8_private_keys(&mut reader) {
                         Ok(keys) => keys,
                         Err(_) => {
                             ErrorQueue::push_error(ErrorCode::TLSErrorWebpkiBadDER);
@@ -841,11 +842,9 @@ pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX)
     if let Ok(ctx) = sanitize_ptr_for_mut_ref(ctx_ptr) {
         match (&ctx.certificates, &ctx.private_key) {
             (&Some(ref certs), &Some(ref key)) => {
-                if let Ok(rsa_key) = rustls::sign::RSASigningKey::new(key) {
-                    let certified_key = rustls::sign::CertifiedKey::new(
-                        certs.clone(),
-                        sync::Arc::new(Box::new(rsa_key)),
-                    );
+                if let Ok(rsa_key) = sign::RSASigningKey::new(key) {
+                    let certified_key =
+                        sign::CertifiedKey::new(certs.clone(), sync::Arc::new(Box::new(rsa_key)));
                     match certified_key.cross_check_end_entity_cert(None) {
                         Ok(_) => return SSL_SUCCESS,
                         Err(e) => {
@@ -1148,7 +1147,7 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
             ErrorQueue::push_error(ErrorCode::MesalinkErrorNullPointer);
             return SSL_FAILURE;
         }
-        let hostname_cstr = unsafe { std::ffi::CStr::from_ptr(hostname_ptr) };
+        let hostname_cstr = unsafe { ffi::CStr::from_ptr(hostname_ptr) };
         if let Ok(hostname_str) = hostname_cstr.to_str() {
             if let Ok(dnsname) = webpki::DNSNameRef::try_from_ascii_str(hostname_str) {
                 ssl.hostname = Some(dnsname);
@@ -1281,7 +1280,7 @@ pub extern "C" fn mesalink_SSL_read(
     buf_len: c_int,
 ) -> c_int {
     if let Ok(ssl) = sanitize_ptr_for_mut_ref(ssl_ptr) {
-        let buf = unsafe { std::slice::from_raw_parts_mut(buf_ptr, buf_len as usize) };
+        let buf = unsafe { slice::from_raw_parts_mut(buf_ptr, buf_len as usize) };
         match ssl.read(buf) {
             Ok(count) => count as c_int,
             Err(e) => match e.kind() {
@@ -1310,7 +1309,7 @@ pub extern "C" fn mesalink_SSL_write(
     buf_len: c_int,
 ) -> c_int {
     if let Ok(ssl) = sanitize_ptr_for_mut_ref(ssl_ptr) {
-        let buf = unsafe { std::slice::from_raw_parts(buf_ptr, buf_len as usize) };
+        let buf = unsafe { slice::from_raw_parts(buf_ptr, buf_len as usize) };
         match ssl.write(buf) {
             Ok(count) => count as c_int,
             Err(e) => match e.kind() {
