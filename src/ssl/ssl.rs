@@ -41,8 +41,7 @@ use std::os::unix::io::{AsRawFd, FromRawFd};
 use std::ptr;
 use libc::{c_char, c_int, c_uchar};
 use rustls::{self, Session};
-use ring;
-use ring::rand::SecureRandom;
+use ring::rand::{SecureRandom, SystemRandom};
 use webpki;
 use ssl::err::{ErrorCode, ErrorQueue};
 
@@ -50,11 +49,10 @@ const MAGIC_SIZE: usize = 4;
 lazy_static! {
     static ref MAGIC: [u8; MAGIC_SIZE] = {
         let mut number = [0u8; MAGIC_SIZE];
-        let rng = ring::rand::SystemRandom::new();
-        if rng.fill(&mut number).is_ok() {
+        if SystemRandom::new().fill(&mut number).is_ok() {
             number
         } else {
-            [0xc0, 0xd4, 0xc5, 0x09]
+            panic!("Getrandom error");
         }
     };
 }
