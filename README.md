@@ -1,13 +1,32 @@
 # MesaLink
-MesaLink is a memory-safe and OpenSSL-compatible TLS library.
+MesaLink is a safe, secure and OpenSSL-compatible TLS library.
 
-MesaLink and its dependencies are written in [Rust](https://www.rust-lang.org),
-a programming language that guarantees memory safety. Furthermore, MesaLink
-makes it a breeze to port an existing OpenSSL application, thanks to its
-OpenSSL-compatible C APIs. Please refer to the examples to see how MesaLink can
-serve as a drop-in replacement for OpenSSL.
+To get better functionality along with strong security guarantees, MesaLink
+follows the following rules-of-thumb for hybrid memory-safe architecture
+designing proposed by the [Rust SGX SDK](https://github.com/baidu/rust-sgx-sdk)
+project.
+
+1. Unsafe components must not taint safe components, especially for public APIs
+   and data structures.
+2. Unsafe components should be as small as possible and decoupled from safe
+   components.
+3. Unsafe components should be explicitly marked during deployment and ready to
+   upgrade.
 
 ## Feature highlights
+
+ * **Memory safety**. MesaLink and its dependencies are written in
+   [Rust](https://www.rust-lang.org), a programming language that guarantees
+   memory safety. This extremely reduces attack surfaces of an TLS stack exposed
+   in the wild, leaving the remaining attack surfaces auditable and restricted.
+ * **Flexibility**. MesaLink offers flexible configurations tailored to various
+   needs, for example IoT, connected home, automobiles, the cloud and more.
+ * **Simplicity**. MesaLink does not support obselete or legacy TLS features, in
+   case that misconfigurations introduce vulnerabilities.
+ * **Compatibility**. MesaLink provides OpenSSL-compatible APIs. This makes it a
+   breeze to port an existing OpenSSL project.
+ * **Future proof**. MesaLink will support quantum-safe ciphersuites,
+   safe-guarding TLS connections against even quantum computers.
 
 MesaLink depends on two Rust crates: [rustls](https://github.com/ctz/rustls) and
 [ring](https://github.com/briansmith/ring). With them, MesaLink provides the
@@ -25,7 +44,7 @@ following features that are considered secure for most use cases:
 ## Dodged bullets
 
 This section lists a few vulnerabilities that affected other TLS libraries in
-2017 but would not be possible in MesaLink.
+2017 but will not be possible in MesaLink.
 
 * [CVE-2017-3730](https://www.cvedetails.com/cve/CVE-2017-3730/) In OpenSSL
   1.1.0 before 1.1.0d, if a malicious server supplies bad parameters for a DHE
@@ -48,8 +67,12 @@ This section lists a few vulnerabilities that affected other TLS libraries in
 
 ## Building the MesaLink library from source
 
-### To build MesaLink from source, the following tools are needed:
+MesaLink is currently only available on Linux, Android and macOS. We will
+introduce support for other platforms in future releases.
 
+To build MesaLink from source, the following tools are needed:
+
+  * m4
   * autoconf
   * automake
   * libtool
@@ -61,37 +84,83 @@ This section lists a few vulnerabilities that affected other TLS libraries in
 
 On Ubuntu, you can install them with:
 ```
-$ sudo apt-get install autoconf automake libtool make gcc curl
+$ sudo apt-get install m4 autoconf automake libtool make gcc curl
 $ curl https://sh.rustup.rs -sSf | sh
 ```
 
-If you prefer to build MesaLink with the cutting-edge
-[nightly](https://doc.rust-lang.org/1.13.0/book/nightly-rust.html) releases of
-Rust, add one more line:
-
-```
-$ rustup default nightly
-```
 On other platforms, please use the corresponding package managing tool to
 install them before proceeding. Note that MesaLink always targets the
-**current** stable and nightly release of Rust and Cargo. We do not gurantee
-backward compatibility with older releases.
+**current** stable and nightly release of Rust. We do not guarantee backward
+compatibility with older releases.
 
-### Download the source code from icode:
+The source code can be downloaded from iCode:
+
 ```
 $ git clone --recurse-submodules ssh://jingyiming@icode.baidu.com:8235/baidu/mesalink/mesalink
 ```
 
-To build and install the MesaLink headers and library, execute the following:
+To configure MesaLink, execute the following:
 ```
-$ ./autogen.sh
+$ ./autogen.sh [OPTIONS]
+```
+
+By default, `autogen.sh` generates the `configure` script and runs it with the
+default configuration. A non-exhaustive list of options that can be passed to
+either of these scripts are shown as follows:
+
+```
+  --prefix=PREFIX         install architecture-independent files in PREFIX
+                          [/usr/local]
+  --includedir=DIR        C header files [PREFIX/include]
+  --build=BUILD           configure for building on BUILD [guessed]
+  --host=HOST             cross-compile to build programs to run on HOST [BUILD]
+  --enable-debug          Add debug code/turns off optimizations (yes|no)
+                          [default=no]
+  --enable-rusthost       Set the Rust host for cross compilation (default:
+                          disabled)
+  --enable-errorstrings   Enable error string table (default: enabled)
+  --enable-aesgcm         Enable AES-GCM bulk encryption (default: enabled)
+  --enable-chachapoly     Enable Chacha20Poly1305 bulk encryption (default:
+                          enabled)
+  --enable-tls13          Enable TLS 1.3 draft (default: enabled)
+  --enable-x25519         Enable Curve25519 for key exchange (default:
+                          enabled)
+  --enable-ecdh           Enable curve secp256r1 and secp384r1 for key
+                          exchange (default: enabled)
+  --enable-ecdsa          Enable curve secp256r1 and secp384r1 for signature
+                          verification (default: enabled)
+```
+
+At the end of the configuration, a configuration summary is shown. For example,
+```
+Configuration summary for mesalink version 0.1.0
+
+   * Installation prefix:        /usr/local
+   * Host:                       x86_64-apple-darwin17.4.0
+   * Rust Host:
+   * C Compiler:                 gcc
+   * C Compiler vendor:          clang
+   * C Flags:                    -Os -ffunction-sections -fdata-sections  -Werror -Wno-pragmas -Wall -Wno-strict-aliasing -Wextra -Wunknown-pragmas --param=ssp-buffer-size=1 -Waddress -Warray-bounds -Wbad-function-cast -Wchar-subscripts -Wcomment -Wfloat-equal -Wformat-security -Wformat=2 -Wmissing-field-initializers -Wmissing-noreturn -Wmissing-prototypes -Wnested-externs -Wpointer-arith -Wpointer-sign -Wredundant-decls -Wshadow -Wshorten-64-to-32 -Wsign-compare -Wstrict-overflow=1 -Wstrict-prototypes -Wswitch-enum -Wundef -Wunused -Wunused-result -Wunused-variable -Wwrite-strings -fwrapv
+   * Debug enabled:              no
+
+   Features
+   * Logging and error strings:  yes
+   * AES-GCM:                    yes
+   * Chacha20-Poly1305:          yes
+   * TLS 1.3 (draft):            yes
+   * X25519 key exchange:        yes
+   * EC key exchange:            yes
+   * RSA signature verification: yes
+   * EC signature verification:  yes
+```
+
+Finally, simple run `make` to compile the MesaLink library.
+```
 $ make
-$ sudo make install
-$ sudo ldconfig
 ```
 
 ## Building the MesaLink documentation
-MesaLink uses Rust-style documentation. To generate the documents, execute the following:
+MesaLink uses `cargo` to generate documentation. To generate the documents, execute the following:
 
 ```
 $ cargo doc --no-deps
@@ -101,7 +170,7 @@ The documents would be located at `target/doc/mesalink/index.html`
 
 ## Examples
 MesaLink comes with two examples that demonstrate a TLS client and a TLS
-server. They are located at `examples/`.
+server. Both of them are located at `examples/`.
 
 The client example connects to a remote HTTPS server and prints the server's
 response.
@@ -171,8 +240,11 @@ well!
 ## BoringSSL SSL tests
 [BoGo](https://github.com/google/boringssl/tree/master/ssl/test) is BoringSSL's
 protocol level test suite. We have ported BoGo for testing the functionality and
-compatibility of MesaLink. To run BoGo test cases, run `runme` in the `bogo`
-directory.
+compatibility of MesaLink. To run BoGo test cases, run the following:
+```
+$ cargo build --release --examples
+$ (cd bogo && ./runme)
+```
 
 ## Crypto benchmarks
 MesaLink's underlying crypto library is
@@ -187,8 +259,8 @@ the available benchmarks is shown as follows:
 | SHA-1 & SHA-256 & SHA-512           |  ✔️   |        ✔️         |    ✔️    |
 | AES-128-GCM & AES-256-GCM           |  ✔️   |        ✔️         |    ✔️    |
 | Chacha20-Poly1305                   |  ✔️   |        ✔️         |    ✔️    |
-| ECDH (suite B) key exchange         |  ✔️   |       TODO       |  TODO   |
-| X25519 (Curve25519) key exchange    |  ✔️   |       TODO       |  TODO   |
+| ECDH (suite B) key exchange         |  ✔️   |                  |         |
+| X25519 (Curve25519) key exchange    |  ✔️   |                  |         |
 
 To run the benchmarks, run the following. Note you must have OpenSSL/LibreSSL or
 wolfSSL installed to run the corresponding benchmarks.
