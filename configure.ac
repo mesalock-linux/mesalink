@@ -24,6 +24,20 @@ LT_PREREQ([2.2])
 LT_INIT
 LT_LANG([C])
 
+MESALINK_LIBRARY_VERSION=1:0:0
+#                        | | |
+#                 +------+ | +---+
+#                 |        |     |
+#                current:revision:age
+#                 |        |     |
+#                 |        |     +- increment if interfaces have been added
+#                 |        |        set to zero if interfaces have been removed
+#                 |        |        or changed
+#                 |        +- increment if source code has changed
+#                 |           set to zero if current is incremented
+#                 +- increment if interfaces have been added, removed or changed
+AC_SUBST([MESALINK_LIBRARY_VERSION])
+
 AC_CHECK_HEADERS([netdb.h netinet/in.h string.h sys/socket.h unistd.h])
 AC_CHECK_FUNCS([gethostbyname memset socket])
 AC_CHECK_PROG(CARGO, [cargo], [yes], [no])

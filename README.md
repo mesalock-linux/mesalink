@@ -46,7 +46,7 @@ following features that are considered secure for most use cases:
 This section lists a few vulnerabilities that affected other TLS libraries in
 2017 but will not be possible in MesaLink.
 
-* [CVE-2017-3730](https://www.cvedetails.com/cve/CVE-2017-3730/) In OpenSSL
+* [CVE-2017-3730](https://www.cvedetails.com/cve/CVE-2017-3730/): In OpenSSL
   1.1.0 before 1.1.0d, if a malicious server supplies bad parameters for a DHE
   or ECDHE key exchange then this can result in the client attempting to
   dereference a NULL pointer leading to a client crash. This could be exploited

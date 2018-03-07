@@ -7,6 +7,8 @@ $(RUST_LIB): Cargo.toml src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/err.rs
 	$(CARGO_TARGET_SUBDIR_ENV_VAR) cargo rustc \
 		$(CARGO_RELEASE_ARGS) --no-default-features $(CARGO_FEATURES) $(CARGO_TARGET_ARGS) $(CARGO_LINKER_ARGS)
 
+MESALINK_LIBRARY_VERSION = @MESALINK_LIBRARY_VERSION@
+
 libmesalink_la_SOURCES = \
 	$(NULL)
 libmesalink_la_CFLAGS = \
@@ -14,6 +16,7 @@ libmesalink_la_CFLAGS = \
 libmesalink_la_LDFLAGS = \
 	-export-dynamic \
 	-no-undefined \
+	-version-info ${MESALINK_LIBRARY_VERSION} \
 	-export-symbols-regex "^mesalink_.*" \
 	$(AM_LDFLAGS)
 libmesalink_la_LIBADD = \
