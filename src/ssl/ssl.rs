@@ -929,9 +929,10 @@ pub extern "C" fn mesalink_SSL_set_SSL_CTX<'a>(
     ssl_ptr: *mut MESALINK_SSL<'a>,
     ctx_ptr: *mut MESALINK_CTX,
 ) -> *const MESALINK_CTX {
-    let ctx_ret = sanitize_ptr_for_mut_ref(ctx_ptr);
-    let ssl_ret = sanitize_ptr_for_mut_ref(ssl_ptr);
-    match (ctx_ret, ssl_ret) {
+    match (
+        sanitize_ptr_for_mut_ref(ctx_ptr),
+        sanitize_ptr_for_mut_ref(ssl_ptr),
+    ) {
         (Ok(ctx), Ok(ssl)) => {
             ssl.context = ctx;
             ssl.client_config = sync::Arc::new(ctx.client_config.clone());
