@@ -1189,6 +1189,10 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> c_int {
     if let Ok(ssl) = sanitize_ptr_for_mut_ref(ssl_ptr) {
+        if fd < 0 {
+            ErrorQueue::push_error(ErrorCode::MesalinkErrorBadFuncArg);
+            return SSL_FAILURE;
+        }
         let socket = unsafe { net::TcpStream::from_raw_fd(fd) };
         ssl.io = Some(socket);
         SSL_SUCCESS
@@ -1297,6 +1301,10 @@ pub extern "C" fn mesalink_SSL_read(
     buf_len: c_int,
 ) -> c_int {
     if let Ok(ssl) = sanitize_ptr_for_mut_ref(ssl_ptr) {
+        if buf_ptr.is_null() || buf_len < 0 {
+            ErrorQueue::push_error(ErrorCode::MesalinkErrorBadFuncArg);
+            return SSL_FAILURE;
+        }
         let buf = unsafe { slice::from_raw_parts_mut(buf_ptr, buf_len as usize) };
         match ssl.read(buf) {
             Ok(count) => count as c_int,
@@ -1326,6 +1334,10 @@ pub extern "C" fn mesalink_SSL_write(
     buf_len: c_int,
 ) -> c_int {
     if let Ok(ssl) = sanitize_ptr_for_mut_ref(ssl_ptr) {
+        if buf_ptr.is_null() || buf_len < 0 {
+            ErrorQueue::push_error(ErrorCode::MesalinkErrorBadFuncArg);
+            return SSL_FAILURE;
+        }
         let buf = unsafe { slice::from_raw_parts(buf_ptr, buf_len as usize) };
         match ssl.write(buf) {
             Ok(count) => count as c_int,
