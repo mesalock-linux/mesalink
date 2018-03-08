@@ -1023,8 +1023,12 @@ fn suite_to_static_str(suite: u16) -> &'static [u8] {
 
 #[no_mangle]
 #[cfg(not(feature = "error_strings"))]
-pub extern "C" fn mesalink_SSL_CIPHER_get_name(_cipher_ptr: *mut MESALINK_CIPHER) -> *const c_char {
-    CONST_NOTBUILTIN_STR.as_ptr() as *const c_char
+pub extern "C" fn mesalink_SSL_CIPHER_get_name(cipher_ptr: *mut MESALINK_CIPHER) -> *const c_char {
+    if let Ok(_ciphersuite) = sanitize_ptr_for_ref(cipher_ptr) {
+        CONST_NOTBUILTIN_STR.as_ptr() as *const c_char
+    } else {
+        CONST_NONE_STR.as_ptr() as *const c_char
+    }
 }
 
 /// `SSL_CIPHER_get_bits` - return the number of secret bits used for cipher. If
@@ -1087,7 +1091,9 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_version(
 pub extern "C" fn mesalink_SSL_get_cipher_name(ssl_ptr: *mut MESALINK_SSL) -> *const c_char {
     let cipher = mesalink_SSL_get_current_cipher(ssl_ptr);
     let ret = mesalink_SSL_CIPHER_get_name(cipher);
-    let _ = unsafe { Box::from_raw(cipher) };
+    if !cipher.is_null() {
+        let _ = unsafe { Box::from_raw(cipher) };
+    }
     ret
 }
 
@@ -1117,7 +1123,9 @@ pub extern "C" fn mesalink_SSL_get_cipher_bits(
 ) -> c_int {
     let cipher = mesalink_SSL_get_current_cipher(ssl_ptr);
     let ret = mesalink_SSL_CIPHER_get_bits(cipher, bits_ptr);
-    let _ = unsafe { Box::from_raw(cipher) };
+    if !cipher.is_null() {
+        let _ = unsafe { Box::from_raw(cipher) };
+    }
     ret
 }
 
@@ -1132,7 +1140,9 @@ pub extern "C" fn mesalink_SSL_get_cipher_bits(
 pub extern "C" fn mesalink_SSL_get_cipher_version(ssl_ptr: *mut MESALINK_SSL) -> *const c_char {
     let cipher = mesalink_SSL_get_current_cipher(ssl_ptr);
     let ret = mesalink_SSL_CIPHER_get_version(cipher);
-    let _ = unsafe { Box::from_raw(cipher) };
+    if !cipher.is_null() {
+        let _ = unsafe { Box::from_raw(cipher) };
+    }
     ret
 }
 
