@@ -83,6 +83,7 @@ To build MesaLink from source, the following tools are needed:
   * cargo
 
 On Ubuntu, you can install them with:
+
 ```
 $ sudo apt-get install m4 autoconf automake libtool make gcc curl
 $ curl https://sh.rustup.rs -sSf | sh
@@ -100,6 +101,7 @@ $ git clone --recurse-submodules ssh://jingyiming@icode.baidu.com:8235/baidu/mes
 ```
 
 To configure MesaLink, execute the following:
+
 ```
 $ ./autogen.sh [OPTIONS]
 ```
@@ -132,6 +134,7 @@ either of these scripts are shown as follows:
 ```
 
 At the end of the configuration, a configuration summary is shown. For example,
+
 ```
 Configuration summary for mesalink version 0.1.0
 
@@ -155,18 +158,10 @@ Configuration summary for mesalink version 0.1.0
 ```
 
 Finally, simple run `make` to compile the MesaLink library.
+
 ```
 $ make
 ```
-
-## Building the MesaLink documentation
-MesaLink uses `cargo` to generate documentation. To generate the documents, execute the following:
-
-```
-$ cargo doc --no-deps
-```
-The documents would be located at `target/doc/mesalink/index.html`
-
 
 ## Examples
 MesaLink comes with two examples that demonstrate a TLS client and a TLS
@@ -241,6 +236,7 @@ well!
 [BoGo](https://github.com/google/boringssl/tree/master/ssl/test) is BoringSSL's
 protocol level test suite. We have ported BoGo for testing the functionality and
 compatibility of MesaLink. To run BoGo test cases, run the following:
+
 ```
 $ cargo build --release --examples
 $ (cd bogo && ./runme)
@@ -264,6 +260,7 @@ the available benchmarks is shown as follows:
 
 To run the benchmarks, run the following. Note you must have OpenSSL/LibreSSL or
 wolfSSL installed to run the corresponding benchmarks.
+
 ```
 $ git clone https://github.com/kevinis/crypto-bench.git
 $ cd crypto-bench && git checkout dev
