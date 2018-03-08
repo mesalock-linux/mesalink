@@ -1046,6 +1046,10 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_bits(
     bits_ptr: *mut c_int,
 ) -> c_int {
     if let Ok(ciphersuite) = sanitize_ptr_for_ref(cipher_ptr) {
+        if bits_ptr.is_null() {
+            ErrorQueue::push_error(ErrorCode::MesalinkErrorBadFuncArg);
+            return SSL_FAILURE;
+        }
         unsafe { ptr::write(bits_ptr, ciphersuite.ciphersuite.enc_key_len as c_int) };
         SSL_SUCCESS
     } else {
