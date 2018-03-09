@@ -194,7 +194,7 @@ pub struct MESALINK_CTX {
 }
 
 #[allow(non_camel_case_types)]
-type MESALINK_CTX_ARC = Arc<MESALINK_CTX>;
+pub type MESALINK_CTX_ARC = Arc<MESALINK_CTX>;
 
 impl<'a> MesalinkOpaquePointerType for MESALINK_CTX_ARC {
     fn check_magic(&self) -> bool {

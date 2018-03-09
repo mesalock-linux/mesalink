@@ -156,7 +156,7 @@ fn handle_err(err: ErrorCode) -> ! {
     }
 }
 
-fn setup_ctx(opts: &Options) -> *mut ssl::MESALINK_CTX {
+fn setup_ctx(opts: &Options) -> *mut ssl::MESALINK_CTX_ARC {
     let method = match (opts.tls12_supported(), opts.tls13_supported(), opts.server) {
         (true, true, false) => ssl::mesalink_TLS_client_method(),
         (true, true, true) => ssl::mesalink_TLS_server_method(),
@@ -195,7 +195,7 @@ fn setup_ctx(opts: &Options) -> *mut ssl::MESALINK_CTX {
     ctx
 }
 
-fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX) {
+fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC) {
     use std::os::unix::io::AsRawFd;
     let conn = net::TcpStream::connect(("localhost", opts.port)).expect("cannot connect");
     let mut sent_shutdown = false;
