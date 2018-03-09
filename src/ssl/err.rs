@@ -765,12 +765,12 @@ pub extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
     if fp.is_null() {
         return;
     }
-    use std::{ffi, thread};
+    use std::thread;
     let tid = thread::current().id();
     ERROR_QUEUE.with(|f| {
         let mut queue = f.borrow_mut();
         for err in queue.drain(0..) {
-            let description_c = ffi::CString::new(err.as_str());
+            let description_c = err.as_str();
             let _ = unsafe {
                 libc::fprintf(
                     fp,
