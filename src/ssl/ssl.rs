@@ -782,38 +782,35 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
     filename_ptr: *const c_char,
     _format: c_int,
 ) -> c_int {
-    println!("Enter mesalink_SSL_CTX_use_PrivateKey_file");
     match sanitize_ptr_for_mut_ref(ctx_ptr) {
         Ok(ctx) => match unsafe { ffi::CStr::from_ptr(filename_ptr).to_str() } {
             Ok(filename) => {
-                println!("CStr::from_ptr OK");
-                let pk8_keys = match fs::File::open(filename) {
-                    Ok(f) => internal::pemfile::pkcs8_private_keys(&mut io::BufReader::new(f)),
-                    Err(_) => Err(()),
-                };
                 let rsa_keys = match fs::File::open(filename) {
                     Ok(f) => internal::pemfile::rsa_private_keys(&mut io::BufReader::new(f)),
-                    Err(_) => Err(()),
+                    Err(_) => Err(())
                 };
-                println!("Key file has been read");
-                match (pk8_keys, rsa_keys) {
-                    (Ok(keys), Err(_)) | (Err(_), Ok(keys)) => {
-                        println!("keys parsed!");
-                        util::get_context_mut(ctx).private_key = Some(keys[0].clone());
-                        match util::try_get_context_certs_and_key(ctx) {
-                            Ok((certs, priv_key)) => util::get_context_mut(ctx)
-                                .server_config
-                                .set_single_cert(certs, priv_key),
-                            Err(_) => (),
-                        }
-                        SSL_SUCCESS
+                let pk8_keys = match fs::File::open(filename) {
+                    Ok(f) => internal::pemfile::pkcs8_private_keys(&mut io::BufReader::new(f)),
+                    Err(_) => Err(())
+                };
+                let mut valid_keys = None;
+                if let Ok(keys) = rsa_keys {
+                    valid_keys = if keys.len() > 0 { Some(keys) } else { None };
+                } else if let Ok(keys) = pk8_keys {
+                    valid_keys = if keys.len() > 0 { Some(keys) } else { None };
+                }
+                if let Some(keys) = valid_keys {
+                    util::get_context_mut(ctx).private_key = Some(keys[0].clone());
+                    match util::try_get_context_certs_and_key(ctx) {
+                        Ok((certs, priv_key)) => util::get_context_mut(ctx)
+                            .server_config
+                            .set_single_cert(certs, priv_key),
+                        Err(_) => (),
                     }
-                    _ => {
-                        // neither rsa_private_keys nor pkcs8_private_keys can parse the keyfile
-                        println!("not a rsa or pkcs8 key");
-                        ErrorQueue::push_error(ErrorCode::TLSErrorWebpkiBadDER);
-                        SSL_FAILURE
-                    }
+                    SSL_SUCCESS
+                } else {
+                    ErrorQueue::push_error(ErrorCode::TLSErrorWebpkiBadDER);
+                    SSL_FAILURE
                 }
             }
             Err(_) => {
