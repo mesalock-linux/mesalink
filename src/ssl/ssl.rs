@@ -788,18 +788,26 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
             Ok(filename) => {
                 let rsa_keys = match fs::File::open(filename) {
                     Ok(f) => internal::pemfile::rsa_private_keys(&mut io::BufReader::new(f)),
-                    Err(_) => Err(())
+                    Err(_) => Err(()),
                 };
                 let pk8_keys = match fs::File::open(filename) {
                     Ok(f) => internal::pemfile::pkcs8_private_keys(&mut io::BufReader::new(f)),
-                    Err(_) => Err(())
+                    Err(_) => Err(()),
                 };
                 let mut valid_keys = None;
                 if let Ok(keys) = rsa_keys {
-                    valid_keys = if keys.len() > 0 { Some(keys) } else { valid_keys };
+                    valid_keys = if keys.len() > 0 {
+                        Some(keys)
+                    } else {
+                        valid_keys
+                    };
                 }
                 if let Ok(keys) = pk8_keys {
-                    valid_keys = if keys.len() > 0 { Some(keys) } else { valid_keys };
+                    valid_keys = if keys.len() > 0 {
+                        Some(keys)
+                    } else {
+                        valid_keys
+                    };
                 }
                 if let Some(keys) = valid_keys {
                     util::get_context_mut(ctx).private_key = Some(keys[0].clone());
