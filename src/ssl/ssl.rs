@@ -193,9 +193,9 @@ pub struct MESALINK_CTX {
 }
 
 #[allow(non_camel_case_types)]
-type MESALINK_CTX_SharedPtr = Arc<MESALINK_CTX>;
+type MESALINK_CTX_ARC = Arc<MESALINK_CTX>;
 
-impl<'a> MesalinkOpaquePointerType for MESALINK_CTX_SharedPtr {
+impl<'a> MesalinkOpaquePointerType for MESALINK_CTX_ARC {
     fn check_magic(&self) -> bool {
         self.magic == *MAGIC
     }
@@ -241,7 +241,7 @@ impl<'a> MESALINK_CTX {
 #[repr(C)]
 pub struct MESALINK_SSL<'a> {
     magic: [u8; MAGIC_SIZE],
-    context: Option<MESALINK_CTX_SharedPtr>,
+    context: Option<MESALINK_CTX_ARC>,
     client_config: Arc<rustls::ClientConfig>,
     server_config: Arc<rustls::ServerConfig>,
     hostname: Option<webpki::DNSNameRef<'a>>,
@@ -258,10 +258,10 @@ impl<'a> MesalinkOpaquePointerType for MESALINK_SSL<'a> {
 }
 
 impl<'a> MESALINK_SSL<'a> {
-    fn new(ctx: &'a MESALINK_CTX_SharedPtr) -> MESALINK_SSL<'a> {
+    fn new(ctx: &'a MESALINK_CTX_ARC) -> MESALINK_SSL<'a> {
         MESALINK_SSL {
             magic: *MAGIC,
-            context: Some(ctx.clone()),
+            context: Some(ctx.clone()), // reference count +1
             client_config: Arc::new(ctx.client_config.clone()),
             server_config: Arc::new(ctx.server_config.clone()),
             hostname: None,
@@ -703,14 +703,12 @@ pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
 /// SSL_CTX *SSL_CTX_new(const SSL_METHOD *method);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_CTX_new(
-    method_ptr: *mut MESALINK_METHOD,
-) -> *mut MESALINK_CTX_SharedPtr {
+pub extern "C" fn mesalink_SSL_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut MESALINK_CTX_ARC {
     match sanitize_ptr_for_ref(method_ptr) {
         Ok(method) => {
             let context = MESALINK_CTX::new(method);
             let _ = unsafe { Box::from_raw(method_ptr) };
-            Box::into_raw(Box::new(Arc::new(context)))
+            Box::into_raw(Box::new(Arc::new(context))) // initialize the referece counter
         }
         Err(_) => ptr::null_mut(),
     }
@@ -729,7 +727,7 @@ pub extern "C" fn mesalink_SSL_CTX_new(
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
-    ctx_ptr: *mut MESALINK_CTX_SharedPtr,
+    ctx_ptr: *mut MESALINK_CTX_ARC,
     filename_ptr: *const c_char,
     _format: c_int,
 ) -> c_int {
@@ -780,7 +778,7 @@ pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
-    ctx_ptr: *mut MESALINK_CTX_SharedPtr,
+    ctx_ptr: *mut MESALINK_CTX_ARC,
     filename_ptr: *const c_char,
     _format: c_int,
 ) -> c_int {
@@ -832,9 +830,7 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
 /// int SSL_CTX_check_private_key(const SSL_CTX *ctx);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_CTX_check_private_key(
-    ctx_ptr: *mut MESALINK_CTX_SharedPtr,
-) -> c_int {
+pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX_ARC) -> c_int {
     match sanitize_ptr_for_mut_ref(ctx_ptr) {
         Ok(ctx) => match (&ctx.certificates, &ctx.private_key) {
             (&Some(ref certs), &Some(ref key)) => match sign::RSASigningKey::new(key) {
@@ -869,7 +865,7 @@ pub extern "C" fn mesalink_SSL_CTX_check_private_key(
 #[doc(hidden)]
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_CTX_set_verify(
-    ctx_ptr: *mut MESALINK_CTX_SharedPtr,
+    ctx_ptr: *mut MESALINK_CTX_ARC,
     mode: c_int,
     _cb: Option<extern "C" fn(c_int, *mut MESALINK_CTX) -> c_int>,
 ) -> c_int {
@@ -896,9 +892,7 @@ pub extern "C" fn mesalink_SSL_CTX_set_verify(
 /// SSL *SSL_new(SSL_CTX *ctx);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_new<'a>(
-    ctx_ptr: *mut MESALINK_CTX_SharedPtr,
-) -> *mut MESALINK_SSL<'a> {
+pub extern "C" fn mesalink_SSL_new<'a>(ctx_ptr: *mut MESALINK_CTX_ARC) -> *mut MESALINK_SSL<'a> {
     match sanitize_ptr_for_mut_ref(ctx_ptr) {
         Ok(ctx) => {
             let ssl = MESALINK_SSL::new(ctx);
@@ -917,11 +911,9 @@ pub extern "C" fn mesalink_SSL_new<'a>(
 /// SSL_CTX *SSL_get_SSL_CTX(const SSL *ssl);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_get_SSL_CTX(
-    ssl_ptr: *mut MESALINK_SSL,
-) -> *const MESALINK_CTX_SharedPtr {
+pub extern "C" fn mesalink_SSL_get_SSL_CTX(ssl_ptr: *mut MESALINK_SSL) -> *const MESALINK_CTX_ARC {
     match sanitize_ptr_for_ref(ssl_ptr) {
-        Ok(ssl) => ssl.context.as_ref().unwrap() as *const MESALINK_CTX_SharedPtr,
+        Ok(ssl) => ssl.context.as_ref().unwrap() as *const MESALINK_CTX_ARC,
         Err(_) => ptr::null(),
     }
 }
@@ -936,17 +928,21 @@ pub extern "C" fn mesalink_SSL_get_SSL_CTX(
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_set_SSL_CTX<'a>(
     ssl_ptr: *mut MESALINK_SSL<'a>,
-    ctx_ptr: *mut MESALINK_CTX_SharedPtr,
-) -> *const MESALINK_CTX_SharedPtr {
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+) -> *const MESALINK_CTX_ARC {
     match (
         sanitize_ptr_for_mut_ref(ctx_ptr),
         sanitize_ptr_for_mut_ref(ssl_ptr),
     ) {
         (Ok(ctx), Ok(ssl)) => {
+            // After this line, the previous MESALINK_CTX_ARC pointed by
+            // ssl.context is out of scope and decreses its reference counter;
+            // the new MESALINK_CTX_ARC object increases its reference counter
             ssl.context = Some(ctx.clone());
+
             ssl.client_config = Arc::new(ctx.client_config.clone());
             ssl.server_config = Arc::new(ctx.server_config.clone());
-            ssl.context.as_ref().unwrap() as *const MESALINK_CTX_SharedPtr
+            ssl.context.as_ref().unwrap() as *const MESALINK_CTX_ARC
         }
         _ => ptr::null_mut(),
     }
@@ -1424,7 +1420,7 @@ pub extern "C" fn mesalink_SSL_get_version(ssl_ptr: *mut MESALINK_SSL) -> *const
 /// void SSL_CTX_free(SSL_CTX *ctx);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_CTX_free(ctx_ptr: *mut MESALINK_CTX_SharedPtr) {
+pub extern "C" fn mesalink_SSL_CTX_free(ctx_ptr: *mut MESALINK_CTX_ARC) {
     if sanitize_ptr_for_mut_ref(ctx_ptr).is_ok() {
         let _ = unsafe { Arc::from_raw(ctx_ptr) };
     }
@@ -1450,7 +1446,7 @@ mod util {
     use std::sync::Arc;
 
     pub fn try_get_context_certs_and_key<'a>(
-        ctx: &'a mut ssl::MESALINK_CTX_SharedPtr,
+        ctx: &'a mut ssl::MESALINK_CTX_ARC,
     ) -> Result<(Vec<rustls::Certificate>, rustls::PrivateKey), ()> {
         let certs = ctx.certificates.as_ref().ok_or(())?;
         let priv_key = ctx.private_key.as_ref().ok_or(())?;
@@ -1475,7 +1471,7 @@ mod util {
         }
     }
 
-    pub fn get_context_mut<'a>(ctx: &'a mut ssl::MESALINK_CTX_SharedPtr) -> &mut ssl::MESALINK_CTX {
-        Arc::get_mut(ctx).unwrap()
+    pub fn get_context_mut<'a>(ctx: &'a mut ssl::MESALINK_CTX_ARC) -> &mut ssl::MESALINK_CTX {
+        Arc::get_mut(ctx).expect("Synchronization failure")
     }
 }
