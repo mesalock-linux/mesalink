@@ -184,6 +184,7 @@ impl rustls::StoresClientSessions for MesalinkClientSessionCache {
 /// CA certificates and default ciphersuites. Support for configurable
 /// ciphersuites will be added soon in the next release.
 #[repr(C)]
+#[derive(Clone)]
 pub struct MESALINK_CTX {
     magic: [u8; MAGIC_SIZE],
     client_config: rustls::ClientConfig,
@@ -1474,6 +1475,6 @@ mod util {
     }
 
     pub fn get_context_mut<'a>(ctx: &'a mut ssl::MESALINK_CTX_ARC) -> &mut ssl::MESALINK_CTX {
-        Arc::get_mut(ctx).expect("Synchronization failure")
+        Arc::make_mut(ctx)
     }
 }
