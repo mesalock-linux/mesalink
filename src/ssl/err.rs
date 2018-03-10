@@ -263,7 +263,7 @@ pub enum ErrorCode {
     TLSErrorInvalidDNSName = 0x03000e00,
     TLSErrorHandshakeNotComplete = 0x03000f00,
     TLSErrorPeerSentOversizedRecord = 0x03001000,
-    UndefinedError = 0xeeeeeeee,
+    UndefinedError = 0x0eeeeeee,
 }
 
 #[doc(hidden)]
