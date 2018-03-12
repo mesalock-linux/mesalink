@@ -53,6 +53,7 @@ lazy_static! {
     static ref MAGIC: [u8; MAGIC_SIZE] = {
         let mut number = [0u8; MAGIC_SIZE];
         if rand::SystemRandom::new().fill(&mut number).is_ok() {
+            let number = number;
             number
         } else {
             panic!("Getrandom error");
@@ -472,6 +473,12 @@ pub extern "C" fn mesalink_SSL_load_error_strings() {
     /* compatibility only */
 }
 
+#[inline(always)]
+fn mesalink_not_available_method() -> *const MESALINK_METHOD {
+    let p: *const MESALINK_METHOD = ptr::null();
+    p
+}
+
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
 /// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
 /// pointers. Others simply return NULL.
@@ -484,8 +491,7 @@ pub extern "C" fn mesalink_SSL_load_error_strings() {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_SSLv3_client_method() -> *const MESALINK_METHOD {
-    let p: *const MESALINK_METHOD = ptr::null();
-    p
+    mesalink_not_available_method()
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -500,7 +506,7 @@ pub extern "C" fn mesalink_SSLv3_client_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_SSLv23_client_method() -> *const MESALINK_METHOD {
-    mesalink_SSLv3_client_method()
+    mesalink_not_available_method()
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -515,7 +521,7 @@ pub extern "C" fn mesalink_SSLv23_client_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_client_method() -> *const MESALINK_METHOD {
-    mesalink_SSLv3_client_method()
+    mesalink_not_available_method()
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -530,7 +536,7 @@ pub extern "C" fn mesalink_TLSv1_client_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_1_client_method() -> *const MESALINK_METHOD {
-    mesalink_SSLv3_client_method()
+    mesalink_not_available_method()
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -596,7 +602,7 @@ pub extern "C" fn mesalink_TLS_client_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_SSLv3_server_method() -> *const MESALINK_METHOD {
-    mesalink_SSLv3_client_method()
+    mesalink_not_available_method()
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -611,7 +617,7 @@ pub extern "C" fn mesalink_SSLv3_server_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_SSLv23_server_method() -> *const MESALINK_METHOD {
-    mesalink_SSLv3_client_method()
+    mesalink_not_available_method()
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -626,7 +632,7 @@ pub extern "C" fn mesalink_SSLv23_server_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_server_method() -> *const MESALINK_METHOD {
-    mesalink_SSLv3_client_method()
+    mesalink_not_available_method()
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -641,7 +647,7 @@ pub extern "C" fn mesalink_TLSv1_server_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_1_server_method() -> *const MESALINK_METHOD {
-    mesalink_SSLv3_client_method()
+    mesalink_not_available_method()
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -656,8 +662,7 @@ pub extern "C" fn mesalink_TLSv1_1_server_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_2_server_method() -> *const MESALINK_METHOD {
-    let method = MESALINK_METHOD::new(vec![rustls::ProtocolVersion::TLSv1_2]);
-    Box::into_raw(Box::new(method))
+    mesalink_TLSv1_2_client_method()
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -672,8 +677,7 @@ pub extern "C" fn mesalink_TLSv1_2_server_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_3_server_method() -> *const MESALINK_METHOD {
-    let method = MESALINK_METHOD::new(vec![rustls::ProtocolVersion::TLSv1_3]);
-    Box::into_raw(Box::new(method))
+    mesalink_TLSv1_3_client_method()
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -688,11 +692,7 @@ pub extern "C" fn mesalink_TLSv1_3_server_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
-    let method = MESALINK_METHOD::new(vec![
-        rustls::ProtocolVersion::TLSv1_3,
-        rustls::ProtocolVersion::TLSv1_2,
-    ]);
-    Box::into_raw(Box::new(method))
+    mesalink_TLS_client_method()
 }
 
 /// `SSL_CTX_new` - create a new SSL_CTX object as framework to establish TLS/SSL
@@ -809,18 +809,22 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
                         valid_keys
                     };
                 }
-                if let Some(keys) = valid_keys {
-                    util::get_context_mut(ctx).private_key = Some(keys[0].clone());
-                    match util::try_get_context_certs_and_key(ctx) {
-                        Ok((certs, priv_key)) => util::get_context_mut(ctx)
-                            .server_config
-                            .set_single_cert(certs, priv_key),
-                        Err(_) => (),
+                match valid_keys {
+                    Some(keys) => {
+                        util::get_context_mut(ctx).private_key = Some(keys[0].clone());
+                        match util::try_get_context_certs_and_key(ctx) {
+                            Ok((certs, priv_key)) => util::get_context_mut(ctx)
+                                .server_config
+                                .set_single_cert(certs, priv_key),
+                            Err(_) => (),
+                        }
+                        SSL_SUCCESS
                     }
-                    SSL_SUCCESS
-                } else {
-                    ErrorQueue::push_error(ErrorCode::TLSErrorWebpkiBadDER);
-                    SSL_FAILURE
+                    None => {
+                        // valid_keys does not contain anything
+                        ErrorQueue::push_error(ErrorCode::TLSErrorWebpkiBadDER);
+                        SSL_FAILURE
+                    }
                 }
             }
             Err(_) => {

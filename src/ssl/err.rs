@@ -140,7 +140,7 @@
 //!   TLS_ERROR_INVALID_DNS_NAME = 0x03000e00,
 //!   TLS_ERROR_HANDSHAKE_NOT_COMPLETE = 0x03000f00,
 //!   TLS_ERROR_PEER_SENT_OVERSIZED_RECORD = 0x03001000,
-//!   UNDEFINED_ERROR = 0xeeeeeeee,
+//!   UNDEFINED_ERROR = 0x0eeeeeee,
 //! ```
 
 use libc::{self, c_char, c_ulong, size_t};
@@ -269,12 +269,12 @@ pub enum ErrorCode {
 #[doc(hidden)]
 impl ErrorCode {
     #[cfg(feature = "error_strings")]
-    pub fn as_str(&self) -> &'static [u8] {
+    pub fn as_u8_slice(&self) -> &'static [u8] {
         self.enum_to_str()
     }
 
     #[cfg(not(feature = "error_strings"))]
-    pub fn as_str(&self) -> &'static [u8] {
+    pub fn as_u8_slice(&self) -> &'static [u8] {
         b"Error string not built-in\0"
     }
 }
@@ -690,7 +690,7 @@ pub extern "C" fn mesalink_ERR_error_string_n(
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_reason_error_string(e: c_ulong) -> *const c_char {
     let error_code: ErrorCode = ErrorCode::from(e);
-    error_code.as_str().as_ptr() as *const c_char
+    error_code.as_u8_slice().as_ptr() as *const c_char
 }
 
 #[doc(hidden)]
@@ -770,7 +770,7 @@ pub extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
     ERROR_QUEUE.with(|f| {
         let mut queue = f.borrow_mut();
         for err in queue.drain(0..) {
-            let description_c = err.as_str();
+            let description_c = err.as_u8_slice();
             let _ = unsafe {
                 libc::fprintf(
                     fp,
