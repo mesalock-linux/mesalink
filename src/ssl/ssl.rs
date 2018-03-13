@@ -431,12 +431,12 @@ where
 
 /// For OpenSSL compatibility only. Always returns 1.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// int SSL_library_init(void);
 /// int OpenSSL_add_ssl_algorithms(void);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_library_init() -> c_int {
     /* compatibility only */
@@ -445,12 +445,12 @@ pub extern "C" fn mesalink_library_init() -> c_int {
 
 /// For OpenSSL compatibility only. Always returns 1.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// int SSL_library_init(void);
 /// int OpenSSL_add_ssl_algorithms(void);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_add_ssl_algorithms() -> c_int {
     /* compatibility only */
@@ -459,11 +459,11 @@ pub extern "C" fn mesalink_add_ssl_algorithms() -> c_int {
 
 /// For OpenSSL compatibility only.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// void SSL_load_error_strings(void);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_load_error_strings() {
     /* compatibility only */
@@ -479,11 +479,11 @@ fn mesalink_not_available_method() -> *const MESALINK_METHOD {
 /// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
 /// pointers. Others simply return NULL.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// const SSL_METHOD *SSLv3_client_method(void);
-/// ```
+/// ```text
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_SSLv3_client_method() -> *const MESALINK_METHOD {
@@ -494,11 +494,11 @@ pub extern "C" fn mesalink_SSLv3_client_method() -> *const MESALINK_METHOD {
 /// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
 /// pointers. Others simply return NULL.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// const SSL_METHOD *SSLv23_client_method(void);
-/// ```
+/// ```text
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_SSLv23_client_method() -> *const MESALINK_METHOD {
@@ -509,11 +509,11 @@ pub extern "C" fn mesalink_SSLv23_client_method() -> *const MESALINK_METHOD {
 /// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
 /// pointers. Others simply return NULL.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// const SSL_METHOD *TLSv1_client_method(void);
-/// ```
+/// ```text
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_client_method() -> *const MESALINK_METHOD {
@@ -524,11 +524,11 @@ pub extern "C" fn mesalink_TLSv1_client_method() -> *const MESALINK_METHOD {
 /// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
 /// pointers. Others simply return NULL.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// const SSL_METHOD *TLSv1_1_client_method(void);
-/// ```
+/// ```text
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_1_client_method() -> *const MESALINK_METHOD {
@@ -539,11 +539,11 @@ pub extern "C" fn mesalink_TLSv1_1_client_method() -> *const MESALINK_METHOD {
 /// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
 /// pointers. Others simply return NULL.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// const SSL_METHOD *SSLv1_2_client_method(void);
-/// ```
+/// ```text
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_2_client_method() -> *const MESALINK_METHOD {
@@ -555,11 +555,11 @@ pub extern "C" fn mesalink_TLSv1_2_client_method() -> *const MESALINK_METHOD {
 /// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
 /// pointers. Others simply return NULL.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// const SSL_METHOD *TLSv1_3_client_method(void);
-/// ```
+/// ```text
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_3_client_method() -> *const MESALINK_METHOD {
@@ -571,11 +571,11 @@ pub extern "C" fn mesalink_TLSv1_3_client_method() -> *const MESALINK_METHOD {
 /// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
 /// pointers. Others simply return NULL.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// const SSL_METHOD *TLSv1_client_method(void);
-/// ```
+/// ```text
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLS_client_method() -> *const MESALINK_METHOD {
@@ -590,11 +590,11 @@ pub extern "C" fn mesalink_TLS_client_method() -> *const MESALINK_METHOD {
 /// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
 /// pointers. Others simply return NULL.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// const SSL_METHOD *SSLv3_server_method(void);
-/// ```
+/// ```text
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_SSLv3_server_method() -> *const MESALINK_METHOD {
@@ -605,11 +605,11 @@ pub extern "C" fn mesalink_SSLv3_server_method() -> *const MESALINK_METHOD {
 /// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
 /// pointers. Others simply return NULL.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// const SSL_METHOD *SSLv23_server_method(void);
-/// ```
+/// ```text
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_SSLv23_server_method() -> *const MESALINK_METHOD {
@@ -620,11 +620,11 @@ pub extern "C" fn mesalink_SSLv23_server_method() -> *const MESALINK_METHOD {
 /// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
 /// pointers. Others simply return NULL.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// const SSL_METHOD *TLSv1_server_method(void);
-/// ```
+/// ```text
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_server_method() -> *const MESALINK_METHOD {
@@ -635,11 +635,11 @@ pub extern "C" fn mesalink_TLSv1_server_method() -> *const MESALINK_METHOD {
 /// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
 /// pointers. Others simply return NULL.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// const SSL_METHOD *TLSv1_1_server_method(void);
-/// ```
+/// ```text
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_1_server_method() -> *const MESALINK_METHOD {
@@ -650,11 +650,11 @@ pub extern "C" fn mesalink_TLSv1_1_server_method() -> *const MESALINK_METHOD {
 /// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
 /// pointers. Others simply return NULL.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// const SSL_METHOD *TLSv1_2_server_method(void);
-/// ```
+/// ```text
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_2_server_method() -> *const MESALINK_METHOD {
@@ -665,11 +665,11 @@ pub extern "C" fn mesalink_TLSv1_2_server_method() -> *const MESALINK_METHOD {
 /// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
 /// pointers. Others simply return NULL.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// const SSL_METHOD *TLSv1_3_server_method(void);
-/// ```
+/// ```text
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLSv1_3_server_method() -> *const MESALINK_METHOD {
@@ -680,11 +680,11 @@ pub extern "C" fn mesalink_TLSv1_3_server_method() -> *const MESALINK_METHOD {
 /// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
 /// pointers. Others simply return NULL.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// const SSL_METHOD *TLSv1_3_server_method(void);
-/// ```
+/// ```text
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
@@ -694,11 +694,11 @@ pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
 /// `SSL_CTX_new` - create a new SSL_CTX object as framework to establish TLS/SSL
 /// enabled connections.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// SSL_CTX *SSL_CTX_new(const SSL_METHOD *method);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut MESALINK_CTX_ARC {
     match sanitize_ptr_for_ref(method_ptr) {
@@ -717,11 +717,11 @@ pub extern "C" fn mesalink_SSL_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut
 /// intermediate CA certificates if applicable, and ending at the highest level
 /// (root) CA.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx, const char *file);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
     ctx_ptr: *mut MESALINK_CTX_ARC,
@@ -772,11 +772,11 @@ pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
 /// ctx. The formatting type of the certificate must be specified from the known
 /// types SSL_FILETYPE_PEM and SSL_FILETYPE_ASN1.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// int SSL_CTX_use_PrivateKey_file(SSL_CTX *ctx, const char *file, int type);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
     ctx_ptr: *mut MESALINK_CTX_ARC,
@@ -844,11 +844,11 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
 /// `SSL_CTX_check_private_key` - check the consistency of a private key with the
 /// corresponding certificate loaded into ctx
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// int SSL_CTX_check_private_key(const SSL_CTX *ctx);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX_ARC) -> c_int {
     match sanitize_ptr_for_mut_ref(ctx_ptr) {
@@ -906,11 +906,11 @@ pub extern "C" fn mesalink_SSL_CTX_set_verify(
 /// `SSL_new` - create a new SSL structure which is needed to hold the data for a
 /// TLS/SSL connection
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// SSL *SSL_new(SSL_CTX *ctx);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_new<'a>(ctx_ptr: *mut MESALINK_CTX_ARC) -> *mut MESALINK_SSL<'a> {
     match sanitize_ptr_for_mut_ref(ctx_ptr) {
@@ -925,11 +925,11 @@ pub extern "C" fn mesalink_SSL_new<'a>(ctx_ptr: *mut MESALINK_CTX_ARC) -> *mut M
 /// `SSL_get_SSL_CTX` - return a pointer to the SSL_CTX object, from which ssl was
 /// created with SSL_new.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// SSL_CTX *SSL_get_SSL_CTX(const SSL *ssl);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_SSL_CTX(ssl_ptr: *mut MESALINK_SSL) -> *const MESALINK_CTX_ARC {
     match sanitize_ptr_for_ref(ssl_ptr) {
@@ -940,11 +940,11 @@ pub extern "C" fn mesalink_SSL_get_SSL_CTX(ssl_ptr: *mut MESALINK_SSL) -> *const
 
 /// `SSL_set_SSL_CTX` - set the SSL_CTX object of an SSL object.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_set_SSL_CTX<'a>(
     ssl_ptr: *mut MESALINK_SSL<'a>,
@@ -973,11 +973,11 @@ pub extern "C" fn mesalink_SSL_set_SSL_CTX<'a>(
 /// established with the ssl object. See SSL_CIPHER_get_name for more details.
 /// Note that this API allocates memory and needs to be properly freed. freed.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// SSL_CIPHER *SSL_get_current_cipher(const SSL *ssl);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_current_cipher(
     ssl_ptr: *mut MESALINK_SSL,
@@ -1004,11 +1004,11 @@ pub extern "C" fn mesalink_SSL_get_current_cipher(
 /// argument is the NULL pointer, a pointer to the constant value "NONE" is
 /// returned.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// const char *SSL_CIPHER_get_name(const SSL_CIPHER *cipher);
-/// ```
+/// ```text
 #[no_mangle]
 #[cfg(feature = "error_strings")]
 pub extern "C" fn mesalink_SSL_CIPHER_get_name(cipher_ptr: *mut MESALINK_CIPHER) -> *const c_char {
@@ -1034,11 +1034,11 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_name(cipher_ptr: *mut MESALINK_CIPHER)
 /// alg_bits is not NULL, it contains the number of bits processed by the chosen
 /// algorithm. If cipher is NULL, 0 is returned.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher, int *alg_bits);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_CIPHER_get_bits(
     cipher_ptr: *mut MESALINK_CIPHER,
@@ -1063,11 +1063,11 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_bits(
 /// use SSL_CIPHER_description() instead. If cipher is NULL, "(NONE)" is
 /// returned.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// char *SSL_CIPHER_get_version(const SSL_CIPHER *cipher);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_CIPHER_get_version(
     cipher_ptr: *mut MESALINK_CIPHER,
@@ -1082,11 +1082,11 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_version(
 
 /// `SSL_get_cipher_name` - obtain the name of the currently used cipher.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// char *SSL_get_cipher_name(const SSL *ssl);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_cipher_name(ssl_ptr: *mut MESALINK_SSL) -> *const c_char {
     let cipher = mesalink_SSL_get_current_cipher(ssl_ptr);
@@ -1099,11 +1099,11 @@ pub extern "C" fn mesalink_SSL_get_cipher_name(ssl_ptr: *mut MESALINK_SSL) -> *c
 
 /// `SSL_get_cipher` - obtain the name of the currently used cipher.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// char *SSL_get_cipher(const SSL *ssl);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_cipher(ssl_ptr: *mut MESALINK_SSL) -> *const c_char {
     mesalink_SSL_get_cipher_name(ssl_ptr)
@@ -1111,11 +1111,11 @@ pub extern "C" fn mesalink_SSL_get_cipher(ssl_ptr: *mut MESALINK_SSL) -> *const 
 
 /// `SSL_get_cipher_bits` - obtain the number of secret/algorithm bits used.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// int SSL_get_cipher_bits(const SSL *ssl, int* np);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_cipher_bits(
     ssl_ptr: *mut MESALINK_SSL,
@@ -1131,11 +1131,11 @@ pub extern "C" fn mesalink_SSL_get_cipher_bits(
 
 /// `SSL_get_cipher_version` - returns the protocol name.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// char* SSL_get_cipher_version(const SSL *ssl);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_cipher_version(ssl_ptr: *mut MESALINK_SSL) -> *const c_char {
     let cipher = mesalink_SSL_get_current_cipher(ssl_ptr);
@@ -1149,11 +1149,11 @@ pub extern "C" fn mesalink_SSL_get_cipher_version(ssl_ptr: *mut MESALINK_SSL) ->
 /// `SSL_set_tlsext_host_name` - set the server name indication ClientHello
 /// extension to contain the value name.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// int SSL_set_tlsext_host_name(const SSL *s, const char *name);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
     ssl_ptr: *mut MESALINK_SSL,
@@ -1190,11 +1190,11 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
 /// TLS/SSL (encrypted) side of ssl. fd will typically be the socket file
 /// descriptor of a network connection.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// int SSL_set_fd(SSL *ssl, int fd);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> c_int {
     match sanitize_ptr_for_mut_ref(ssl_ptr) {
@@ -1213,11 +1213,11 @@ pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> 
 
 /// `SSL_get_fd` - return the file descriptor which is linked to ssl.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// int SSL_get_fd(const SSL *ssl);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_fd(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     match sanitize_ptr_for_ref(ssl_ptr) {
@@ -1235,11 +1235,11 @@ pub extern "C" fn mesalink_SSL_get_fd(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 /// `SSL_connect` - initiate the TLS handshake with a server. The communication
 /// channel must already have been set and assigned to the ssl with SSL_set_fd.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// int SSL_connect(SSL *ssl);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     match sanitize_ptr_for_mut_ref(ssl_ptr) {
@@ -1266,11 +1266,11 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 /// communication channel must already have been set and assigned to the ssl by
 /// setting SSL_set_fd.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// int SSL_accept(SSL *ssl);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     match sanitize_ptr_for_mut_ref(ssl_ptr) {
@@ -1285,11 +1285,11 @@ pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 
 /// `SSL_get_error` - obtain result code for TLS/SSL I/O operation
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// int SSL_get_error(const SSL *ssl, int ret);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_error(ssl_ptr: *mut MESALINK_SSL, ret: c_int) -> c_int {
     if ret > 0 {
@@ -1304,11 +1304,11 @@ pub extern "C" fn mesalink_SSL_get_error(ssl_ptr: *mut MESALINK_SSL, ret: c_int)
 /// `SSL_read` - read `num` bytes from the specified `ssl` into the
 /// buffer `buf`.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// int SSL_read(SSL *ssl, void *buf, int num);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_read(
     ssl_ptr: *mut MESALINK_SSL,
@@ -1338,11 +1338,11 @@ pub extern "C" fn mesalink_SSL_read(
 /// `SSL_write` - write `num` bytes from the buffer `buf` into the
 /// specified `ssl` connection.
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// int SSL_write(SSL *ssl, const void *buf, int num);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_write(
     ssl_ptr: *mut MESALINK_SSL,
@@ -1376,11 +1376,11 @@ pub extern "C" fn mesalink_SSL_write(
 
 /// `SSL_shutdown` - shut down a TLS connection
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// int SSL_shutdown(SSL *ssl);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_shutdown(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     match sanitize_ptr_for_mut_ref(ssl_ptr) {
@@ -1400,11 +1400,11 @@ pub extern "C" fn mesalink_SSL_shutdown(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 
 /// `SSL_get_version` - get the protocol information of a connection
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// const char *SSL_get_version(const SSL *ssl);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_version(ssl_ptr: *mut MESALINK_SSL) -> *const c_char {
     match sanitize_ptr_for_mut_ref(ssl_ptr) {
@@ -1429,11 +1429,11 @@ pub extern "C" fn mesalink_SSL_get_version(ssl_ptr: *mut MESALINK_SSL) -> *const
 
 /// `SSL_CTX_free` - free an allocated SSL_CTX object
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// void SSL_CTX_free(SSL_CTX *ctx);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_CTX_free(ctx_ptr: *mut MESALINK_CTX_ARC) {
     if sanitize_ptr_for_mut_ref(ctx_ptr).is_ok() {
@@ -1443,11 +1443,11 @@ pub extern "C" fn mesalink_SSL_CTX_free(ctx_ptr: *mut MESALINK_CTX_ARC) {
 
 /// `SSL_free` - free an allocated SSL object
 ///
-/// ```
+/// ```text
 /// #include <mesalink/openssl/ssl.h>
 ///
 /// void SSL_free(SSL *ssl);
-/// ```
+/// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_free(ssl_ptr: *mut MESALINK_SSL) {
     if sanitize_ptr_for_mut_ref(ssl_ptr).is_ok() {
@@ -1504,5 +1504,16 @@ mod util {
 
     pub fn get_context_mut<'a>(ctx: &'a mut ssl::MESALINK_CTX_ARC) -> &mut ssl::MESALINK_CTX {
         Arc::make_mut(ctx)
+    }
+}
+
+#[cfg(test)]
+mod ssl_tests {
+    use super::*;
+    use std::ptr;
+
+    #[test]
+    fn legacy_tls_versions_not_supported() {
+        assert_eq!(mesalink_SSLv3_client_method(), ptr::null());
     }
 }
