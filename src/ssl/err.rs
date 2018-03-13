@@ -144,7 +144,7 @@
 //! ```
 
 use libc::{self, c_char, c_ulong, size_t};
-use std::io;
+use std::{io, ptr};
 use rustls;
 use webpki;
 
@@ -671,12 +671,13 @@ pub extern "C" fn mesalink_ERR_error_string_n(
     buf_ptr: *mut c_char,
     buf_len: size_t,
 ) -> *const c_char {
-    let src_ptr = mesalink_ERR_reason_error_string(error_code);
-    if !buf_ptr.is_null() {
-        unsafe { libc::strncpy(buf_ptr, src_ptr, buf_len) }
-    } else {
-        src_ptr
+    if buf_ptr.is_null() {
+        return ptr::null();
     }
+    let src_ptr = mesalink_ERR_reason_error_string(error_code);
+    let mut msg_len = unsafe { libc::strlen(src_ptr) } + 1; // including the terminating 0
+    msg_len = if msg_len > buf_len { buf_len } else { msg_len };
+    unsafe { libc::strncpy(buf_ptr, src_ptr, msg_len) }
 }
 
 /// `ERR_error_reason_error_string` - return a human-readable string representing
