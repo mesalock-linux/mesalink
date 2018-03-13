@@ -61,10 +61,6 @@ lazy_static! {
     };
 }
 
-const CONST_NONE_STR: &'static [u8] = b"NONE\0";
-const CONST_TLS12_STR: &'static [u8] = b"TLS1.2\0";
-const CONST_TLS13_STR: &'static [u8] = b"TLS1.3\0";
-
 const SSL_ERROR: c_int = SslConstants::SslError as c_int;
 const SSL_FAILURE: c_int = SslConstants::SslFailure as c_int;
 const SSL_SUCCESS: c_int = SslConstants::SslSuccess as c_int;
@@ -1018,10 +1014,10 @@ pub extern "C" fn mesalink_SSL_get_current_cipher(
 pub extern "C" fn mesalink_SSL_CIPHER_get_name(cipher_ptr: *mut MESALINK_CIPHER) -> *const c_char {
     match sanitize_ptr_for_ref(cipher_ptr) {
         Ok(ciphersuite) => {
-            let name = util::suite_to_static_str(ciphersuite.ciphersuite.suite.get_u16());
-            name.as_ptr() as *const c_char
+            util::suite_to_name_str(ciphersuite.ciphersuite.suite.get_u16()).as_ptr()
+                as *const c_char
         }
-        Err(_) => CONST_NONE_STR.as_ptr() as *const c_char,
+        Err(_) => util::CONST_NONE_STR.as_ptr() as *const c_char,
     }
 }
 
@@ -1077,15 +1073,10 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_version(
     cipher_ptr: *mut MESALINK_CIPHER,
 ) -> *const c_char {
     match sanitize_ptr_for_ref(cipher_ptr) {
-        Ok(ciphersuite) => {
-            let suite_number = ciphersuite.ciphersuite.suite.get_u16() & 0xffff;
-            if suite_number >> 8 == 0x13 {
-                CONST_TLS13_STR.as_ptr() as *const c_char
-            } else {
-                CONST_TLS12_STR.as_ptr() as *const c_char
-            }
-        }
-        Err(_) => CONST_NONE_STR.as_ptr() as *const c_char,
+        Ok(ciphersuite) => util::suite_to_version_str(
+            ciphersuite.ciphersuite.suite.get_u16() & 0xffff,
+        ).as_ptr() as *const c_char,
+        Err(_) => util::CONST_NONE_STR.as_ptr() as *const c_char,
     }
 }
 
@@ -1419,9 +1410,13 @@ pub extern "C" fn mesalink_SSL_get_version(ssl_ptr: *mut MESALINK_SSL) -> *const
     match sanitize_ptr_for_mut_ref(ssl_ptr) {
         Ok(ssl) => match ssl.session {
             Some(ref s) => match s.get_protocol_version() {
-                Some(rustls::ProtocolVersion::TLSv1_2) => CONST_TLS12_STR.as_ptr() as *const c_char,
-                Some(rustls::ProtocolVersion::TLSv1_3) => CONST_TLS13_STR.as_ptr() as *const c_char,
-                _ => CONST_NONE_STR.as_ptr() as *const c_char,
+                Some(rustls::ProtocolVersion::TLSv1_2) => {
+                    util::CONST_TLS12_STR.as_ptr() as *const c_char
+                }
+                Some(rustls::ProtocolVersion::TLSv1_3) => {
+                    util::CONST_TLS13_STR.as_ptr() as *const c_char
+                }
+                _ => util::CONST_NONE_STR.as_ptr() as *const c_char,
             },
             None => {
                 ErrorQueue::push_error(ErrorCode::IoErrorInvalidInput);
@@ -1465,6 +1460,10 @@ mod util {
     use rustls;
     use std::sync::Arc;
 
+    pub const CONST_NONE_STR: &'static [u8] = b" NONE \0";
+    pub const CONST_TLS12_STR: &'static [u8] = b"TLS1.2\0";
+    pub const CONST_TLS13_STR: &'static [u8] = b"TLS1.3\0";
+
     pub fn try_get_context_certs_and_key<'a>(
         ctx: &'a mut ssl::MESALINK_CTX_ARC,
     ) -> Result<(Vec<rustls::Certificate>, rustls::PrivateKey), ()> {
@@ -1474,7 +1473,7 @@ mod util {
     }
 
     #[cfg(feature = "error_strings")]
-    pub fn suite_to_static_str(suite: u16) -> &'static [u8] {
+    pub fn suite_to_name_str(suite: u16) -> &'static [u8] {
         match suite {
             #[cfg(feature = "chachapoly")]
             0x1303 => b"TLS13_CHACHA20_POLY1305_SHA256\0",
@@ -1487,6 +1486,18 @@ mod util {
             0xc02c => b"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384\0",
             0xc02f => b"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256\0",
             0xc030 => b"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384\0",
+            _ => b"Unsupported ciphersuite\0",
+        }
+    }
+
+    pub fn suite_to_version_str(suite: u16) -> &'static [u8] {
+        match suite {
+            #[cfg(feature = "chachapoly")]
+            0x1303 => CONST_TLS13_STR,
+            0xcca8 | 0xcca9 => CONST_TLS12_STR,
+            #[cfg(feature = "aesgcm")]
+            0x1301 | 0x1302 => CONST_TLS13_STR,
+            0xc02b | 0xc02c | 0xc02f | 0xc030 => CONST_TLS12_STR,
             _ => b"Unsupported ciphersuite\0",
         }
     }
