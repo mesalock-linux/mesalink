@@ -406,6 +406,14 @@ pub enum VerifyModes {
     VerifyFailIfNoPeerCert = 2,
 }
 
+fn sanitize_const_ptr_for_ref<'a, T>(ptr: *const T) -> Result<&'a T, ()>
+where
+    T: MesalinkOpaquePointerType,
+{
+    let ptr = ptr as *mut T;
+    sanitize_ptr_for_mut_ref(ptr).map(|r| r as &'a T)
+}
+
 fn sanitize_ptr_for_ref<'a, T>(ptr: *mut T) -> Result<&'a T, ()>
 where
     T: MesalinkOpaquePointerType,
@@ -700,11 +708,13 @@ pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
 /// SSL_CTX *SSL_CTX_new(const SSL_METHOD *method);
 /// ```text
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_CTX_new(method_ptr: *mut MESALINK_METHOD) -> *mut MESALINK_CTX_ARC {
-    match sanitize_ptr_for_ref(method_ptr) {
+pub extern "C" fn mesalink_SSL_CTX_new(
+    method_ptr: *const MESALINK_METHOD,
+) -> *mut MESALINK_CTX_ARC {
+    match sanitize_const_ptr_for_ref(method_ptr) {
         Ok(method) => {
             let context = MESALINK_CTX::new(method);
-            let _ = unsafe { Box::from_raw(method_ptr) };
+            let _ = unsafe { Box::from_raw(method_ptr as *mut MESALINK_METHOD) };
             Box::into_raw(Box::new(Arc::new(context))) // initialize the referece counter
         }
         Err(_) => ptr::null_mut(),
@@ -1510,10 +1520,148 @@ mod util {
 #[cfg(test)]
 mod ssl_tests {
     use super::*;
-    use std::ptr;
+    use ssl::err::mesalink_ERR_get_error;
+    use std::{str, thread, time};
+
+    const CONST_CHAIN_FILE: &'static [u8] = b"tests/test.certs\0";
+    const CONST_KEY_FILE: &'static [u8] = b"tests/test.rsa\0";
+    const CONST_SERVER_ADDR: &'static str = "localhost:50001";
+
+    #[derive(Clone)]
+    struct MesalinkTestDriver {
+        client_context: Arc<MESALINK_CTX>,
+        server_context: Arc<MESALINK_CTX>,
+    }
+
+    impl MesalinkTestDriver {
+        fn new() -> MesalinkTestDriver {
+            let client_context = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
+            let server_context = mesalink_SSL_CTX_new(mesalink_TLS_server_method());
+            let _ = mesalink_SSL_CTX_set_verify(client_context, 0, None);
+            let _ = mesalink_SSL_CTX_set_verify(server_context, 0, None);
+            let ret = mesalink_SSL_CTX_use_certificate_chain_file(
+                server_context,
+                CONST_CHAIN_FILE.as_ptr() as *const c_char,
+                0,
+            );
+            println!("mesalink_SSL_CTX_use_certificate_chain_file: {}", ret);
+            let ret2 = mesalink_SSL_CTX_use_PrivateKey_file(
+                server_context,
+                CONST_KEY_FILE.as_ptr() as *const c_char,
+                0,
+            );
+            println!("mesalink_SSL_CTX_use_PrivateKey_file: {}", ret2);
+            MesalinkTestDriver {
+                client_context: unsafe { Arc::from_raw(client_context as *const MESALINK_CTX) },
+                server_context: unsafe { Arc::from_raw(server_context as *const MESALINK_CTX) },
+            }
+        }
+
+        fn init_server(&self) -> net::TcpListener {
+            net::TcpListener::bind(CONST_SERVER_ADDR).expect("Bind error")
+        }
+
+        fn run_server(&self, server: net::TcpListener) {
+            for stream in server.incoming() {
+                let self_clone = self.clone();
+                match stream {
+                    Ok(s) => {
+                        let _ = thread::spawn(move || {
+                            let ctx =
+                                Arc::into_raw(self_clone.server_context) as *mut MESALINK_CTX_ARC;
+                            let ssl = mesalink_SSL_new(ctx);
+                            let _ = mesalink_SSL_set_fd(ssl, s.as_raw_fd());
+                            let _ = mesalink_SSL_accept(ssl);
+                            let mut rd_buf = [0u8; 256];
+                            let _ = mesalink_SSL_read(
+                                ssl,
+                                rd_buf.as_mut_ptr() as *mut c_uchar,
+                                rd_buf.len() as c_int,
+                            );
+                            println!("[Server] received: {}", str::from_utf8(&rd_buf).unwrap());
+                            let wr_buf = b"Hello Client\r\n";
+                            let wr_len = mesalink_SSL_write(
+                                ssl,
+                                wr_buf.as_ptr() as *mut c_uchar,
+                                wr_buf.len() as c_int,
+                            );
+                            println!("[Server] Written {} bytes", wr_len);
+                            println!(
+                                "[Server] Latest error code: 0x{:X}",
+                                mesalink_ERR_get_error()
+                            );
+                            let _ = mesalink_SSL_free(ssl);
+                            let _ = mesalink_SSL_CTX_free(ctx);
+                        });
+                    }
+                    Err(e) => println!("Accept error: {:?}", e),
+                }
+                break; // server just runs once
+            }
+        }
+
+        fn run_client(&self) {
+            let self_clone = self.clone();
+            match net::TcpStream::connect(CONST_SERVER_ADDR) {
+                Ok(s) => {
+                    let _ = thread::spawn(move || {
+                        let ctx = Arc::into_raw(self_clone.client_context) as *mut MESALINK_CTX_ARC;
+                        let ssl = mesalink_SSL_new(ctx);
+                        let _ = mesalink_SSL_set_tlsext_host_name(
+                            ssl,
+                            b"localhost\0".as_ptr() as *const c_char,
+                        );
+                        let _ = mesalink_SSL_set_fd(ssl, s.as_raw_fd());
+                        let _ = mesalink_SSL_connect(ssl);
+                        let wr_buf = b"Hello Server\r\n";
+                        let wr_len = mesalink_SSL_write(
+                            ssl,
+                            wr_buf.as_ptr() as *mut c_uchar,
+                            wr_buf.len() as c_int,
+                        );
+                        println!("[Client] wrote {} bytes", wr_len);
+                        let mut rd_buf = [0u8; 256];
+                        let _ = mesalink_SSL_read(
+                            ssl,
+                            rd_buf.as_mut_ptr() as *mut c_uchar,
+                            rd_buf.len() as c_int,
+                        );
+                        println!("[Client] Received: {}", str::from_utf8(&rd_buf).unwrap());
+                        println!(
+                            "[Client] Latest error code: 0x{:X}",
+                            mesalink_ERR_get_error()
+                        );
+                        let _ = mesalink_SSL_free(ssl);
+                        let _ = mesalink_SSL_CTX_free(ctx);
+                    });
+                }
+                Err(e) => println!("Connect error: {:?}", e),
+            }
+        }
+
+        pub fn transfer(&self) {
+            let server = self.init_server();
+            self.run_client();
+            self.run_server(server);
+            thread::sleep(time::Duration::from_millis(100)); // wait for the thread to finish
+        }
+    }
 
     #[test]
     fn legacy_tls_versions_not_supported() {
         assert_eq!(mesalink_SSLv3_client_method(), ptr::null());
+        assert_eq!(mesalink_SSLv23_client_method(), ptr::null());
+        assert_eq!(mesalink_TLSv1_client_method(), ptr::null());
+        assert_eq!(mesalink_TLSv1_1_client_method(), ptr::null());
+        assert_eq!(mesalink_SSLv3_server_method(), ptr::null());
+        assert_eq!(mesalink_SSLv23_server_method(), ptr::null());
+        assert_eq!(mesalink_TLSv1_server_method(), ptr::null());
+        assert_eq!(mesalink_TLSv1_1_server_method(), ptr::null());
+    }
+
+    #[test]
+    fn mesalink_client_server_transfer() {
+        let driver = MesalinkTestDriver::new();
+        driver.transfer();
     }
 }
