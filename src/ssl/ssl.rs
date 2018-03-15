@@ -1623,6 +1623,24 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
+    enum TlsVersion {
+        Tlsv12,
+        Tlsv13,
+        Both,
+    }
+
+    fn get_method_by_version(version: TlsVersion, is_server: bool) -> *const MESALINK_METHOD {
+        match (version, is_server) {
+            (TlsVersion::Tlsv12, false) => mesalink_TLSv1_2_client_method(),
+            (TlsVersion::Tlsv13, false) => mesalink_TLSv1_3_client_method(),
+            (TlsVersion::Both, false) => mesalink_TLS_client_method(),
+            (TlsVersion::Tlsv12, true) => mesalink_TLSv1_2_server_method(),
+            (TlsVersion::Tlsv13, true) => mesalink_TLSv1_3_server_method(),
+            (TlsVersion::Both, true) => mesalink_TLS_server_method(),
+        }
+    }
+
     struct MesalinkTestDriver {}
 
     impl MesalinkTestDriver {
@@ -1638,17 +1656,14 @@ mod tests {
             net::TcpListener::bind((CONST_SERVER_ADDR, port)).expect("Bind error")
         }
 
-        fn run_client(&self, port: u16) {
+        fn run_client(&self, port: u16, version: TlsVersion) {
             let sock = net::TcpStream::connect((CONST_SERVER_ADDR, port)).expect("Connect error");
             let _ = thread::spawn(move || {
-                let method = mesalink_TLSv1_2_client_method();
+                let method = get_method_by_version(version, false);
                 let session = MesalinkTestSession::new_client_session(method, sock.as_raw_fd());
-
                 mesalink_ERR_clear_error();
-                let wr_len = session.write(b"Hello server");
-                assert_ne!(0, wr_len);
+                let _ = session.write(b"Hello server");
                 assert_eq!(0, mesalink_ERR_get_error());
-
                 mesalink_ERR_clear_error();
                 let mut rd_buf = [0u8; 64];
                 let rd_len = session.read(&mut rd_buf);
@@ -1660,40 +1675,35 @@ mod tests {
             });
         }
 
-        fn run_server(&self, server: net::TcpListener) {
+        fn run_server(&self, server: net::TcpListener, version: TlsVersion) {
             for stream in server.incoming() {
                 let sock = stream.expect("Accept error");
                 let _ = thread::spawn(move || {
-                    let method = mesalink_TLSv1_2_server_method();
+                    let method = get_method_by_version(version, true);
                     let session = MesalinkTestSession::new_server_session(method, sock.as_raw_fd());
-
                     mesalink_ERR_clear_error();
                     let mut rd_buf = [0u8; 64];
                     let rd_len = session.read(&mut rd_buf);
-                    assert_ne!(0, rd_len);
                     assert_eq!(0, mesalink_ERR_get_error());
-
                     println!(
                         "Server received {} bytes: {}",
                         rd_len,
                         str::from_utf8(&rd_buf).unwrap()
                     );
-
                     mesalink_ERR_clear_error();
-                    let wr_len = session.write(b"Hello client");
-                    assert_ne!(0, wr_len);
+                    let _ = session.write(b"Hello client");
                     assert_eq!(0, mesalink_ERR_get_error());
                 });
                 break; // server just runs once
             }
         }
 
-        fn transfer(&self) {
+        fn transfer(&self, client_version: TlsVersion, server_version: TlsVersion) {
             let port = self.get_unused_port()
                 .expect("No port between 50000-60000 is available");
             let server = self.init_server(port);
-            self.run_client(port);
-            self.run_server(server);
+            self.run_client(port, client_version);
+            self.run_server(server, server_version);
             thread::sleep(time::Duration::from_millis(100)); // wait for the thread to finish
         }
     }
@@ -1713,12 +1723,12 @@ mod tests {
     #[test]
     fn client_server_transfer() {
         let driver = MesalinkTestDriver::new();
-        driver.transfer();
+        driver.transfer(TlsVersion::Tlsv13, TlsVersion::Tlsv13);
     }
 
-    /*fn version_test(client_method: *const MESALINK_METHOD, server_method: *const MESALINK_METHOD) {
-        let driver = MesalinkTestDriver::new_with_methods(client_method, server_method);
-        driver.transfer();
+    /*fn version_test(client_version: TlsVersion, server_version: TlsVersion) {
+        let driver = MesalinkTestDriver::new();
+        driver.transfer(client_version, client_version);
     }
 
     #[test]
