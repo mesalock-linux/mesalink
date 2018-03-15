@@ -1538,14 +1538,14 @@ mod util {
 }
 
 #[cfg(test)]
-mod ssl_tests {
+mod tests {
     use super::*;
     use ssl::err::mesalink_ERR_get_error;
     use std::{str, thread, time};
 
     const CONST_CHAIN_FILE: &'static [u8] = b"tests/test.certs\0";
     const CONST_KEY_FILE: &'static [u8] = b"tests/test.rsa\0";
-    const CONST_SERVER_ADDR: &'static str = "localhost:50001";
+    const CONST_SERVER_ADDR: &'static str = "127.0.0.1";
 
     #[derive(Clone)]
     struct MesalinkTestDriver {
@@ -1574,96 +1574,90 @@ mod ssl_tests {
                 CONST_CHAIN_FILE.as_ptr() as *const c_char,
                 0,
             );
-            println!("mesalink_SSL_CTX_use_certificate_chain_file: {}", ret);
+            assert_eq!(SSL_SUCCESS, ret);
             let ret2 = mesalink_SSL_CTX_use_PrivateKey_file(
                 server_context,
                 CONST_KEY_FILE.as_ptr() as *const c_char,
                 0,
             );
-            println!("mesalink_SSL_CTX_use_PrivateKey_file: {}", ret2);
+            assert_eq!(SSL_SUCCESS, ret2);
             MesalinkTestDriver {
                 client_context: unsafe { *Box::from_raw(client_context) },
                 server_context: unsafe { *Box::from_raw(server_context) },
             }
         }
 
-        fn init_server(&self) -> net::TcpListener {
-            net::TcpListener::bind(CONST_SERVER_ADDR).expect("Bind error")
+        fn get_unused_port(&self) -> Option<u16> {
+            (50000..60000).find(|port| net::TcpListener::bind((CONST_SERVER_ADDR, *port)).is_ok())
+        }
+
+        fn init_server(&self, port: u16) -> net::TcpListener {
+            net::TcpListener::bind((CONST_SERVER_ADDR, port)).expect("Bind error")
         }
 
         fn run_server(&self, server: net::TcpListener) {
+            let self_clone = self.clone();
             for stream in server.incoming() {
-                let self_clone = self.clone();
-                match stream {
-                    Ok(s) => {
-                        let _ = thread::spawn(move || {
-                            let ctx = Box::into_raw(Box::new(self_clone.server_context));
-                            let ssl = mesalink_SSL_new(ctx);
-                            assert_eq!(SSL_SUCCESS, mesalink_SSL_set_fd(ssl, s.as_raw_fd()));
-                            assert_eq!(SSL_SUCCESS, mesalink_SSL_accept(ssl));
-                            let mut rd_buf = [0u8; 256];
-                            let _ = mesalink_SSL_read(
-                                ssl,
-                                rd_buf.as_mut_ptr() as *mut c_uchar,
-                                rd_buf.len() as c_int,
-                            );
-                            println!("[Server received] {}", str::from_utf8(&rd_buf).unwrap());
-                            let wr_buf = b"Hello Client! How are you doing today.\r\n";
-                            let wr_len = mesalink_SSL_write(
-                                ssl,
-                                wr_buf.as_ptr() as *mut c_uchar,
-                                wr_buf.len() as c_int,
-                            );
-                            assert_ne!(0, wr_len);
-                            let _ = mesalink_SSL_free(ssl);
-                            let _ = mesalink_SSL_CTX_free(ctx);
-                        });
-                    }
-                    Err(e) => println!("Accept error: {:?}", e),
-                }
+                let s = stream.expect("Accept error");
+                let _ = thread::spawn(move || {
+                    let ctx = Box::into_raw(Box::new(self_clone.server_context));
+                    let ssl = mesalink_SSL_new(ctx);
+                    assert_eq!(SSL_SUCCESS, mesalink_SSL_set_fd(ssl, s.as_raw_fd()));
+                    assert_eq!(SSL_SUCCESS, mesalink_SSL_accept(ssl));
+                    let mut rd_buf = [0u8; 256];
+                    let _ = mesalink_SSL_read(
+                        ssl,
+                        rd_buf.as_mut_ptr() as *mut c_uchar,
+                        rd_buf.len() as c_int,
+                    );
+                    println!("[Server received] {}", str::from_utf8(&rd_buf).unwrap());
+                    let wr_buf = b"Hello Client!";
+                    let wr_len = mesalink_SSL_write(
+                        ssl,
+                        wr_buf.as_ptr() as *mut c_uchar,
+                        wr_buf.len() as c_int,
+                    );
+                    assert_ne!(0, wr_len);
+                    let _ = mesalink_SSL_free(ssl);
+                    let _ = mesalink_SSL_CTX_free(ctx);
+                });
                 break; // server just runs once
             }
         }
 
-        fn run_client(&self) {
+        fn run_client(&self, port: u16) {
             let self_clone = self.clone();
-            match net::TcpStream::connect(CONST_SERVER_ADDR) {
-                Ok(s) => {
-                    let _ = thread::spawn(move || {
-                        let ctx = Box::into_raw(Box::new(self_clone.server_context));
-                        let ssl = mesalink_SSL_new(ctx);
-                        let _ = mesalink_SSL_set_tlsext_host_name(
-                            ssl,
-                            b"localhost\0".as_ptr() as *const c_char,
-                        );
-                        let _ = mesalink_SSL_set_fd(ssl, s.as_raw_fd());
-                        let _ = mesalink_SSL_connect(ssl);
-                        let wr_buf = b"Hello Server!\r\n";
-                        let wr_len = mesalink_SSL_write(
-                            ssl,
-                            wr_buf.as_ptr() as *mut c_uchar,
-                            wr_buf.len() as c_int,
-                        );
-                        assert_ne!(0, wr_len);
-                        let mut rd_buf = [0u8; 256];
-                        let _ = mesalink_SSL_read(
-                            ssl,
-                            rd_buf.as_mut_ptr() as *mut c_uchar,
-                            rd_buf.len() as c_int,
-                        );
-                        assert_eq!(0, mesalink_ERR_get_error());
-                        println!("[Client received] {}", str::from_utf8(&rd_buf).unwrap());
-                        let _ = mesalink_SSL_free(ssl);
-                        let _ = mesalink_SSL_CTX_free(ctx);
-                    });
-                }
-                Err(e) => println!("Connect error: {:?}", e),
-            }
+            let s = net::TcpStream::connect((CONST_SERVER_ADDR, port)).expect("Connect error");
+            let _ = thread::spawn(move || {
+                let ctx = Box::into_raw(Box::new(self_clone.server_context));
+                let ssl = mesalink_SSL_new(ctx);
+                let _ = mesalink_SSL_set_tlsext_host_name(
+                    ssl,
+                    b"localhost\0".as_ptr() as *const c_char,
+                );
+                let _ = mesalink_SSL_set_fd(ssl, s.as_raw_fd());
+                let _ = mesalink_SSL_connect(ssl);
+                let wr_buf = b"Hello Server!";
+                let wr_len =
+                    mesalink_SSL_write(ssl, wr_buf.as_ptr() as *mut c_uchar, wr_buf.len() as c_int);
+                assert_ne!(0, wr_len);
+                let mut rd_buf = [0u8; 256];
+                let _ = mesalink_SSL_read(
+                    ssl,
+                    rd_buf.as_mut_ptr() as *mut c_uchar,
+                    rd_buf.len() as c_int,
+                );
+                assert_eq!(0, mesalink_ERR_get_error());
+                println!("[Client received] {}", str::from_utf8(&rd_buf).unwrap());
+                let _ = mesalink_SSL_free(ssl);
+                let _ = mesalink_SSL_CTX_free(ctx);
+            });
         }
 
         pub fn transfer(&self) {
-            let server = self.init_server();
-            self.run_client();
+            let port = self.get_unused_port().expect("No available port");
+            let server = self.init_server(port);
+            self.run_client(port);
             self.run_server(server);
             thread::sleep(time::Duration::from_millis(100)); // wait for the thread to finish
         }
@@ -1685,5 +1679,18 @@ mod ssl_tests {
     fn client_server_transfer() {
         let driver = MesalinkTestDriver::new();
         driver.transfer();
+    }
+
+    fn version_test(client_method: *const MESALINK_METHOD, server_method: *const MESALINK_METHOD) {
+        let driver = MesalinkTestDriver::new_with_methods(client_method, server_method);
+        driver.transfer();
+    }
+
+    #[test]
+    fn versions() {
+        version_test(
+            mesalink_TLSv1_2_client_method(),
+            mesalink_TLSv1_2_server_method(),
+        );
     }
 }
