@@ -1535,8 +1535,18 @@ mod ssl_tests {
 
     impl MesalinkTestDriver {
         fn new() -> MesalinkTestDriver {
-            let client_context = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
-            let server_context = mesalink_SSL_CTX_new(mesalink_TLS_server_method());
+            MesalinkTestDriver::new_with_methods(
+                mesalink_TLS_client_method(),
+                mesalink_TLS_server_method(),
+            )
+        }
+
+        fn new_with_methods(
+            client_method: *const MESALINK_METHOD,
+            server_method: *const MESALINK_METHOD,
+        ) -> MesalinkTestDriver {
+            let client_context = mesalink_SSL_CTX_new(client_method);
+            let server_context = mesalink_SSL_CTX_new(server_method);
             let _ = mesalink_SSL_CTX_set_verify(client_context, 0, None);
             let _ = mesalink_SSL_CTX_set_verify(server_context, 0, None);
             let ret = mesalink_SSL_CTX_use_certificate_chain_file(
@@ -1569,8 +1579,8 @@ mod ssl_tests {
                         let _ = thread::spawn(move || {
                             let ctx = Box::into_raw(Box::new(self_clone.server_context));
                             let ssl = mesalink_SSL_new(ctx);
-                            let _ = mesalink_SSL_set_fd(ssl, s.as_raw_fd());
-                            let _ = mesalink_SSL_accept(ssl);
+                            assert_eq!(SSL_SUCCESS, mesalink_SSL_set_fd(ssl, s.as_raw_fd()));
+                            assert_eq!(SSL_SUCCESS, mesalink_SSL_accept(ssl));
                             let mut rd_buf = [0u8; 256];
                             let _ = mesalink_SSL_read(
                                 ssl,
@@ -1652,7 +1662,7 @@ mod ssl_tests {
     }
 
     #[test]
-    fn mesalink_client_server_transfer() {
+    fn client_server_transfer() {
         let driver = MesalinkTestDriver::new();
         driver.transfer();
     }
