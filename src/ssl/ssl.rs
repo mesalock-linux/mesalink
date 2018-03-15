@@ -1541,8 +1541,9 @@ mod util {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use libc::c_ulong;
     use ssl::err::{mesalink_ERR_clear_error, mesalink_ERR_get_error};
-    use std::{str, thread, time};
+    use std::{str, thread};
 
     const CONST_CHAIN_FILE: &'static [u8] = b"tests/test.certs\0";
     const CONST_KEY_FILE: &'static [u8] = b"tests/test.rsa\0";
@@ -1559,17 +1560,26 @@ mod tests {
             sockfd: c_int,
         ) -> MesalinkTestSession<'a> {
             let ctx = mesalink_SSL_CTX_new(method);
-            assert_ne!(ctx, ptr::null_mut());
-            assert_eq!(SSL_SUCCESS, mesalink_SSL_CTX_set_verify(ctx, 0, None));
-
-            let ssl = mesalink_SSL_new(ctx);
-            assert_ne!(ssl, ptr::null_mut());
+            assert_ne!(ctx, ptr::null_mut(), "CTX is null");
             assert_eq!(
                 SSL_SUCCESS,
-                mesalink_SSL_set_tlsext_host_name(ssl, b"localhost\0".as_ptr() as *const c_char)
+                mesalink_SSL_CTX_set_verify(ctx, 0, None),
+                "Failed to set verify mode"
             );
-            assert_eq!(SSL_SUCCESS, mesalink_SSL_set_fd(ssl, sockfd));
-            assert_eq!(SSL_SUCCESS, mesalink_SSL_connect(ssl));
+
+            let ssl = mesalink_SSL_new(ctx);
+            assert_ne!(ssl, ptr::null_mut(), "SSL is null");
+            assert_eq!(
+                SSL_SUCCESS,
+                mesalink_SSL_set_tlsext_host_name(ssl, b"localhost\0".as_ptr() as *const c_char),
+                "Failed to set SNI"
+            );
+            assert_eq!(
+                SSL_SUCCESS,
+                mesalink_SSL_set_fd(ssl, sockfd),
+                "Failed to set fd"
+            );
+            assert_eq!(SSL_SUCCESS, mesalink_SSL_connect(ssl), "Failed to connect");
             MesalinkTestSession { ctx: ctx, ssl: ssl }
         }
 
@@ -1578,15 +1588,20 @@ mod tests {
             sockfd: c_int,
         ) -> MesalinkTestSession<'a> {
             let ctx = mesalink_SSL_CTX_new(method);
-            assert_ne!(ctx, ptr::null_mut());
-            assert_eq!(SSL_SUCCESS, mesalink_SSL_CTX_set_verify(ctx, 0, None));
+            assert_ne!(ctx, ptr::null_mut(), "CTX is null");
+            assert_eq!(
+                SSL_SUCCESS,
+                mesalink_SSL_CTX_set_verify(ctx, 0, None),
+                "Failed to set verify mode"
+            );
             assert_eq!(
                 SSL_SUCCESS,
                 mesalink_SSL_CTX_use_certificate_chain_file(
                     ctx,
                     CONST_CHAIN_FILE.as_ptr() as *const c_char,
                     0,
-                )
+                ),
+                "Failed to set certificate file"
             );
             assert_eq!(
                 SSL_SUCCESS,
@@ -1594,12 +1609,17 @@ mod tests {
                     ctx,
                     CONST_KEY_FILE.as_ptr() as *const c_char,
                     0,
-                )
+                ),
+                "Failed to set private key"
             );
             let ssl = mesalink_SSL_new(ctx);
-            assert_ne!(ssl, ptr::null_mut());
-            assert_eq!(SSL_SUCCESS, mesalink_SSL_set_fd(ssl, sockfd));
-            assert_eq!(SSL_SUCCESS, mesalink_SSL_accept(ssl));
+            assert_ne!(ssl, ptr::null_mut(), "SSL is null");
+            assert_eq!(
+                SSL_SUCCESS,
+                mesalink_SSL_set_fd(ssl, sockfd),
+                "Faield to set fd"
+            );
+            assert_eq!(SSL_SUCCESS, mesalink_SSL_accept(ssl), "Failed to accept");
             MesalinkTestSession { ctx: ctx, ssl: ssl }
         }
 
@@ -1656,55 +1676,80 @@ mod tests {
             net::TcpListener::bind((CONST_SERVER_ADDR, port)).expect("Bind error")
         }
 
-        fn run_client(&self, port: u16, version: TlsVersion) {
+        fn run_client(&self, port: u16, version: TlsVersion) -> thread::JoinHandle<c_ulong> {
             let sock = net::TcpStream::connect((CONST_SERVER_ADDR, port)).expect("Connect error");
-            let _ = thread::spawn(move || {
+            thread::spawn(move || {
                 let method = get_method_by_version(version, false);
                 let session = MesalinkTestSession::new_client_session(method, sock.as_raw_fd());
                 mesalink_ERR_clear_error();
                 let _ = session.write(b"Hello server");
-                assert_eq!(0, mesalink_ERR_get_error());
+                let error = mesalink_ERR_get_error();
+                if error != 0 {
+                    return error;
+                }
                 mesalink_ERR_clear_error();
                 let mut rd_buf = [0u8; 64];
                 let rd_len = session.read(&mut rd_buf);
+                let error = mesalink_ERR_get_error();
+                if error != 0 {
+                    return error;
+                }
                 println!(
                     "Client received {} bytes: {}",
                     rd_len,
                     str::from_utf8(&rd_buf).unwrap()
                 );
-            });
+                0
+            })
         }
 
-        fn run_server(&self, server: net::TcpListener, version: TlsVersion) {
-            for stream in server.incoming() {
-                let sock = stream.expect("Accept error");
-                let _ = thread::spawn(move || {
-                    let method = get_method_by_version(version, true);
-                    let session = MesalinkTestSession::new_server_session(method, sock.as_raw_fd());
-                    mesalink_ERR_clear_error();
-                    let mut rd_buf = [0u8; 64];
-                    let rd_len = session.read(&mut rd_buf);
-                    assert_eq!(0, mesalink_ERR_get_error());
-                    println!(
-                        "Server received {} bytes: {}",
-                        rd_len,
-                        str::from_utf8(&rd_buf).unwrap()
-                    );
-                    mesalink_ERR_clear_error();
-                    let _ = session.write(b"Hello client");
-                    assert_eq!(0, mesalink_ERR_get_error());
-                });
-                break; // server just runs once
-            }
+        fn run_server(
+            &self,
+            server: net::TcpListener,
+            version: TlsVersion,
+        ) -> thread::JoinHandle<c_ulong> {
+            let sock = server.incoming().next().unwrap().expect("Accept error");
+            thread::spawn(move || {
+                let method = get_method_by_version(version, true);
+                let session = MesalinkTestSession::new_server_session(method, sock.as_raw_fd());
+                mesalink_ERR_clear_error();
+                let mut rd_buf = [0u8; 64];
+                let rd_len = session.read(&mut rd_buf);
+                let error = mesalink_ERR_get_error();
+                if error != 0 {
+                    return error;
+                }
+                println!(
+                    "Server received {} bytes: {}",
+                    rd_len,
+                    str::from_utf8(&rd_buf).unwrap()
+                );
+                mesalink_ERR_clear_error();
+                let _ = session.write(b"Hello client");
+                let error = mesalink_ERR_get_error();
+                if error != 0 {
+                    return error;
+                }
+                0
+            })
         }
 
-        fn transfer(&self, client_version: TlsVersion, server_version: TlsVersion) {
+        fn transfer(
+            &self,
+            client_version: TlsVersion,
+            server_version: TlsVersion,
+            should_fail: bool,
+        ) {
             let port = self.get_unused_port()
                 .expect("No port between 50000-60000 is available");
             let server = self.init_server(port);
-            self.run_client(port, client_version);
-            self.run_server(server, server_version);
-            thread::sleep(time::Duration::from_millis(100)); // wait for the thread to finish
+            let client_thread = self.run_client(port, client_version);
+            let server_thread = self.run_server(server, server_version);
+
+            let client_ret = client_thread.join();
+            let server_ret = server_thread.join();
+            assert_ne!(should_fail, client_ret.is_ok() && client_ret.unwrap() == 0);
+            assert_ne!(should_fail, server_ret.is_ok() && server_ret.unwrap() == 0);
         }
     }
 
@@ -1720,22 +1765,19 @@ mod tests {
         assert_eq!(mesalink_TLSv1_1_server_method(), ptr::null());
     }
 
-    #[test]
-    fn client_server_transfer() {
+    fn transfer_test(client_version: TlsVersion, server_version: TlsVersion, should_fail: bool) {
         let driver = MesalinkTestDriver::new();
-        driver.transfer(TlsVersion::Tlsv13, TlsVersion::Tlsv13);
-    }
-
-    /*fn version_test(client_version: TlsVersion, server_version: TlsVersion) {
-        let driver = MesalinkTestDriver::new();
-        driver.transfer(client_version, client_version);
+        driver.transfer(client_version, server_version, should_fail);
     }
 
     #[test]
     fn versions() {
-        version_test(
-            mesalink_TLSv1_2_client_method(),
-            mesalink_TLSv1_2_server_method(),
-        );
-    }*/
+        transfer_test(TlsVersion::Both, TlsVersion::Both, false);
+        transfer_test(TlsVersion::Tlsv12, TlsVersion::Tlsv12, false);
+        transfer_test(TlsVersion::Tlsv13, TlsVersion::Tlsv13, false);
+        transfer_test(TlsVersion::Both, TlsVersion::Tlsv13, false);
+        transfer_test(TlsVersion::Tlsv12, TlsVersion::Both, false);
+        transfer_test(TlsVersion::Tlsv13, TlsVersion::Tlsv12, true);
+        transfer_test(TlsVersion::Tlsv12, TlsVersion::Tlsv13, true);
+    }
 }
