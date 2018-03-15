@@ -1229,16 +1229,13 @@ fn inner_mesalink_ssl_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> Result<c_
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_fd(ssl_ptr: *mut MESALINK_SSL) -> c_int {
-    match sanitize_ptr_for_ref(ssl_ptr) {
-        Ok(ssl) => match ssl.io {
-            Some(ref socket) => socket.as_raw_fd(),
-            None => {
-                ErrorQueue::push_error(ErrorCode::IoErrorInvalidInput);
-                SSL_ERROR
-            }
-        },
-        Err(_) => SSL_ERROR, // 0 is a valid fd. Return -1 for error
-    }
+    check_inner_function_for_int(inner_measlink_ssl_get_fd(ssl_ptr))
+}
+
+fn inner_measlink_ssl_get_fd(ssl_ptr: *mut MESALINK_SSL) -> Result<c_int, ErrorCode> {
+    let ssl = sanitize_ptr_for_ref(ssl_ptr)?;
+    let socket = ssl.io.as_ref().ok_or(ErrorCode::MesalinkErrorBadFuncArg)?;
+    Ok(socket.as_raw_fd())
 }
 
 /// `SSL_connect` - initiate the TLS handshake with a server. The communication
@@ -1295,9 +1292,6 @@ fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> Result<c_int, ErrorC
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_error(ssl_ptr: *mut MESALINK_SSL, ret: c_int) -> c_int {
-    if ret > 0 {
-        return ErrorCode::MesalinkErrorNone as c_int;
-    }
     check_inner_function_for_int(inner_mesalink_ssl_get_error(ssl_ptr, ret))
 }
 
