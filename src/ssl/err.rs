@@ -156,7 +156,7 @@ thread_local! {
 
 #[doc(hidden)]
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "error_strings", derive(EnumToStr))]
 #[cfg_attr(feature = "error_strings", derive(Debug))]
 pub enum ErrorCode {

@@ -406,7 +406,7 @@ pub enum VerifyModes {
     VerifyFailIfNoPeerCert = 2,
 }
 
-fn sanitize_const_ptr_for_ref<'a, T>(ptr: *const T) -> Result<&'a T, ()>
+fn sanitize_const_ptr_for_ref<'a, T>(ptr: *const T) -> Result<&'a T, ErrorCode>
 where
     T: MesalinkOpaquePointerType,
 {
@@ -414,25 +414,23 @@ where
     sanitize_ptr_for_mut_ref(ptr).map(|r| r as &'a T)
 }
 
-fn sanitize_ptr_for_ref<'a, T>(ptr: *mut T) -> Result<&'a T, ()>
+fn sanitize_ptr_for_ref<'a, T>(ptr: *mut T) -> Result<&'a T, ErrorCode>
 where
     T: MesalinkOpaquePointerType,
 {
     sanitize_ptr_for_mut_ref(ptr).map(|r| r as &'a T)
 }
 
-fn sanitize_ptr_for_mut_ref<'a, T>(ptr: *mut T) -> Result<&'a mut T, ()>
+fn sanitize_ptr_for_mut_ref<'a, T>(ptr: *mut T) -> Result<&'a mut T, ErrorCode>
 where
     T: MesalinkOpaquePointerType,
 {
     if ptr.is_null() {
-        ErrorQueue::push_error(ErrorCode::MesalinkErrorNullPointer);
-        return Err(());
+        return Err(ErrorCode::MesalinkErrorNullPointer);
     }
     let obj_ref: &mut T = unsafe { &mut *ptr };
     if !obj_ref.check_magic() {
-        ErrorQueue::push_error(ErrorCode::MesalinkErrorMalformedObject);
-        return Err(());
+        return Err(ErrorCode::MesalinkErrorMalformedObject);
     }
     Ok(obj_ref)
 }
@@ -742,40 +740,39 @@ pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
         ErrorQueue::push_error(ErrorCode::MesalinkErrorNullPointer);
         return SSL_FAILURE;
     }
-    match sanitize_ptr_for_mut_ref(ctx_ptr) {
-        Ok(ctx) => match unsafe { ffi::CStr::from_ptr(filename_ptr).to_str() } {
-            Ok(filename) => match fs::File::open(filename) {
-                Ok(f) => match internal::pemfile::certs(&mut io::BufReader::new(f)) {
-                    Ok(certs) => {
-                        util::get_context_mut(ctx).certificates = Some(certs);
-                        match util::try_get_context_certs_and_key(ctx) {
-                            Ok((certs, priv_key)) => util::get_context_mut(ctx)
-                                .server_config
-                                .set_single_cert(certs, priv_key),
-                            Err(_) => (),
-                        }
-                        SSL_SUCCESS
-                    }
-                    Err(_) => {
-                        // pemfile::certs failed
-                        ErrorQueue::push_error(ErrorCode::TLSErrorWebpkiBadDER);
-                        SSL_FAILURE
-                    }
-                },
-                Err(e) => {
-                    // File::open failed
-                    ErrorQueue::push_error(ErrorCode::from(&e));
-                    SSL_FAILURE
-                }
-            },
-            Err(_) => {
-                //CStr::from_ptr failed
-                ErrorQueue::push_error(ErrorCode::IoErrorNotFound);
+    match inner_mesalink_use_certificate_chain_file(ctx_ptr, filename_ptr) {
+        Ok(_) => SSL_SUCCESS,
+        Err(code) => {
+            if code == ErrorCode::MesalinkErrorNone {
+                SSL_SUCCESS
+            } else {
+                ErrorQueue::push_error(code);
                 SSL_FAILURE
             }
-        },
-        Err(_) => SSL_FAILURE, // sanitize_ptr_for_mut_ref failed
+        }
     }
+}
+
+fn inner_mesalink_use_certificate_chain_file(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    filename_ptr: *const c_char,
+) -> Result<(), ErrorCode> {
+    let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
+    let filename = unsafe {
+        ffi::CStr::from_ptr(filename_ptr)
+            .to_str()
+            .map_err(|_| ErrorCode::MesalinkErrorBadFuncArg)?
+    };
+    let file = fs::File::open(filename).map_err(|e| ErrorCode::from(&e))?;
+    let certs = internal::pemfile::certs(&mut io::BufReader::new(file))
+        .map_err(|_| ErrorCode::TLSErrorWebpkiBadDER)?;
+    util::get_context_mut(ctx).certificates = Some(certs);
+    let (certs, priv_key) =
+        util::try_get_context_certs_and_key(ctx).map_err(|_| ErrorCode::MesalinkErrorNone)?;
+    util::get_context_mut(ctx)
+        .server_config
+        .set_single_cert(certs, priv_key);
+    Ok(())
 }
 
 /// `SSL_CTX_use_PrivateKey_file` - add the first private key found in file to
@@ -797,58 +794,48 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
         ErrorQueue::push_error(ErrorCode::MesalinkErrorNullPointer);
         return SSL_FAILURE;
     }
-    match sanitize_ptr_for_mut_ref(ctx_ptr) {
-        Ok(ctx) => match unsafe { ffi::CStr::from_ptr(filename_ptr).to_str() } {
-            Ok(filename) => {
-                let rsa_keys = match fs::File::open(filename) {
-                    Ok(f) => internal::pemfile::rsa_private_keys(&mut io::BufReader::new(f)),
-                    Err(_) => Err(()),
-                };
-                let pk8_keys = match fs::File::open(filename) {
-                    Ok(f) => internal::pemfile::pkcs8_private_keys(&mut io::BufReader::new(f)),
-                    Err(_) => Err(()),
-                };
-                let mut valid_keys = None;
-                if let Ok(keys) = rsa_keys {
-                    valid_keys = if keys.len() > 0 {
-                        Some(keys)
-                    } else {
-                        valid_keys
-                    };
-                }
-                if let Ok(keys) = pk8_keys {
-                    valid_keys = if keys.len() > 0 {
-                        Some(keys)
-                    } else {
-                        valid_keys
-                    };
-                }
-                match valid_keys {
-                    Some(keys) => {
-                        util::get_context_mut(ctx).private_key = Some(keys[0].clone());
-                        match util::try_get_context_certs_and_key(ctx) {
-                            Ok((certs, priv_key)) => util::get_context_mut(ctx)
-                                .server_config
-                                .set_single_cert(certs, priv_key),
-                            Err(_) => (),
-                        }
-                        SSL_SUCCESS
-                    }
-                    None => {
-                        // valid_keys does not contain anything
-                        ErrorQueue::push_error(ErrorCode::TLSErrorWebpkiBadDER);
-                        SSL_FAILURE
-                    }
-                }
-            }
-            Err(_) => {
-                // CStr::from_ptr failed
-                ErrorQueue::push_error(ErrorCode::MesalinkErrorBadFuncArg);
+    match inner_mesalink_use_privatekey_file(ctx_ptr, filename_ptr) {
+        Ok(_) => SSL_SUCCESS,
+        Err(code) => {
+            if code == ErrorCode::MesalinkErrorNone {
+                SSL_SUCCESS
+            } else {
+                ErrorQueue::push_error(code);
                 SSL_FAILURE
             }
-        },
-        Err(_) => SSL_FAILURE, // sanitize_ptr_for_mut_ref failed
+        }
     }
+}
+
+fn inner_mesalink_use_privatekey_file(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    filename_ptr: *const c_char,
+) -> Result<(), ErrorCode> {
+    let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
+    let filename = unsafe {
+        ffi::CStr::from_ptr(filename_ptr)
+            .to_str()
+            .map_err(|_| ErrorCode::IoErrorInvalidInput)?
+    };
+    let file = fs::File::open(filename).map_err(|e| ErrorCode::from(&e))?;
+    let rsa_keys = internal::pemfile::rsa_private_keys(&mut io::BufReader::new(file));
+    let file = fs::File::open(filename).map_err(|e| ErrorCode::from(&e))?;
+    let pk8_keys = internal::pemfile::pkcs8_private_keys(&mut io::BufReader::new(file));
+    let mut valid_keys: Result<Vec<_>, ErrorCode> = Err(ErrorCode::TLSErrorWebpkiBadDER);
+    valid_keys = rsa_keys
+        .and_then(|keys| if keys.len() <= 0 { Err(()) } else { Ok(keys) })
+        .or_else(|_| valid_keys);
+    valid_keys = pk8_keys
+        .and_then(|keys| if keys.len() <= 0 { Err(()) } else { Ok(keys) })
+        .or_else(|_| valid_keys);
+    let keys = valid_keys?;
+    util::get_context_mut(ctx).private_key = Some(keys[0].clone());
+    let (certs, priv_key) =
+        util::try_get_context_certs_and_key(ctx).map_err(|_| ErrorCode::MesalinkErrorNone)?;
+    util::get_context_mut(ctx)
+        .server_config
+        .set_single_cert(certs, priv_key);
+    Ok(())
 }
 
 /// `SSL_CTX_check_private_key` - check the consistency of a private key with the
@@ -861,34 +848,31 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX_ARC) -> c_int {
-    match sanitize_ptr_for_mut_ref(ctx_ptr) {
-        Ok(ctx) => match (&ctx.certificates, &ctx.private_key) {
-            (&Some(ref certs), &Some(ref key)) => match sign::RSASigningKey::new(key) {
-                Ok(rsa_key) => {
-                    match sign::CertifiedKey::new(certs.clone(), Arc::new(Box::new(rsa_key)))
-                        .cross_check_end_entity_cert(None)
-                    {
-                        Ok(_) => SSL_SUCCESS,
-                        Err(e) => {
-                            // cross_check_end_entity_cert failed
-                            ErrorQueue::push_error(ErrorCode::from(&e));
-                            SSL_FAILURE
-                        }
-                    }
-                }
-                Err(_) => {
-                    // RSASigningKey::new() failed
-                    ErrorQueue::push_error(ErrorCode::TLSErrorWebpkiBadDER);
-                    SSL_FAILURE
-                }
-            },
-            _ => {
-                // either ctx.certificates or ctx.private_key is None
-                ErrorQueue::push_error(ErrorCode::MesalinkErrorBadFuncArg);
+    match inner_mesalink_check_private_key(ctx_ptr) {
+        Ok(_) => SSL_SUCCESS,
+        Err(code) => {
+            if code == ErrorCode::MesalinkErrorNone {
+                SSL_SUCCESS
+            } else {
+                ErrorQueue::push_error(code);
                 SSL_FAILURE
             }
-        },
-        Err(_) => SSL_FAILURE, // sanitize_ptr_for_mut_ref failed
+        }
+    }
+}
+
+fn inner_mesalink_check_private_key(ctx_ptr: *mut MESALINK_CTX_ARC) -> Result<(), ErrorCode> {
+    let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
+    match (&ctx.certificates, &ctx.private_key) {
+        (&Some(ref certs), &Some(ref key)) => {
+            let rsa_key =
+                sign::RSASigningKey::new(&key).map_err(|_| ErrorCode::TLSErrorWebpkiBadDER)?;
+            sign::CertifiedKey::new(certs.clone(), Arc::new(Box::new(rsa_key)))
+                .cross_check_end_entity_cert(None)
+                .map_err(|e| ErrorCode::from(&e))?;
+            Ok(())
+        }
+        _ => Err(ErrorCode::MesalinkErrorBadFuncArg),
     }
 }
 
