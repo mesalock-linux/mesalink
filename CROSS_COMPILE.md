@@ -103,7 +103,7 @@ $
 ## Cross compiling MesaLink
 Once the toolchains are ready, cross compiling MesaLink is as easy as just two
 extra arguments for the `configure` script. Pass the C/C++ and Rust target
-triples with `--host` and `--with-rusthost`. For example:
+triples with `--host` and `--enable-rusthost`. For example:
 
 ```
 $ ./configure --host=arm-linux-gnueabi --enable-rusthost=arm-unknown-linux-gnueabi
