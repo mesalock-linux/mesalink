@@ -144,7 +144,7 @@
 //! ```text
 
 use libc::{self, c_char, c_ulong, size_t};
-use std::{io, ptr};
+use std::{io, slice};
 use rustls;
 use webpki;
 
@@ -671,13 +671,23 @@ pub extern "C" fn mesalink_ERR_error_string_n(
     buf_ptr: *mut c_char,
     buf_len: size_t,
 ) -> *const c_char {
-    if buf_ptr.is_null() {
-        return ptr::null();
+    use std::mem;
+    let error_string: &'static [u8] = ErrorCode::from(error_code).as_u8_slice();
+    let error_string_len = error_string.len();
+    unsafe {
+        let error_string: &'static [i8] = mem::transmute::<&[u8], &[i8]>(error_string);
+        if buf_ptr.is_null() {
+            return error_string.as_ptr() as *const c_char;
+        }
+        let buf = slice::from_raw_parts_mut(buf_ptr, buf_len);
+        if error_string_len > buf_len {
+            buf.copy_from_slice(&error_string[0..buf_len]);
+            buf[buf_len - 1] = 0;
+        } else {
+            buf[0..error_string_len].copy_from_slice(&error_string);
+        }
+        buf_ptr
     }
-    let src_ptr = mesalink_ERR_reason_error_string(error_code);
-    let mut msg_len = unsafe { libc::strlen(src_ptr) } + 1; // including the terminating 0
-    msg_len = if msg_len > buf_len { buf_len } else { msg_len };
-    unsafe { libc::strncpy(buf_ptr, src_ptr, msg_len) }
 }
 
 /// `ERR_error_reason_error_string` - return a human-readable string representing
@@ -700,7 +710,9 @@ pub struct ErrorQueue {}
 impl ErrorQueue {
     pub fn push_error(e: ErrorCode) {
         ERROR_QUEUE.with(|f| {
-            f.borrow_mut().push_back(e);
+            if e != ErrorCode::MesalinkErrorNone {
+                f.borrow_mut().push_back(e);
+            }
         });
     }
 }
@@ -783,4 +795,274 @@ pub extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
             };
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::thread;
+    use std::ptr;
+
+    #[test]
+    fn empty() {
+        assert_eq!(0, mesalink_ERR_get_error());
+        mesalink_ERR_clear_error();
+    }
+
+    #[test]
+    fn push() {
+        let error_code = ErrorCode::MesalinkErrorNullPointer;
+        ErrorQueue::push_error(error_code);
+        assert_eq!(error_code, ErrorCode::from(mesalink_ERR_get_error()));
+        mesalink_ERR_clear_error();
+    }
+
+    #[test]
+    fn clear() {
+        let error_code = ErrorCode::MesalinkErrorNullPointer;
+        ErrorQueue::push_error(error_code);
+        mesalink_ERR_clear_error();
+        assert_eq!(0, mesalink_ERR_get_error());
+        mesalink_ERR_clear_error();
+    }
+
+    #[test]
+    fn get_should_remove_error() {
+        let error_code = ErrorCode::MesalinkErrorNullPointer;
+        ErrorQueue::push_error(error_code);
+        let _ = mesalink_ERR_get_error();
+        assert_eq!(0, mesalink_ERR_get_error());
+        mesalink_ERR_clear_error();
+    }
+
+    #[test]
+    fn peek_should_not_remove_error() {
+        let error_code = ErrorCode::MesalinkErrorNullPointer;
+        ErrorQueue::push_error(error_code);
+        let _ = mesalink_ERR_peek_last_error();
+        assert_eq!(error_code, ErrorCode::from(mesalink_ERR_get_error()));
+        mesalink_ERR_clear_error();
+    }
+
+    #[test]
+    fn error_queue_is_thread_local() {
+        let thread = thread::spawn(|| {
+            let error_code = ErrorCode::MesalinkErrorNullPointer;
+            ErrorQueue::push_error(error_code);
+            ErrorCode::from(mesalink_ERR_get_error())
+        });
+        let error_code = ErrorCode::MesalinkErrorMalformedObject;
+        ErrorQueue::push_error(error_code);
+
+        let main_thread_error_code = ErrorCode::from(mesalink_ERR_get_error());
+        let sub_thread_error_code = thread.join().unwrap();
+        assert_ne!(main_thread_error_code, sub_thread_error_code);
+        mesalink_ERR_clear_error();
+    }
+
+    #[test]
+    fn invalid_error_codes() {
+        use std;
+        assert_eq!(ErrorCode::UndefinedError, ErrorCode::from(std::u32::MAX));
+        assert_eq!(ErrorCode::UndefinedError, ErrorCode::from(std::u64::MAX));
+        assert_eq!(
+            ErrorCode::UndefinedError,
+            ErrorCode::from(std::i32::MIN as u64)
+        );
+        assert_eq!(
+            ErrorCode::MesalinkErrorNone,
+            ErrorCode::from(std::i64::MIN as u64)
+        );
+    }
+
+    const ERROR_CODES: [ErrorCode; 101] = [
+        ErrorCode::MesalinkErrorNone,
+        ErrorCode::MesalinkErrorZeroReturn,
+        ErrorCode::MesalinkErrorWantRead,
+        ErrorCode::MesalinkErrorWantWrite,
+        ErrorCode::MesalinkErrorWantConnect,
+        ErrorCode::MesalinkErrorWantAccept,
+        ErrorCode::MesalinkErrorSyscall,
+        ErrorCode::MesalinkErrorSsl,
+        ErrorCode::MesalinkErrorNullPointer,
+        ErrorCode::MesalinkErrorMalformedObject,
+        ErrorCode::MesalinkErrorBadFuncArg,
+        ErrorCode::IoErrorNotFound,
+        ErrorCode::IoErrorPermissionDenied,
+        ErrorCode::IoErrorConnectionRefused,
+        ErrorCode::IoErrorConnectionReset,
+        ErrorCode::IoErrorConnectionAborted,
+        ErrorCode::IoErrorNotConnected,
+        ErrorCode::IoErrorAddrInUse,
+        ErrorCode::IoErrorAddrNotAvailable,
+        ErrorCode::IoErrorBrokenPipe,
+        ErrorCode::IoErrorAlreadyExists,
+        ErrorCode::IoErrorWouldBlock,
+        ErrorCode::IoErrorInvalidInput,
+        ErrorCode::IoErrorInvalidData,
+        ErrorCode::IoErrorTimedOut,
+        ErrorCode::IoErrorWriteZero,
+        ErrorCode::IoErrorInterrupted,
+        ErrorCode::IoErrorOther,
+        ErrorCode::IoErrorUnexpectedEof,
+        ErrorCode::TLSErrorInappropriateMessage,
+        ErrorCode::TLSErrorInappropriateHandshakeMessage,
+        ErrorCode::TLSErrorCorruptMessage,
+        ErrorCode::TLSErrorCorruptMessagePayload,
+        ErrorCode::TLSErrorCorruptMessagePayloadAlert,
+        ErrorCode::TLSErrorCorruptMessagePayloadChangeCipherSpec,
+        ErrorCode::TLSErrorCorruptMessagePayloadHandshake,
+        ErrorCode::TLSErrorNoCertificatesPresented,
+        ErrorCode::TLSErrorDecryptError,
+        ErrorCode::TLSErrorPeerIncompatibleError,
+        ErrorCode::TLSErrorPeerMisbehavedError,
+        ErrorCode::TLSErrorAlertReceivedCloseNotify,
+        ErrorCode::TLSErrorAlertReceivedUnexpectedMessage,
+        ErrorCode::TLSErrorAlertReceivedBadRecordMac,
+        ErrorCode::TLSErrorAlertReceivedDecryptionFailed,
+        ErrorCode::TLSErrorAlertReceivedRecordOverflow,
+        ErrorCode::TLSErrorAlertReceivedDecompressionFailure,
+        ErrorCode::TLSErrorAlertReceivedHandshakeFailure,
+        ErrorCode::TLSErrorAlertReceivedNoCertificate,
+        ErrorCode::TLSErrorAlertReceivedBadCertificate,
+        ErrorCode::TLSErrorAlertReceivedUnsupportedCertificate,
+        ErrorCode::TLSErrorAlertReceivedCertificateRevoked,
+        ErrorCode::TLSErrorAlertReceivedCertificateExpired,
+        ErrorCode::TLSErrorAlertReceivedCertificateUnknown,
+        ErrorCode::TLSErrorAlertReceivedIllegalParameter,
+        ErrorCode::TLSErrorAlertReceivedUnknownCA,
+        ErrorCode::TLSErrorAlertReceivedAccessDenied,
+        ErrorCode::TLSErrorAlertReceivedDecodeError,
+        ErrorCode::TLSErrorAlertReceivedDecryptError,
+        ErrorCode::TLSErrorAlertReceivedExportRestriction,
+        ErrorCode::TLSErrorAlertReceivedProtocolVersion,
+        ErrorCode::TLSErrorAlertReceivedInsufficientSecurity,
+        ErrorCode::TLSErrorAlertReceivedInternalError,
+        ErrorCode::TLSErrorAlertReceivedInappropriateFallback,
+        ErrorCode::TLSErrorAlertReceivedUserCanceled,
+        ErrorCode::TLSErrorAlertReceivedNoRenegotiation,
+        ErrorCode::TLSErrorAlertReceivedMissingExtension,
+        ErrorCode::TLSErrorAlertReceivedUnsupportedExtension,
+        ErrorCode::TLSErrorAlertReceivedCertificateUnobtainable,
+        ErrorCode::TLSErrorAlertReceivedUnrecognisedName,
+        ErrorCode::TLSErrorAlertReceivedBadCertificateStatusResponse,
+        ErrorCode::TLSErrorAlertReceivedBadCertificateHashValue,
+        ErrorCode::TLSErrorAlertReceivedUnknownPSKIdentity,
+        ErrorCode::TLSErrorAlertReceivedCertificateRequired,
+        ErrorCode::TLSErrorAlertReceivedNoApplicationProtocol,
+        ErrorCode::TLSErrorAlertReceivedUnknown,
+        ErrorCode::TLSErrorWebpkiBadDER,
+        ErrorCode::TLSErrorWebpkiBadDERTime,
+        ErrorCode::TLSErrorWebpkiCAUsedAsEndEntity,
+        ErrorCode::TLSErrorWebpkiCertExpired,
+        ErrorCode::TLSErrorWebpkiCertNotValidForName,
+        ErrorCode::TLSErrorWebpkiCertNotValidYet,
+        ErrorCode::TLSErrorWebpkiEndEntityUsedAsCA,
+        ErrorCode::TLSErrorWebpkiExtensionValueInvalid,
+        ErrorCode::TLSErrorWebpkiInvalidCertValidity,
+        ErrorCode::TLSErrorWebpkiInvalidSignatureForPublicKey,
+        ErrorCode::TLSErrorWebpkiNameConstraintViolation,
+        ErrorCode::TLSErrorWebpkiPathLenConstraintViolated,
+        ErrorCode::TLSErrorWebpkiSignatureAlgorithmMismatch,
+        ErrorCode::TLSErrorWebpkiRequiredEKUNotFound,
+        ErrorCode::TLSErrorWebpkiUnknownIssuer,
+        ErrorCode::TLSErrorWebpkiUnsupportedCertVersion,
+        ErrorCode::TLSErrorWebpkiUnsupportedCriticalExtension,
+        ErrorCode::TLSErrorWebpkiUnsupportedSignatureAlgorithmForPublicKey,
+        ErrorCode::TLSErrorWebpkiUnsupportedSignatureAlgorithm,
+        ErrorCode::TLSErrorInvalidSCT,
+        ErrorCode::TLSErrorGeneral,
+        ErrorCode::TLSErrorFailedToGetCurrentTime,
+        ErrorCode::TLSErrorInvalidDNSName,
+        ErrorCode::TLSErrorHandshakeNotComplete,
+        ErrorCode::TLSErrorPeerSentOversizedRecord,
+        ErrorCode::UndefinedError,
+    ];
+
+    #[test]
+    fn error_code_conversion() {
+        for code in ERROR_CODES.into_iter() {
+            assert_eq!(*code, ErrorCode::from(*code as c_ulong));
+        }
+    }
+
+    #[test]
+    fn error_strings() {
+        for code in ERROR_CODES.into_iter() {
+            let error_string_ptr: *const c_char =
+                mesalink_ERR_reason_error_string(*code as c_ulong);
+            assert_ne!(ptr::null(), error_string_ptr);
+            let error_string_len = unsafe { libc::strlen(error_string_ptr) };
+            assert_eq!(true, (10 < error_string_len && error_string_len < 64));
+        }
+    }
+
+    #[test]
+    fn error_string_n_with_big_buf() {
+        let mut buf = [0u8; 256];
+        let buf_ptr = buf.as_mut_ptr() as *mut c_char;
+        for code in ERROR_CODES.into_iter() {
+            let builtin_error_string_ptr: *const c_char =
+                mesalink_ERR_reason_error_string(*code as c_ulong);
+            let buf_error_string_ptr =
+                mesalink_ERR_error_string_n(*code as c_ulong, buf_ptr, buf.len());
+            let builtin_error_string_len = unsafe { libc::strlen(builtin_error_string_ptr) };
+            let buf_error_string_len = unsafe { libc::strlen(buf_error_string_ptr) };
+            assert_eq!(buf_error_string_len, builtin_error_string_len);
+            assert_eq!(0, unsafe {
+                libc::strncmp(
+                    builtin_error_string_ptr,
+                    buf_error_string_ptr,
+                    builtin_error_string_len,
+                )
+            });
+            assert_eq!(false, builtin_error_string_ptr == buf_error_string_ptr);
+        }
+    }
+
+    #[test]
+    fn error_string_n_with_small_buf() {
+        const BUF_SIZE: usize = 10;
+        let mut buf = [0u8; BUF_SIZE];
+        let buf_ptr = buf.as_mut_ptr() as *mut c_char;
+        for code in ERROR_CODES.into_iter() {
+            let builtin_error_string_ptr: *const c_char =
+                mesalink_ERR_reason_error_string(*code as c_ulong);
+            let buf_error_string_ptr =
+                mesalink_ERR_error_string_n(*code as c_ulong, buf_ptr, buf.len());
+            let buf_error_string_len = unsafe { libc::strlen(buf_error_string_ptr) };
+            assert_eq!(buf_error_string_len, buf_error_string_len);
+            assert_eq!(0, unsafe {
+                libc::strncmp(
+                    builtin_error_string_ptr,
+                    buf_error_string_ptr,
+                    buf_error_string_len,
+                )
+            });
+            assert_eq!(false, builtin_error_string_ptr == buf_error_string_ptr);
+        }
+    }
+
+    #[test]
+    fn error_string_n_with_null_buf() {
+        for code in ERROR_CODES.into_iter() {
+            let builtin_error_string_ptr: *const c_char =
+                mesalink_ERR_reason_error_string(*code as c_ulong);
+            let buf_error_string_ptr =
+                mesalink_ERR_error_string_n(*code as c_ulong, ptr::null_mut() as *mut c_char, 0);
+
+            let builtin_error_string_len = unsafe { libc::strlen(builtin_error_string_ptr) };
+            let buf_error_string_len = unsafe { libc::strlen(buf_error_string_ptr) };
+            assert_eq!(buf_error_string_len, builtin_error_string_len);
+            assert_eq!(0, unsafe {
+                libc::strncmp(
+                    builtin_error_string_ptr,
+                    buf_error_string_ptr,
+                    builtin_error_string_len,
+                )
+            });
+            assert_eq!(true, builtin_error_string_ptr == buf_error_string_ptr);
+        }
+    }
+
 }
