@@ -742,14 +742,16 @@ pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
 pub extern "C" fn mesalink_SSL_CTX_new(
     method_ptr: *const MESALINK_METHOD,
 ) -> *mut MESALINK_CTX_ARC {
-    match sanitize_const_ptr_for_ref(method_ptr) {
-        Ok(method) => {
-            let context = MESALINK_CTX::new(method);
-            let _ = unsafe { Box::from_raw(method_ptr as *mut MESALINK_METHOD) };
-            Box::into_raw(Box::new(Arc::new(context))) // initialize the referece counter
-        }
-        Err(_) => ptr::null_mut(),
-    }
+    check_inner_result_for_mut_ptr(inner_mesalink_ssl_ctx_new(method_ptr))
+}
+
+fn inner_mesalink_ssl_ctx_new(
+    method_ptr: *const MESALINK_METHOD,
+) -> Result<*mut MESALINK_CTX_ARC, ErrorCode> {
+    let method = sanitize_const_ptr_for_ref(method_ptr)?;
+    let context = MESALINK_CTX::new(method);
+    let _ = unsafe { Box::from_raw(method_ptr as *mut MESALINK_METHOD) };
+    Ok(Box::into_raw(Box::new(Arc::new(context)))) // initialize the referece counter
 }
 
 /// `SSL_CTX_use_certificate_chain_file` - load a certificate chain from file into
@@ -769,10 +771,6 @@ pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
     filename_ptr: *const c_char,
     _format: c_int,
 ) -> c_int {
-    if filename_ptr.is_null() {
-        ErrorQueue::push_error(ErrorCode::MesalinkErrorNullPointer);
-        return SSL_FAILURE;
-    }
     check_inner_result_for_int(inner_mesalink_ssl_ctx_use_certificate_chain_file(
         ctx_ptr,
         filename_ptr,
@@ -784,6 +782,9 @@ fn inner_mesalink_ssl_ctx_use_certificate_chain_file(
     filename_ptr: *const c_char,
 ) -> Result<c_int, ErrorCode> {
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
+    if filename_ptr.is_null() {
+        return Err(ErrorCode::MesalinkErrorNullPointer);
+    }
     let filename = unsafe {
         ffi::CStr::from_ptr(filename_ptr)
             .to_str()
@@ -792,6 +793,9 @@ fn inner_mesalink_ssl_ctx_use_certificate_chain_file(
     let file = fs::File::open(filename).map_err(|e| ErrorCode::from(&e))?;
     let certs = internal::pemfile::certs(&mut io::BufReader::new(file))
         .map_err(|_| ErrorCode::TLSErrorWebpkiBadDER)?;
+    if certs.len() <= 0 {
+        return Err(ErrorCode::TLSErrorWebpkiBadDER);
+    }
     util::get_context_mut(ctx).certificates = Some(certs);
     let (certs, priv_key) =
         util::try_get_context_certs_and_key(ctx).map_err(|_| ErrorCode::MesalinkErrorNone)?;
@@ -1834,13 +1838,41 @@ mod tests {
     }
 
     #[test]
+    fn invalid_certificate() {
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_server_method());
+        assert_ne!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_use_certificate_chain_file(
+                ctx_ptr,
+                b"tests/bad.certs\0".as_ptr() as *const c_char,
+                0
+            )
+        );
+        mesalink_SSL_CTX_free(ctx_ptr);
+    }
+
+    #[test]
+    fn invalid_private_key() {
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_server_method());
+        assert_ne!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_use_PrivateKey_file(
+                ctx_ptr,
+                b"tests/bad.certs\0".as_ptr() as *const c_char,
+                0
+            )
+        );
+        mesalink_SSL_CTX_free(ctx_ptr);
+    }
+
+    #[test]
     fn verify_certificate_and_key() {
         let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_server_method());
         assert_eq!(
             SSL_SUCCESS,
             mesalink_SSL_CTX_use_certificate_chain_file(
                 ctx_ptr,
-                b"tests/bad.certs".as_ptr() as *const c_char,
+                CONST_CHAIN_FILE.as_ptr() as *const c_char,
                 0
             )
         );
@@ -1848,7 +1880,7 @@ mod tests {
             SSL_SUCCESS,
             mesalink_SSL_CTX_use_PrivateKey_file(
                 ctx_ptr,
-                b"tests/test.rsa".as_ptr() as *const c_char,
+                CONST_KEY_FILE.as_ptr() as *const c_char,
                 0
             )
         );
