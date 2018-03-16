@@ -1788,4 +1788,72 @@ mod tests {
         let _ = &context as &Send;
         let _ = &context as &Sync;
     }
+
+    #[test]
+    fn ssl_ctx_is_not_null() {
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
+        assert_ne!(ctx_ptr, ptr::null_mut());
+        mesalink_SSL_CTX_free(ctx_ptr);
+    }
+
+    #[test]
+    fn ssl_is_not_null() {
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
+        let ssl_ptr = mesalink_SSL_new(ctx_ptr);
+        assert_ne!(ctx_ptr, ptr::null_mut());
+        mesalink_SSL_free(ssl_ptr);
+        mesalink_SSL_CTX_free(ctx_ptr);
+    }
+
+    #[test]
+    fn certificate_not_found() {
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_server_method());
+        assert_ne!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_use_certificate_chain_file(
+                ctx_ptr,
+                b"you_do_not_find_me".as_ptr() as *const c_char,
+                0
+            )
+        );
+        mesalink_SSL_CTX_free(ctx_ptr);
+    }
+
+    #[test]
+    fn private_key_not_found() {
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_server_method());
+        assert_ne!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_use_PrivateKey_file(
+                ctx_ptr,
+                b"you_do_not_find_me".as_ptr() as *const c_char,
+                0
+            )
+        );
+        mesalink_SSL_CTX_free(ctx_ptr);
+    }
+
+    #[test]
+    fn verify_certificate_and_key() {
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_server_method());
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_use_certificate_chain_file(
+                ctx_ptr,
+                b"tests/bad.certs".as_ptr() as *const c_char,
+                0
+            )
+        );
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_use_PrivateKey_file(
+                ctx_ptr,
+                b"tests/test.rsa".as_ptr() as *const c_char,
+                0
+            )
+        );
+        assert_eq!(SSL_SUCCESS, mesalink_SSL_CTX_check_private_key(ctx_ptr));
+        mesalink_SSL_CTX_free(ctx_ptr);
+    }
+
 }
