@@ -1780,4 +1780,12 @@ mod tests {
         transfer_test(TlsVersion::Tlsv13, TlsVersion::Tlsv12, true);
         transfer_test(TlsVersion::Tlsv12, TlsVersion::Tlsv13, true);
     }
+
+    #[test]
+    fn ssl_ctx_is_thread_safe() {
+        let context_ptr = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
+        let context = sanitize_ptr_for_mut_ref(context_ptr);
+        let _ = &context as &Send;
+        let _ = &context as &Sync;
+    }
 }
