@@ -1888,4 +1888,16 @@ mod tests {
         mesalink_SSL_CTX_free(ctx_ptr);
     }
 
+    #[test]
+    fn get_ssl_fd() {
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
+        let ssl_ptr = mesalink_SSL_new(ctx_ptr);
+        let sock = net::TcpStream::connect("8.8.8.8:53").expect("Connect error");
+        let fd: c_int = sock.as_raw_fd();
+        assert_eq!(SSL_SUCCESS, mesalink_SSL_set_fd(ssl_ptr, fd));
+        assert_eq!(fd, mesalink_SSL_get_fd(ssl_ptr));
+        mesalink_SSL_free(ssl_ptr);
+        mesalink_SSL_CTX_free(ctx_ptr);
+    }
+
 }
