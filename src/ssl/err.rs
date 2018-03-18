@@ -675,7 +675,7 @@ pub extern "C" fn mesalink_ERR_error_string_n(
     let error_string: &'static [u8] = ErrorCode::from(error_code).as_u8_slice();
     let error_string_len = error_string.len();
     unsafe {
-        let error_string: &'static [i8] = mem::transmute::<&[u8], &[i8]>(error_string);
+        let error_string: &'static [c_char] = mem::transmute::<&[u8], &[c_char]>(error_string);
         if buf_ptr.is_null() {
             return error_string.as_ptr() as *const c_char;
         }
@@ -684,7 +684,7 @@ pub extern "C" fn mesalink_ERR_error_string_n(
             buf.copy_from_slice(&error_string[0..buf_len]);
             buf[buf_len - 1] = 0;
         } else {
-            buf[0..error_string_len].copy_from_slice(&error_string);
+            buf[0..error_string_len].copy_from_slice(error_string);
         }
         buf_ptr
     }

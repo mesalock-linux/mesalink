@@ -27,7 +27,7 @@ commonly used target triples for C/C++ and Rust, respectively.
 |:-------------:|:-------------:|------:|
 | arm-linux-gnueabi | arm-unknown-linux-gnueabi | ARM Linux|
 | arm-linux-gnueabihf | arm-unknown-linux-gnueabihf | ARM Linux, hardfloat |
-| armv7-none-linux-androideabi (Android NDK) | arm-linux-androideabi | ARM Android |
+| arm-linux-androideabi (Android NDK) | arm-linux-androideabi | ARM Android |
 | aarch64-linux-android (Android NDK) | aarch64-linux-android | ARM64 Android |
 | i686-linux-android | i686-linux-android | 32bit x86 Android |
 | x86_64-linux-android | x86_64-linux-android | 64bit x86_64 Android |
