@@ -1900,4 +1900,23 @@ mod tests {
         mesalink_SSL_CTX_free(ctx_ptr);
     }
 
+    #[test]
+    fn get_and_set_ssl_ctx() {
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLSv1_2_client_method());
+        let ssl_ptr = mesalink_SSL_new(ctx_ptr);
+        let ctx_ptr_2 = mesalink_SSL_CTX_new(mesalink_TLSv1_3_client_method());
+        let ctx_ptr_3 = mesalink_SSL_set_SSL_CTX(ssl_ptr, ctx_ptr_2);
+        let ctx_ptr_4 = mesalink_SSL_get_SSL_CTX(ssl_ptr);
+        let ctx_ref_1 = sanitize_const_ptr_for_ref(ctx_ptr).unwrap();
+        let ctx_ref_2 = sanitize_const_ptr_for_ref(ctx_ptr_2).unwrap();
+        assert_ne!(
+            ctx_ref_1.client_config.versions,
+            ctx_ref_2.client_config.versions
+        );
+        assert_eq!(ctx_ptr_3, ctx_ptr_4);
+        mesalink_SSL_free(ssl_ptr);
+        mesalink_SSL_CTX_free(ctx_ptr_2);
+        mesalink_SSL_CTX_free(ctx_ptr);
+    }
+
 }
