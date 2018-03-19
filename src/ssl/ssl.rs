@@ -1654,14 +1654,14 @@ mod tests {
         Both,
     }
 
-    fn get_method_by_version(version: TlsVersion, is_server: bool) -> *const MESALINK_METHOD {
+    fn get_method_by_version(version: &TlsVersion, is_server: bool) -> *const MESALINK_METHOD {
         match (version, is_server) {
-            (TlsVersion::Tlsv12, false) => mesalink_TLSv1_2_client_method(),
-            (TlsVersion::Tlsv13, false) => mesalink_TLSv1_3_client_method(),
-            (TlsVersion::Both, false) => mesalink_TLS_client_method(),
-            (TlsVersion::Tlsv12, true) => mesalink_TLSv1_2_server_method(),
-            (TlsVersion::Tlsv13, true) => mesalink_TLSv1_3_server_method(),
-            (TlsVersion::Both, true) => mesalink_TLS_server_method(),
+            (&TlsVersion::Tlsv12, false) => mesalink_TLSv1_2_client_method(),
+            (&TlsVersion::Tlsv13, false) => mesalink_TLSv1_3_client_method(),
+            (&TlsVersion::Both, false) => mesalink_TLS_client_method(),
+            (&TlsVersion::Tlsv12, true) => mesalink_TLSv1_2_server_method(),
+            (&TlsVersion::Tlsv13, true) => mesalink_TLSv1_3_server_method(),
+            (&TlsVersion::Both, true) => mesalink_TLS_server_method(),
         }
     }
 
@@ -1683,7 +1683,7 @@ mod tests {
         fn run_client(&self, port: u16, version: TlsVersion) -> thread::JoinHandle<c_ulong> {
             let sock = net::TcpStream::connect((CONST_SERVER_ADDR, port)).expect("Connect error");
             thread::spawn(move || {
-                let method = get_method_by_version(version, false);
+                let method = get_method_by_version(&version, false);
                 let session = MesalinkTestSession::new_client_session(method, sock.as_raw_fd());
                 mesalink_ERR_clear_error();
                 let _ = session.write(b"Hello server");
@@ -1693,18 +1693,42 @@ mod tests {
                 }
                 mesalink_ERR_clear_error();
                 let mut rd_buf = [0u8; 64];
-                let rd_len = session.read(&mut rd_buf);
+                let _ = session.read(&mut rd_buf);
                 let error = mesalink_ERR_get_error();
                 if error != 0 {
                     return error;
                 }
-                println!(
-                    "Client received {} bytes: {}",
-                    rd_len,
-                    str::from_utf8(&rd_buf).unwrap()
-                );
+                MesalinkTestDriver::test_cipher(session.ssl, &version);
                 0
             })
+        }
+
+        fn test_cipher(ssl: *mut MESALINK_SSL, version: &TlsVersion) {
+            let cipher_name_ptr = mesalink_SSL_get_cipher_name(ssl);
+            let cipher_name = unsafe { ffi::CStr::from_ptr(cipher_name_ptr).to_str().unwrap() };
+            match version {
+                &TlsVersion::Tlsv12 => {
+                    assert_eq!(cipher_name, "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256")
+                }
+                &TlsVersion::Tlsv13 => assert_eq!(cipher_name, "TLS13_CHACHA20_POLY1305_SHA256"),
+                _ => (),
+            };
+
+            let cipher_version_ptr = mesalink_SSL_get_cipher_version(ssl);
+            let cipher_version =
+                unsafe { ffi::CStr::from_ptr(cipher_version_ptr).to_str().unwrap() };
+            match version {
+                &TlsVersion::Tlsv12 => assert_eq!(cipher_version, "TLS1.2"),
+                &TlsVersion::Tlsv13 => assert_eq!(cipher_version, "TLS1.3"),
+                _ => (),
+            };
+
+            let mut cipher_bits: c_int = 0;
+            assert_eq!(
+                SSL_SUCCESS,
+                mesalink_SSL_get_cipher_bits(ssl, &mut cipher_bits as *mut c_int)
+            );
+            assert_eq!(32, cipher_bits);
         }
 
         fn run_server(
@@ -1714,20 +1738,16 @@ mod tests {
         ) -> thread::JoinHandle<c_ulong> {
             let sock = server.incoming().next().unwrap().expect("Accept error");
             thread::spawn(move || {
-                let method = get_method_by_version(version, true);
+                let method = get_method_by_version(&version, true);
                 let session = MesalinkTestSession::new_server_session(method, sock.as_raw_fd());
                 mesalink_ERR_clear_error();
                 let mut rd_buf = [0u8; 64];
-                let rd_len = session.read(&mut rd_buf);
+                let _ = session.read(&mut rd_buf);
                 let error = mesalink_ERR_get_error();
                 if error != 0 {
                     return error;
                 }
-                println!(
-                    "Server received {} bytes: {}",
-                    rd_len,
-                    str::from_utf8(&rd_buf).unwrap()
-                );
+                MesalinkTestDriver::test_cipher(session.ssl, &version);
                 mesalink_ERR_clear_error();
                 let _ = session.write(b"Hello client");
                 let error = mesalink_ERR_get_error();
