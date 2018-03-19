@@ -980,9 +980,87 @@ mod tests {
     ];
 
     #[test]
-    fn error_code_conversion() {
+    fn error_code_conversion_from_long() {
         for code in ERROR_CODES.into_iter() {
             assert_eq!(*code, ErrorCode::from(*code as c_ulong));
+        }
+    }
+
+    #[test]
+    fn mesalink_error_code_conversion() {
+        let mesalink_errors: [MesalinkBuiltinError; 11] = [
+            MesalinkBuiltinError::ErrorNone,
+            MesalinkBuiltinError::ErrorZeroReturn,
+            MesalinkBuiltinError::ErrorWantRead,
+            MesalinkBuiltinError::ErrorWantWrite,
+            MesalinkBuiltinError::ErrorWantConnect,
+            MesalinkBuiltinError::ErrorWantAccept,
+            MesalinkBuiltinError::ErrorSyscall,
+            MesalinkBuiltinError::ErrorSsl,
+            MesalinkBuiltinError::ErrorNullPointer,
+            MesalinkBuiltinError::ErrorMalformedObject,
+            MesalinkBuiltinError::ErrorBadFuncArg,
+        ];
+
+        for error in mesalink_errors.into_iter() {
+            assert_eq!(true, 0 == ErrorCode::from(error) as c_ulong >> 24);
+        }
+    }
+
+    #[test]
+    fn io_error_conversion() {
+        let io_errors: [io::ErrorKind; 18] = [
+            io::ErrorKind::NotFound,
+            io::ErrorKind::PermissionDenied,
+            io::ErrorKind::ConnectionRefused,
+            io::ErrorKind::ConnectionReset,
+            io::ErrorKind::ConnectionAborted,
+            io::ErrorKind::NotConnected,
+            io::ErrorKind::AddrInUse,
+            io::ErrorKind::AddrNotAvailable,
+            io::ErrorKind::BrokenPipe,
+            io::ErrorKind::AlreadyExists,
+            io::ErrorKind::WouldBlock,
+            io::ErrorKind::InvalidInput,
+            io::ErrorKind::InvalidData,
+            io::ErrorKind::TimedOut,
+            io::ErrorKind::WriteZero,
+            io::ErrorKind::Interrupted,
+            io::ErrorKind::Other,
+            io::ErrorKind::UnexpectedEof,
+        ];
+
+        for error_kind in io_errors.into_iter() {
+            let error = io::Error::from(*error_kind);
+            assert_eq!(true, 2 == ErrorCode::from(&error) as c_ulong >> 24);
+        }
+    }
+
+    #[test]
+    fn tls_error_conversion() {
+        use rustls::internal::msgs::enums::{AlertDescription, ContentType, HandshakeType};
+        let tls_errors: [rustls::TLSError; 11] = [
+            rustls::TLSError::InappropriateMessage {
+                expect_types: vec![],
+                got_type: ContentType::Heartbeat,
+            },
+            rustls::TLSError::InappropriateHandshakeMessage {
+                expect_types: vec![],
+                got_type: HandshakeType::Finished,
+            },
+            rustls::TLSError::CorruptMessage,
+            rustls::TLSError::CorruptMessagePayload(ContentType::Heartbeat),
+            rustls::TLSError::NoCertificatesPresented,
+            rustls::TLSError::DecryptError,
+            rustls::TLSError::PeerIncompatibleError("".to_string()),
+            rustls::TLSError::PeerMisbehavedError("".to_string()),
+            rustls::TLSError::AlertReceived(AlertDescription::CloseNotify),
+            rustls::TLSError::WebPKIError(webpki::Error::BadDER),
+            rustls::TLSError::General("".to_string()),
+        ];
+
+        for error in tls_errors.into_iter() {
+            assert_eq!(true, 3 == ErrorCode::from(error) as c_ulong >> 24);
         }
     }
 
