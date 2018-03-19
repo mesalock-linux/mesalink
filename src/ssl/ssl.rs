@@ -1638,6 +1638,14 @@ mod tests {
         fn write(&self, buf: &[u8]) -> c_int {
             mesalink_SSL_write(self.ssl, buf.as_ptr() as *mut c_uchar, buf.len() as c_int)
         }
+
+        fn shutdown(&self) -> c_int {
+            mesalink_SSL_shutdown(self.ssl)
+        }
+
+        fn get_error(&self) -> c_int {
+            mesalink_SSL_get_error(self.ssl, -1)
+        }
     }
 
     impl<'a> Drop for MesalinkTestSession<'a> {
@@ -1695,10 +1703,12 @@ mod tests {
                 let mut rd_buf = [0u8; 64];
                 let _ = session.read(&mut rd_buf);
                 let error = mesalink_ERR_get_error();
-                if error != 0 {
+                let ssl_error = session.get_error();
+                if error != 0 || ssl_error != 0 {
                     return error;
                 }
                 MesalinkTestDriver::test_cipher(session.ssl, &version);
+                let _ = session.shutdown();
                 0
             })
         }
@@ -1751,7 +1761,9 @@ mod tests {
                 mesalink_ERR_clear_error();
                 let _ = session.write(b"Hello client");
                 let error = mesalink_ERR_get_error();
-                if error != 0 {
+                let ssl_error = session.get_error();
+                let _ = session.shutdown();
+                if error != 0 || ssl_error != 0 {
                     return error;
                 }
                 0
