@@ -1,4 +1,6 @@
+if BUILD_EXAMPLE_SERVER
 noinst_PROGRAMS += examples/server/server
 examples_server_server_SOURCES = examples/server/server.c
 examples_server_server_LDADD = libmesalink.la
 DISTCLEANFILES+= examples/server/.libs/server
+endif

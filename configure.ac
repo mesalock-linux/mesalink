@@ -89,7 +89,7 @@ then
     CARGO_LINKER_ARGS=""
     CARGO_TARGET_SUBDIR="$CARGO_TARGET_SUBDIR"
     CARGO_TARGET_SUBDIR_ENV_VAR=
-else 
+else
     CARGO_TARGET_ARGS="--target $RUST_HOST"
      CARGO_LINKER_ARGS="-- -C linker=$CC"
     CARGO_TARGET_SUBDIR="$RUST_HOST/$CARGO_TARGET_SUBDIR"
@@ -200,6 +200,14 @@ fi
 CARGO_FEATURES=$CARGO_FEATURES" verifier"
 CARGO_FEATURES=$CARGO_FEATURES"\""
 
+AC_ARG_ENABLE([examples],
+    [AS_HELP_STRING([--enable-examples], [Enable examples (default: disabled)])],
+    [ ENABLE_EXAMPLES=$enableval ],
+    [ ENABLE_EXAMPLES=yes ]
+    )
+AM_CONDITIONAL([BUILD_EXAMPLE_CLIENT], [test "x$ENABLE_EXAMPLES" = "xyes"])
+AM_CONDITIONAL([BUILD_EXAMPLE_SERVER], [test "x$ENABLE_EXAMPLES" = "xyes"])
+
 AX_CREATE_GENERIC_CONFIG
 
 AC_CONFIG_FILES([Makefile])
@@ -258,6 +266,7 @@ echo "   * C Compiler:                 $CC"
 echo "   * C Compiler vendor:          $ax_cv_c_compiler_vendor"
 echo "   * C Flags:                    $CFLAGS"
 echo "   * Debug enabled:              $ax_enable_debug"
+echo "   * Examples:                   $ENABLE_EXAMPLES"
 echo
 echo "   Features "
 echo "   * Logging and error strings:  $ENABLE_ERROR_STRINGS"
