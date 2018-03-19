@@ -1065,6 +1065,82 @@ mod tests {
     }
 
     #[test]
+    fn webpki_error_conversion() {
+        let webpki_errors: [webpki::Error; 19] = [
+            webpki::Error::BadDER,
+            webpki::Error::BadDERTime,
+            webpki::Error::CAUsedAsEndEntity,
+            webpki::Error::CertExpired,
+            webpki::Error::CertNotValidForName,
+            webpki::Error::CertNotValidYet,
+            webpki::Error::EndEntityUsedAsCA,
+            webpki::Error::ExtensionValueInvalid,
+            webpki::Error::InvalidCertValidity,
+            webpki::Error::InvalidSignatureForPublicKey,
+            webpki::Error::NameConstraintViolation,
+            webpki::Error::PathLenConstraintViolated,
+            webpki::Error::SignatureAlgorithmMismatch,
+            webpki::Error::RequiredEKUNotFound,
+            webpki::Error::UnknownIssuer,
+            webpki::Error::UnsupportedCertVersion,
+            webpki::Error::UnsupportedCriticalExtension,
+            webpki::Error::UnsupportedSignatureAlgorithmForPublicKey,
+            webpki::Error::UnsupportedSignatureAlgorithm,
+        ];
+
+        for pki_error in webpki_errors.into_iter() {
+            let error = rustls::TLSError::WebPKIError(*pki_error);
+            assert_eq!(true, 3 == ErrorCode::from(&error) as c_ulong >> 24);
+        }
+    }
+
+    #[test]
+    fn tls_alert_error_conversion() {
+        use rustls::internal::msgs::enums::AlertDescription;
+        let alerts: [AlertDescription; 34] = [
+            AlertDescription::CloseNotify,
+            AlertDescription::UnexpectedMessage,
+            AlertDescription::BadRecordMac,
+            AlertDescription::DecryptionFailed,
+            AlertDescription::RecordOverflow,
+            AlertDescription::DecompressionFailure,
+            AlertDescription::HandshakeFailure,
+            AlertDescription::NoCertificate,
+            AlertDescription::BadCertificate,
+            AlertDescription::UnsupportedCertificate,
+            AlertDescription::CertificateRevoked,
+            AlertDescription::CertificateExpired,
+            AlertDescription::CertificateUnknown,
+            AlertDescription::IllegalParameter,
+            AlertDescription::UnknownCA,
+            AlertDescription::AccessDenied,
+            AlertDescription::DecodeError,
+            AlertDescription::DecryptError,
+            AlertDescription::ExportRestriction,
+            AlertDescription::ProtocolVersion,
+            AlertDescription::InsufficientSecurity,
+            AlertDescription::InternalError,
+            AlertDescription::InappropriateFallback,
+            AlertDescription::UserCanceled,
+            AlertDescription::NoRenegotiation,
+            AlertDescription::MissingExtension,
+            AlertDescription::UnsupportedExtension,
+            AlertDescription::CertificateUnobtainable,
+            AlertDescription::UnrecognisedName,
+            AlertDescription::BadCertificateStatusResponse,
+            AlertDescription::BadCertificateHashValue,
+            AlertDescription::UnknownPSKIdentity,
+            AlertDescription::CertificateRequired,
+            AlertDescription::NoApplicationProtocol,
+        ];
+
+        for alert in alerts.into_iter() {
+            let error = rustls::TLSError::AlertReceived(*alert);
+            assert_eq!(true, 3 == ErrorCode::from(&error) as c_ulong >> 24);
+        }
+    }
+
+    #[test]
     fn error_strings() {
         for code in ERROR_CODES.into_iter() {
             let error_string_ptr: *const c_char =
