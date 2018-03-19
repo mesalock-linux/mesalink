@@ -8,8 +8,17 @@ noinst_PROGRAMS=
 include_HEADERS=
 nobase_include_HEADERS=
 DISTCLEANFILES=
+EXTRA_DIST=
 
 DISTCLEANFILES+= mesalink-config
+EXTRA_DIST+= src
+EXTRA_DIST+= rustls
+EXTRA_DIST+= sct
+EXTRA_DIST+= autogen.sh
+EXTRA_DIST+= Cargo.toml
+EXTRA_DIST+= Cargo.lock
+EXTRA_DIST+= build.rs
+EXTRA_DIST+= LICENSE
 
 include src/include.am
 include mesalink/include.am
