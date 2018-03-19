@@ -239,7 +239,7 @@ compatibility of MesaLink. To run BoGo test cases, run the following:
 
 ```
 $ cargo build --release --examples
-$ (cd bogo && ./runme)
+$ (cd bogo && ./fetch-and-build && ./runme)
 ```
 
 ## Crypto benchmarks
