@@ -22,7 +22,7 @@
 set -xe
 
 if [ ! -e ../target/release/examples/bogo_shim ] ; then
-  cargo test --no-run
+  cargo test --release --no-run
 fi
 
 if [ ! -e bogo/ ] ; then
