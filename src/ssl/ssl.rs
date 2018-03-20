@@ -1635,7 +1635,11 @@ mod tests {
         }
 
         fn write(&self, buf: &[u8]) -> c_int {
-            mesalink_SSL_write(self.ssl, buf.as_ptr() as *mut c_uchar, buf.len() as c_int)
+            let ret =
+                mesalink_SSL_write(self.ssl, buf.as_ptr() as *mut c_uchar, buf.len() as c_int);
+            let ssl = sanitize_ptr_for_mut_ref(self.ssl).unwrap();
+            assert_eq!(true, ssl.flush().is_ok());
+            ret
         }
 
         fn shutdown(&self) -> c_int {
@@ -1971,7 +1975,10 @@ mod tests {
     fn mesalink_ssl_set_null_host_name() {
         let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLSv1_2_client_method());
         let ssl_ptr = mesalink_SSL_new(ctx_ptr);
-        assert_ne!(SSL_SUCCESS, mesalink_SSL_set_tlsext_host_name(ssl_ptr, ptr::null() as *const c_char));
+        assert_ne!(
+            SSL_SUCCESS,
+            mesalink_SSL_set_tlsext_host_name(ssl_ptr, ptr::null() as *const c_char)
+        );
     }
 
 }
