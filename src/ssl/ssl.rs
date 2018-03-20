@@ -1811,7 +1811,9 @@ mod tests {
         transfer_test(TlsVersion::Tlsv12, TlsVersion::Tlsv12, false);
         transfer_test(TlsVersion::Tlsv13, TlsVersion::Tlsv13, false);
         transfer_test(TlsVersion::Both, TlsVersion::Tlsv13, false);
+        transfer_test(TlsVersion::Tlsv13, TlsVersion::Both, false);
         transfer_test(TlsVersion::Tlsv12, TlsVersion::Both, false);
+        transfer_test(TlsVersion::Both, TlsVersion::Tlsv12, false);
         transfer_test(TlsVersion::Tlsv13, TlsVersion::Tlsv12, true);
         transfer_test(TlsVersion::Tlsv12, TlsVersion::Tlsv13, true);
     }

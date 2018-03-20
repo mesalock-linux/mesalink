@@ -775,17 +775,18 @@ pub extern "C" fn mesalink_ERR_clear_error() {
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
-    if fp.is_null() {
-        return;
-    }
     use std::{fs, str, thread};
     use std::os::unix::io::FromRawFd;
     use std::io::Write;
-
+    if fp.is_null() {
+        return;
+    }
     let tid = thread::current().id();
     let fd = unsafe { libc::fileno(fp) };
+    if fd < 0 {
+        return;
+    }
     let mut file = unsafe { fs::File::from_raw_fd(fd) };
-
     ERROR_QUEUE.with(|f| {
         let mut queue = f.borrow_mut();
         for error in queue.drain(0..) {
@@ -991,8 +992,7 @@ mod tests {
 
     #[test]
     fn mesalink_error_code_conversion() {
-        let mesalink_errors: [MesalinkBuiltinError; 11] = [
-            MesalinkBuiltinError::ErrorNone,
+        let mesalink_errors: [MesalinkBuiltinError; 10] = [
             MesalinkBuiltinError::ErrorZeroReturn,
             MesalinkBuiltinError::ErrorWantRead,
             MesalinkBuiltinError::ErrorWantWrite,
@@ -1007,6 +1007,7 @@ mod tests {
 
         for error in mesalink_errors.into_iter() {
             assert_eq!(true, 0 == ErrorCode::from(error) as c_ulong >> 24);
+            assert_eq!(true, 0 != ErrorCode::from(error) as c_ulong & 0xFFFFFF);
         }
     }
 
@@ -1036,6 +1037,7 @@ mod tests {
         for error_kind in io_errors.into_iter() {
             let error = io::Error::from(*error_kind);
             assert_eq!(true, 2 == ErrorCode::from(&error) as c_ulong >> 24);
+            assert_eq!(true, 0 != ErrorCode::from(&error) as c_ulong & 0xFFFFFF);
         }
     }
 
@@ -1064,6 +1066,7 @@ mod tests {
 
         for error in tls_errors.into_iter() {
             assert_eq!(true, 3 == ErrorCode::from(error) as c_ulong >> 24);
+            assert_eq!(true, 0 != ErrorCode::from(error) as c_ulong & 0xFFFFFF);
         }
     }
 
@@ -1094,6 +1097,7 @@ mod tests {
         for pki_error in webpki_errors.into_iter() {
             let error = rustls::TLSError::WebPKIError(*pki_error);
             assert_eq!(true, 3 == ErrorCode::from(&error) as c_ulong >> 24);
+            assert_eq!(true, 0 != ErrorCode::from(&error) as c_ulong & 0xFFFFFF);
         }
     }
 
@@ -1140,6 +1144,7 @@ mod tests {
         for alert in alerts.into_iter() {
             let error = rustls::TLSError::AlertReceived(*alert);
             assert_eq!(true, 3 == ErrorCode::from(&error) as c_ulong >> 24);
+            assert_eq!(true, 0 != ErrorCode::from(&error) as c_ulong & 0xFFFFFF);
         }
     }
 
@@ -1149,8 +1154,9 @@ mod tests {
             let error_string_ptr: *const c_char =
                 mesalink_ERR_reason_error_string(*code as c_ulong);
             assert_ne!(ptr::null(), error_string_ptr);
-            let error_string_len = unsafe { libc::strlen(error_string_ptr) };
-            assert_eq!(true, (10 < error_string_len && error_string_len < 64));
+            let len = unsafe { libc::strlen(error_string_ptr) };
+            let ptr = code.as_u8_slice().as_ptr() as *const c_char;
+            assert_eq!(0, unsafe { libc::strncmp(ptr, error_string_ptr, len) });
         }
     }
 
@@ -1188,7 +1194,7 @@ mod tests {
             let buf_error_string_ptr =
                 mesalink_ERR_error_string_n(*code as c_ulong, buf_ptr, buf.len());
             let buf_error_string_len = unsafe { libc::strlen(buf_error_string_ptr) };
-            assert_eq!(buf_error_string_len, buf_error_string_len);
+            //assert_eq!(buf_error_string_len, buf_error_string_len);
             assert_eq!(0, unsafe {
                 libc::strncmp(
                     builtin_error_string_ptr,

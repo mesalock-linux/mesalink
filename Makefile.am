@@ -53,3 +53,5 @@ maintainer-clean-local:
 	-rm m4/lt~obsolete.m4
 	-rm libtool
 	-rm stamp-h1
+	-rm -rf bogo/bogo
+	-rm bogo/runner.tar.gz
