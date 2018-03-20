@@ -18,34 +18,36 @@
 //!
 //! To get better functionality along with strong security guarantees, MesaLink
 //! follows the following rules-of-thumb for hybrid memory-safe architecture
-//! designing proposed by the [Rust SGX SDK](https://github.com/baidu/rust-sgx-sdk)
-//! project.
+//! designing proposed by the [Rust SGX
+//! SDK](https://github.com/baidu/rust-sgx-sdk) project.
 //!
-//! 1. Unsafe components must not taint safe components, especially for public APIs
-//!    and data structures.
+//! 1. Unsafe components must not taint safe components, especially for public
+//!    APIs and data structures.
 //! 2. Unsafe components should be as small as possible and decoupled from safe
 //!    components.
-//! 3. Unsafe components should be explicitly marked during deployment and ready to
-//!    upgrade.
+//! 3. Unsafe components should be explicitly marked during deployment and ready
+//!    to upgrade.
 //!
 //! ## Feature highlights
 //!
 //!  * **Memory safety**. MesaLink and its dependencies are written in
 //!    [Rust](https://www.rust-lang.org), a programming language that guarantees
-//!    memory safety. This extremely reduces attack surfaces of an TLS stack exposed
-//!    in the wild, leaving the remaining attack surfaces auditable and restricted.
-//!  * **Flexibility**. MesaLink offers flexible configurations tailored to various
-//!    needs, for example IoT, connected home, automobiles, the cloud and more.
-//!  * **Simplicity**. MesaLink does not support obselete or legacy TLS features, in
-//!    case that misconfigurations introduce vulnerabilities.
-//!  * **Compatibility**. MesaLink provides OpenSSL-compatible APIs. This makes it a
-//!    breeze to port an existing OpenSSL project.
+//!    memory safety. This extremely reduces attack surfaces of an TLS stack
+//!    exposed in the wild, leaving the remaining attack surfaces auditable and
+//!    restricted.
+//!  * **Flexibility**. MesaLink offers flexible configurations tailored to
+//!    various needs, for example IoT, connected home, automobiles, the cloud
+//!    and more.
+//!  * **Simplicity**. MesaLink does not support obselete or legacy TLS
+//!    features, in case that misconfigurations introduce vulnerabilities.
+//!  * **Compatibility**. MesaLink provides OpenSSL-compatible APIs. This makes
+//!    it a breeze to port an existing OpenSSL project.
 //!  * **Future proof**. MesaLink will support quantum-safe ciphersuites,
 //!    safe-guarding TLS connections against even quantum computers.
 //!
-//! MesaLink depends on two Rust crates: [rustls](https://github.com/ctz/rustls) and
-//! [ring](https://github.com/briansmith/ring). With them, MesaLink provides the
-//! following features that are considered secure for most use cases:
+//! MesaLink depends on two Rust crates: [rustls](https://github.com/ctz/rustls)
+//! and [ring](https://github.com/briansmith/ring). With them, MesaLink provides
+//! the following features that are considered secure for most use cases:
 //!
 //! * TLS 1.2 and TLS 1.3 draft 22
 //! * ALPN and SNI support
@@ -58,27 +60,30 @@
 //!
 //! ## Dodged bullets
 //!
-//! This section lists a few vulnerabilities that affected other TLS libraries in
-//! 2017 but will not be possible in MesaLink.
+//! This section lists a few vulnerabilities that affected other TLS libraries
+//! in 2017 but will not be possible in MesaLink.
 //!
 //! * [CVE-2017-3730](https://www.cvedetails.com/cve/CVE-2017-3730/): In OpenSSL
-//!   1.1.0 before 1.1.0d, if a malicious server supplies bad parameters for a DHE
-//!   or ECDHE key exchange then this can result in the client attempting to
-//!   dereference a NULL pointer leading to a client crash. This could be exploited
-//!   in a Denial of Service attack.
-//! * [CVE-2017-3735](https://www.cvedetails.com/cve/CVE-2017-3735/): While OpenSSL
-//!   parses an IPAddressFamily extension in an X.509 certificate, it is possible to
-//!   do a one-byte overread.
-//! * [CVE-2017-2784](https://www.cvedetails.com/cve/CVE-2017-2784/): An exploitable
-//!   free of a stack pointer vulnerability exists in the x509 certificate parsing
-//!   code of ARM mbed TLS before 1.3.19, 2.x before 2.1.7, and 2.4.x before 2.4.2.
-//! * [CVE-2017-2800](https://www.cvedetails.com/cve/CVE-2017-2800/): A specially
-//!   crafted x509 certificate can cause a single out of bounds byte overwrite in
-//!   wolfSSL through 3.10.2 resulting in potential certificate validation
-//!   vulnerabilities, denial of service and possible remote code execution.
-//! * [CVE-2017-8854](https://www.cvedetails.com/cve/CVE-2017-8854/): wolfSSL before
-//!   3.10.2 has an out-of-bounds memory access with loading crafted DH parameters,
-//!   aka a buffer overflow triggered by a malformed temporary DH file.
+//!   1.1.0 before 1.1.0d, if a malicious server supplies bad parameters for a
+//!   DHE or ECDHE key exchange then this can result in the client attempting to
+//!   dereference a NULL pointer leading to a client crash. This could be
+//!   exploited in a Denial of Service attack.
+//! * [CVE-2017-3735](https://www.cvedetails.com/cve/CVE-2017-3735/): While
+//!   OpenSSL parses an IPAddressFamily extension in an X.509 certificate, it is
+//!   possible to do a one-byte overread.
+//! * [CVE-2017-2784](https://www.cvedetails.com/cve/CVE-2017-2784/): An
+//!   exploitable free of a stack pointer vulnerability exists in the x509
+//!   certificate parsing code of ARM mbed TLS before 1.3.19, 2.x before 2.1.7,
+//!   and 2.4.x before 2.4.2.
+//! * [CVE-2017-2800](https://www.cvedetails.com/cve/CVE-2017-2800/): A
+//!   specially crafted x509 certificate can cause a single out of bounds byte
+//!   overwrite in wolfSSL through 3.10.2 resulting in potential certificate
+//!   validation vulnerabilities, denial of service and possible remote code
+//!   execution.
+//! * [CVE-2017-8854](https://www.cvedetails.com/cve/CVE-2017-8854/): wolfSSL
+//!   before 3.10.2 has an out-of-bounds memory access with loading crafted DH
+//!   parameters, aka a buffer overflow triggered by a malformed temporary DH
+//!   file.
 //!
 //! ## Building the MesaLink library from source
 //!
@@ -121,9 +126,9 @@
 //! $ ./autogen.sh [OPTIONS]
 //! ```text
 //!
-//! By default, `autogen.sh` generates the `configure` script and runs it with the
-//! default configuration. A non-exhaustive list of options that can be passed to
-//! either of these scripts are shown as follows:
+//! By default, `autogen.sh` generates the `configure` script and runs it with
+//! the default configuration. A non-exhaustive list of options that can be
+//! passed to either of these scripts are shown as follows:
 //!
 //! ```text
 //!   --prefix=PREFIX         install architecture-independent files in PREFIX
@@ -148,7 +153,8 @@
 //!                           verification (default: enabled)
 //! ```text
 //!
-//! At the end of the configuration, a configuration summary is shown. For example,
+//! At the end of the configuration, a configuration summary is shown. For
+//! example,
 //!
 //! ```text
 //! Configuration summary for mesalink version 0.1.0
@@ -209,11 +215,11 @@
 //! ```text
 //!
 //! The server example comes with a pair of certificate and private key. The
-//! certificate file is in the PEM format and contains a chain of certificates from
-//! the server's certificate to the root CA certificate. The private key file
-//! contains a PKCS8-encoded private key in the PEM format. Once the server is up
-//! and running, open [https://127.0.0.1:8443](https://127.0.0.1:8443) and expect to
-//! see the hello message.
+//! certificate file is in the PEM format and contains a chain of certificates
+//! from the server's certificate to the root CA certificate. The private key
+//! file contains a PKCS8-encoded private key in the PEM format. Once the server
+//! is up and running, open [https://127.0.0.1:8443](https://127.0.0.1:8443) and
+//! expect to see the hello message.
 //!
 //! ```text
 //! $ ./examples/server/server
@@ -244,13 +250,26 @@
 //! $ make && make install
 //! ```text
 //!
-//! We have tested git 2.16.2 linked with MesaLink-powered libcurl and everything goes
-//! well!
+//! We have tested git 2.16.2 linked with MesaLink-powered libcurl and
+//! everything goes well!
+//!
+//! ## Unit tests
+//! MesaLink uses cargo for unit tests. The test cases are designed for the the
+//! default configuration of MesaLink, in which all the optional features
+//! are enabled. So before running the test cases, please rebuild MesaLink
+//! with the default configuration:
+//!
+//! ```text
+//! $ ./configure
+//! $ make
+//! $ cargo test
+//! ```text
 //!
 //! ## BoringSSL SSL tests
-//! [BoGo](https://github.com/google/boringssl/tree/master/ssl/test) is BoringSSL's
-//! protocol level test suite. We have ported BoGo for testing the functionality and
-//! compatibility of MesaLink. To run BoGo test cases, run the following:
+//! [BoGo](https://github.com/google/boringssl/tree/master/ssl/test) is
+//! BoringSSL's protocol level test suite. We have ported BoGo for testing the
+//! functionality and compatibility of MesaLink. To run BoGo test cases, run the
+//! following:
 //!
 //! ```text
 //! $ cargo build --release --examples
@@ -262,8 +281,8 @@
 //! [**Ring**](https://github.com/briansmith/ring), a safe and fast crypto using
 //! Rust. To evaluate the speed and throughput of MesaLink, we developed new
 //! benchmarks for OpenSSL and wolfSSL based on the
-//! [crypto-bench](https://github.com/briansmith/crypto-bench) project. A summary of
-//! the available benchmarks is shown as follows:
+//! [crypto-bench](https://github.com/briansmith/crypto-bench) project. A
+//! summary of the available benchmarks is shown as follows:
 //!
 //!
 //! | Benchmark                           | Ring | OpenSSL/LibreSSL | wolfSSL |
@@ -274,8 +293,8 @@
 //! | ECDH (suite B) key exchange         |  ✔️   |                  |         |
 //! | X25519 (Curve25519) key exchange    |  ✔️   |                  |         |
 //!
-//! To run the benchmarks, run the following. Note you must have OpenSSL/LibreSSL or
-//! wolfSSL installed to run the corresponding benchmarks.
+//! To run the benchmarks, run the following. Note you must have
+//! OpenSSL/LibreSSL or wolfSSL installed to run the corresponding benchmarks.
 //!
 //! ```text
 //! $ git clone https://github.com/kevinis/crypto-bench.git
@@ -290,8 +309,8 @@
 //!  * Yiming Jing <jingyiming@baidu.com>
 //!
 //! ## License
-//! MesaLink is provided under the 3-Clause BSD license. For a copy, see the LICENSE
-//! file.
+//! MesaLink is provided under the 3-Clause BSD license. For a copy, see the
+//! LICENSE file.
 
 
 #![deny(trivial_numeric_casts, unstable_features, unused_qualifications)]

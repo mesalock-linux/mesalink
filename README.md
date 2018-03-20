@@ -232,6 +232,18 @@ $ make && make install
 We have tested git 2.16.2 linked with MesaLink-powered libcurl and everything goes
 well!
 
+## Unit tests
+MesaLink uses cargo for unit tests. The test cases are designed for the the
+default configuration of MesaLink, in which all the optional features are
+enabled. So before running the test cases, please rebuild MesaLink with the
+default configuration:
+
+```
+$ ./configure
+$ make
+$ cargo test
+```
+
 ## BoringSSL SSL tests
 [BoGo](https://github.com/google/boringssl/tree/master/ssl/test) is BoringSSL's
 protocol level test suite. We have ported BoGo for testing the functionality and

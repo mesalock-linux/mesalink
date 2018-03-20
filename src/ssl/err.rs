@@ -158,6 +158,7 @@ thread_local! {
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "error_strings", derive(EnumToStr))]
+#[cfg_attr(feature = "error_strings", derive(Debug))]
 pub enum ErrorCode {
     // OpenSSL error codes
     MesalinkErrorNone = 0,
