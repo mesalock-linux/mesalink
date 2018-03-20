@@ -1732,6 +1732,14 @@ mod tests {
                 _ => (),
             };
 
+            let ssl_version_ptr = mesalink_SSL_get_version(ssl);
+            let ssl_version = unsafe { ffi::CStr::from_ptr(ssl_version_ptr).to_str().unwrap() };
+            match version {
+                &TlsVersion::Tlsv12 => assert_eq!(ssl_version, "TLS1.2"),
+                &TlsVersion::Tlsv13 => assert_eq!(ssl_version, "TLS1.3"),
+                _ => (),
+            };
+
             let mut cipher_bits: c_int = 0;
             assert_eq!(
                 SSL_SUCCESS,
@@ -1950,6 +1958,20 @@ mod tests {
         mesalink_SSL_free(ssl_ptr);
         mesalink_SSL_CTX_free(ctx_ptr_2);
         mesalink_SSL_CTX_free(ctx_ptr);
+    }
+
+    #[test]
+    fn dummy_openssl_compatible_apis_always_return_success() {
+        assert_eq!(SSL_SUCCESS, mesalink_library_init());
+        assert_eq!(SSL_SUCCESS, mesalink_add_ssl_algorithms());
+        assert_eq!((), mesalink_SSL_load_error_strings());
+    }
+
+    #[test]
+    fn mesalink_ssl_set_null_host_name() {
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLSv1_2_client_method());
+        let ssl_ptr = mesalink_SSL_new(ctx_ptr);
+        assert_ne!(SSL_SUCCESS, mesalink_SSL_set_tlsext_host_name(ssl_ptr, ptr::null() as *const c_char));
     }
 
 }

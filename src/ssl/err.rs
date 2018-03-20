@@ -1230,11 +1230,10 @@ mod tests {
 
     #[test]
     fn err_print_errors_fp() {
-        use std::fs;
+        use std::io;
         use std::os::unix::io::AsRawFd;
         ErrorQueue::push_error(ErrorCode::MesalinkErrorSsl);
-        let f = fs::File::open("/dev/null").expect("open error");
-        let fd = f.as_raw_fd();
+        let fd = io::stderr().as_raw_fd();
         let mode = b"wb\0".as_ptr() as *const c_char;
         let file = unsafe { libc::fdopen(fd, mode) };
         mesalink_ERR_print_errors_fp(file);
