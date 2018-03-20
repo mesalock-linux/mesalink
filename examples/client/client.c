@@ -91,22 +91,27 @@ int main(int argc, char *argv[]) {
             total_recvlen += strlen(recvbuf);
             printf("%s", recvbuf);
         };
-        const char *tls_version;
-        if ((tls_version = SSL_get_version(ssl))) {
-            printf("[+] TLS protocol version: %s\n", tls_version);
+        if (total_recvlen > 0) {
+            const char *tls_version;
+            if ((tls_version = SSL_get_version(ssl))) {
+                printf("[+] TLS protocol version: %s\n", tls_version);
+            }
+            int cipher_bits = 0;
+            SSL_get_cipher_bits(ssl, &cipher_bits);
+            printf("[+] Negotiated ciphersuite: %s, enc_length=%d, version=%s\n",
+                SSL_get_cipher_name(ssl), cipher_bits,
+                SSL_get_cipher_version(ssl));
+            printf("\n[+] Received %d bytes\n", total_recvlen);
+            SSL_free(ssl);
+        } else {
+            fprintf(stderr, "[-] Got nothing\n");
         }
-        int cipher_bits = 0;
-        SSL_get_cipher_bits(ssl, &cipher_bits);
-        printf("[+] Negotiated ciphersuite: %s, enc_length=%d, version=%s\n",
-               SSL_get_cipher_name(ssl), cipher_bits,
-               SSL_get_cipher_version(ssl));
-        printf("\n[+] Received %d bytes\n", total_recvlen);
-        SSL_free(ssl);
     } else {
         fprintf(stderr, "[-] Socket not connected");
         ERR_print_errors_fp(stderr);
         return -1;
     }
+    ERR_print_errors_fp(stderr);
     close(sockfd);
     SSL_CTX_free(ctx);
     return 0;

@@ -158,7 +158,6 @@ thread_local! {
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "error_strings", derive(EnumToStr))]
-#[cfg_attr(feature = "error_strings", derive(Debug))]
 pub enum ErrorCode {
     // OpenSSL error codes
     MesalinkErrorNone = 0,
@@ -778,21 +777,24 @@ pub extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
     if fp.is_null() {
         return;
     }
-    use std::thread;
+    use std::{fs, str, thread};
+    use std::os::unix::io::FromRawFd;
+    use std::io::Write;
+
     let tid = thread::current().id();
+    let fd = unsafe { libc::fileno(fp) };
+    let mut file = unsafe { fs::File::from_raw_fd(fd) };
+
     ERROR_QUEUE.with(|f| {
         let mut queue = f.borrow_mut();
-        for err in queue.drain(0..) {
-            let description_c = err.as_u8_slice();
-            let _ = unsafe {
-                libc::fprintf(
-                    fp,
-                    b"[thread: %u]:[error code: 0x%x]:[%s]\n\0".as_ptr() as *const c_char,
-                    tid,
-                    err as c_ulong,
-                    description_c,
-                )
-            };
+        for error in queue.drain(0..) {
+            let buf = format!(
+                "[{:?}]:[error code: 0x{:X}]:[ {} ]\n\0",
+                tid,
+                error as c_ulong,
+                str::from_utf8(error.as_u8_slice()).unwrap(),
+            );
+            let _ = file.write(buf.as_bytes());
         }
     });
 }

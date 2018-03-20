@@ -314,7 +314,6 @@ impl<'a> Read for MESALINK_SSL<'a> {
                                 } else {
                                     self.error = ErrorCode::from(&e);
                                 }
-                                println!("Read error: {:?}", e);
                                 ErrorQueue::push_error(self.error);
                                 return Err(e);
                             }
@@ -1050,7 +1049,7 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_name(cipher_ptr: *mut MESALINK_CIPHER)
 fn inner_mesalink_ssl_cipher_get_name(
     cipher_ptr: *mut MESALINK_CIPHER,
 ) -> Result<*const c_char, ErrorCode> {
-    let _ = sanitize_ptr_for_ref(cipher_ptr).map_err(|| CONST_NONE_STR.as_ptr() as *const c_char)?;
+    let _ = sanitize_ptr_for_ref(cipher_ptr)?;
     Ok(CONST_NOTBUILTIN_STR.as_ptr() as *const c_char)
 }
 
