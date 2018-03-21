@@ -70,11 +70,18 @@ int main(int argc, char *argv[]) {
         ERR_print_errors_fp(stderr);
         return -1;
     }
-    if (SSL_set_tlsext_host_name(ssl, hostname) != SSL_SUCCESS) {
+
+    char* hostname_buf = malloc(256*sizeof(char));
+    strncpy(hostname_buf, hostname, strlen(hostname));
+
+    if (SSL_set_tlsext_host_name(ssl, hostname_buf) != SSL_SUCCESS) {
         fprintf(stderr, "[-] SSL set hostname failed\n");
         ERR_print_errors_fp(stderr);
         return -1;
     }
+
+    free(hostname_buf);
+
     if (SSL_set_fd(ssl, sockfd) != SSL_SUCCESS) {
         fprintf(stderr, "[-] SSL set fd failed\n");
         ERR_print_errors_fp(stderr);

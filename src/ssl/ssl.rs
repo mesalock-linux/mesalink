@@ -237,26 +237,26 @@ impl<'a> MESALINK_CTX {
 /// Pass a valid `SSL_CTX` object to `SSL_new` to create a new `SSL` object.
 /// Then associate a valid socket file descriptor with `SSL_set_fd`.
 #[repr(C)]
-pub struct MESALINK_SSL<'a> {
+pub struct MESALINK_SSL {
     magic: [u8; MAGIC_SIZE],
     context: Option<MESALINK_CTX_ARC>,
     client_config: Arc<rustls::ClientConfig>,
     server_config: Arc<rustls::ServerConfig>,
-    hostname: Option<webpki::DNSNameRef<'a>>,
+    hostname: Option<String>,
     io: Option<net::TcpStream>,
     session: Option<Box<Session>>,
     error: ErrorCode,
     eof: bool,
 }
 
-impl<'a> MesalinkOpaquePointerType for MESALINK_SSL<'a> {
+impl<'a> MesalinkOpaquePointerType for MESALINK_SSL {
     fn check_magic(&self) -> bool {
         self.magic == *MAGIC
     }
 }
 
-impl<'a> MESALINK_SSL<'a> {
-    fn new(ctx: &'a MESALINK_CTX_ARC) -> MESALINK_SSL<'a> {
+impl MESALINK_SSL {
+    fn new(ctx: &MESALINK_CTX_ARC) -> MESALINK_SSL {
         MESALINK_SSL {
             magic: *MAGIC,
             context: Some(ctx.clone()), // reference count +1
@@ -272,7 +272,7 @@ impl<'a> MESALINK_SSL<'a> {
 }
 
 #[doc(hidden)]
-impl<'a> Read for MESALINK_SSL<'a> {
+impl Read for MESALINK_SSL {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => loop {
@@ -351,7 +351,7 @@ impl<'a> Read for MESALINK_SSL<'a> {
 }
 
 #[doc(hidden)]
-impl<'a> Write for MESALINK_SSL<'a> {
+impl Write for MESALINK_SSL {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => {
@@ -922,13 +922,13 @@ fn inner_mesalink_ssl_ctx_set_verify(
 /// SSL *SSL_new(SSL_CTX *ctx);
 /// ```text
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_new<'a>(ctx_ptr: *mut MESALINK_CTX_ARC) -> *mut MESALINK_SSL<'a> {
+pub extern "C" fn mesalink_SSL_new<'a>(ctx_ptr: *mut MESALINK_CTX_ARC) -> *mut MESALINK_SSL {
     check_inner_result_for_mut_ptr(inner_mesalink_ssl_new(ctx_ptr))
 }
 
 fn inner_mesalink_ssl_new<'a>(
     ctx_ptr: *mut MESALINK_CTX_ARC,
-) -> Result<*mut MESALINK_SSL<'a>, ErrorCode> {
+) -> Result<*mut MESALINK_SSL, ErrorCode> {
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     Ok(Box::into_raw(Box::new(MESALINK_SSL::new(ctx))))
 }
@@ -964,15 +964,15 @@ fn inner_mesalink_ssl_get_ssl_ctx(
 /// SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx);
 /// ```text
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_set_SSL_CTX<'a>(
-    ssl_ptr: *mut MESALINK_SSL<'a>,
+pub extern "C" fn mesalink_SSL_set_SSL_CTX(
+    ssl_ptr: *mut MESALINK_SSL,
     ctx_ptr: *mut MESALINK_CTX_ARC,
 ) -> *const MESALINK_CTX_ARC {
     check_inner_result_for_const_ptr(inner_mesalink_ssl_set_ssl_ctx(ssl_ptr, ctx_ptr))
 }
 
-fn inner_mesalink_ssl_set_ssl_ctx<'a>(
-    ssl_ptr: *mut MESALINK_SSL<'a>,
+fn inner_mesalink_ssl_set_ssl_ctx(
+    ssl_ptr: *mut MESALINK_SSL,
     ctx_ptr: *mut MESALINK_CTX_ARC,
 ) -> Result<*const MESALINK_CTX_ARC, ErrorCode> {
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
@@ -1215,9 +1215,7 @@ fn inner_mesalink_ssl_set_tlsext_host_name(
             .to_str()
             .map_err(|_| ErrorCode::MesalinkErrorBadFuncArg)?
     };
-    let dnsname = webpki::DNSNameRef::try_from_ascii_str(hostname)
-        .map_err(|_| ErrorCode::MesalinkErrorBadFuncArg)?;
-    ssl.hostname = Some(dnsname);
+    ssl.hostname = Some(hostname.to_owned());
     Ok(SSL_SUCCESS)
 }
 
@@ -1278,8 +1276,12 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 
 fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> Result<c_int, ErrorCode> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
-    let hostname = ssl.hostname.ok_or(ErrorCode::MesalinkErrorBadFuncArg)?;
-    let mut session = rustls::ClientSession::new(&ssl.client_config, hostname);
+    let hostname = ssl.hostname
+        .as_ref()
+        .ok_or(ErrorCode::MesalinkErrorBadFuncArg)?;
+    let dnsname = webpki::DNSNameRef::try_from_ascii_str(hostname)
+        .map_err(|_| ErrorCode::MesalinkErrorBadFuncArg)?;
+    let mut session = rustls::ClientSession::new(&ssl.client_config, dnsname);
     session
         .process_new_packets()
         .map_err(|e| ErrorCode::from(&e))?;
