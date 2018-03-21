@@ -709,9 +709,16 @@ pub struct ErrorQueue {}
 
 impl ErrorQueue {
     pub fn push_error<'a>(e: ErrorCode, origin_func: &'a str) {
+        use std::str;
         ERROR_QUEUE.with(|q| {
             if e != ErrorCode::MesalinkErrorNone {
-                q.borrow_mut().push_back((e, origin_func.to_string()));
+                let error_string = format!(
+                    "error:[0x{:X}]:[mesalink]:[{}]:[{}]\n",
+                    e as c_ulong,
+                    &origin_func,
+                    str::from_utf8(e.as_u8_slice()).unwrap(),
+                );
+                q.borrow_mut().push_back((e, error_string));
             }
         });
     }
@@ -775,13 +782,12 @@ pub extern "C" fn mesalink_ERR_clear_error() {
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
-    use std::{fs, str, thread};
+    use std::fs;
     use std::os::unix::io::FromRawFd;
     use std::io::Write;
     if fp.is_null() {
         return;
     }
-    let tid = thread::current().id();
     let fd = unsafe { libc::fileno(fp) };
     if fd < 0 {
         return;
@@ -789,15 +795,8 @@ pub extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
     let mut file = unsafe { fs::File::from_raw_fd(fd) };
     ERROR_QUEUE.with(|q| {
         let mut queue = q.borrow_mut();
-        for (error, origin_func) in queue.drain(0..) {
-            let buf = format!(
-                "[{:?}]:[error code: 0x{:X}]:[ {} ]:[ {} ]\n\0",
-                tid,
-                error as c_ulong,
-                str::from_utf8(error.as_u8_slice()).unwrap(),
-                &origin_func
-            );
-            let _ = file.write(buf.as_bytes());
+        for (_, error_string) in queue.drain(0..) {
+            let _ = file.write(error_string.as_bytes());
         }
     });
 }

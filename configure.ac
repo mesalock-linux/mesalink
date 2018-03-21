@@ -197,6 +197,14 @@ else
     CONFIG_OPTIONS="$CONFIG_OPTIONS NO_ECDSA"
 fi
 
+IS_NIGHTLY=$( rustc --version | grep nightly )
+RUST_IS_NIGHTLY="no"
+if test "x$IS_NIGHTLY" != "x"
+then
+    RUST_IS_NIGHTLY="yes"
+    CARGO_FEATURES=$CARGO_FEATURES" nightly"
+fi
+
 CARGO_FEATURES=$CARGO_FEATURES" verifier"
 CARGO_FEATURES=$CARGO_FEATURES"\""
 
@@ -266,6 +274,7 @@ echo "   * C Compiler:                 $CC"
 echo "   * C Compiler vendor:          $ax_cv_c_compiler_vendor"
 echo "   * C Flags:                    $CFLAGS"
 echo "   * Debug enabled:              $ax_enable_debug"
+echo "   * Nightly Rust:               $RUST_IS_NIGHTLY"
 echo "   * Examples:                   $ENABLE_EXAMPLES"
 echo
 echo "   Features "
