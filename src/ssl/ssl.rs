@@ -48,6 +48,29 @@ use std::os::unix::io::{AsRawFd, FromRawFd};
 use ring::rand::SecureRandom;
 use rustls::Session;
 
+#[macro_use]
+mod macros {
+    #[cfg(all(feature = "nightly", feature = "error_strings"))]
+    macro_rules! call_site {
+        () => {{
+            fn f() {}
+            fn type_name_of<T>(_: T) -> &'static str {
+                extern crate core;
+                unsafe { core::intrinsics::type_name::<T>() }
+            }
+            let name = type_name_of(f);
+            &name[6..name.len() - 4]
+        }};
+    }
+
+    #[cfg(not(all(feature = "nightly", feature = "error_strings")))]
+    macro_rules! call_site {
+        () => {{
+            "call_site information not enabled"
+        }};
+    }
+}
+
 const MAGIC_SIZE: usize = 4;
 lazy_static! {
     static ref MAGIC: [u8; MAGIC_SIZE] = {
@@ -292,7 +315,7 @@ impl Read for MESALINK_SSL {
                                 } else {
                                     self.error = ErrorCode::from(&e);
                                 }
-                                ErrorQueue::push_error(self.error, callsite!());
+                                ErrorQueue::push_error(self.error, call_site!());
                                 return Err(e);
                             }
                         }
@@ -304,7 +327,7 @@ impl Read for MESALINK_SSL {
                                     return Ok(0); // EOF
                                 } else {
                                     self.error = ErrorCode::IoErrorUnexpectedEof;
-                                    ErrorQueue::push_error(self.error, callsite!());
+                                    ErrorQueue::push_error(self.error, call_site!());
                                     return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
                                 }
                             }
@@ -314,7 +337,7 @@ impl Read for MESALINK_SSL {
                                 } else {
                                     self.error = ErrorCode::from(&e);
                                 }
-                                ErrorQueue::push_error(self.error, callsite!());
+                                ErrorQueue::push_error(self.error, call_site!());
                                 return Err(e);
                             }
                             Ok(_) => if let Err(tls_err) = session.process_new_packets() {
@@ -322,13 +345,13 @@ impl Read for MESALINK_SSL {
                                     let _ = session.write_tls(io);
                                 }
                                 self.error = ErrorCode::from(&tls_err);
-                                ErrorQueue::push_error(self.error, callsite!());
+                                ErrorQueue::push_error(self.error, call_site!());
                                 return Err(io::Error::new(io::ErrorKind::InvalidData, tls_err));
                             },
                         }
                     } else {
                         self.error = ErrorCode::MesalinkErrorZeroReturn;
-                        ErrorQueue::push_error(self.error, callsite!());
+                        ErrorQueue::push_error(self.error, call_site!());
                         return Ok(0);
                     },
                     Ok(n) => {
@@ -337,13 +360,13 @@ impl Read for MESALINK_SSL {
                     }
                     Err(e) => {
                         self.error = ErrorCode::from(&e);
-                        ErrorQueue::push_error(self.error, callsite!());
+                        ErrorQueue::push_error(self.error, call_site!());
                         return Err(e);
                     }
                 }
             },
             _ => {
-                ErrorQueue::push_error(ErrorCode::IoErrorInvalidInput, callsite!());
+                ErrorQueue::push_error(ErrorCode::IoErrorInvalidInput, call_site!());
                 Err(io::Error::from(io::ErrorKind::Other))
             }
         }
@@ -360,7 +383,7 @@ impl Write for MESALINK_SSL {
                 Ok(len)
             }
             _ => {
-                ErrorQueue::push_error(ErrorCode::MesalinkErrorNullPointer, callsite!());
+                ErrorQueue::push_error(ErrorCode::MesalinkErrorNullPointer, call_site!());
                 Err(io::Error::from(io::ErrorKind::Other))
             }
         }
@@ -374,7 +397,7 @@ impl Write for MESALINK_SSL {
                 ret
             }
             _ => {
-                ErrorQueue::push_error(ErrorCode::MesalinkErrorNullPointer, callsite!());
+                ErrorQueue::push_error(ErrorCode::MesalinkErrorNullPointer, call_site!());
                 Err(io::Error::from(io::ErrorKind::Other))
             }
         }
@@ -445,7 +468,7 @@ fn check_inner_result_for_int(ret: Result<c_int, ErrorCode>) -> c_int {
         Err(e) => if e == ErrorCode::MesalinkErrorNone {
             SSL_SUCCESS
         } else {
-            ErrorQueue::push_error(e, callsite!());
+            ErrorQueue::push_error(e, call_site!());
             SSL_FAILURE
         },
     }
@@ -456,7 +479,7 @@ fn check_inner_result_for_mut_ptr<T>(ret: Result<*mut T, ErrorCode>) -> *mut T {
     match ret {
         Ok(ptr) => ptr,
         Err(e) => {
-            ErrorQueue::push_error(e, callsite!());
+            ErrorQueue::push_error(e, call_site!());
             ptr::null_mut()
         }
     }
@@ -467,7 +490,7 @@ fn check_inner_result_for_const_ptr<T>(ret: Result<*const T, ErrorCode>) -> *con
     match ret {
         Ok(ptr) => ptr,
         Err(e) => {
-            ErrorQueue::push_error(e, callsite!());
+            ErrorQueue::push_error(e, call_site!());
             ptr::null()
         }
     }
@@ -1400,7 +1423,7 @@ pub extern "C" fn mesalink_SSL_read(
     buf_len: c_int,
 ) -> c_int {
     if buf_ptr.is_null() || buf_len < 0 {
-        ErrorQueue::push_error(ErrorCode::MesalinkErrorBadFuncArg, callsite!());
+        ErrorQueue::push_error(ErrorCode::MesalinkErrorBadFuncArg, call_site!());
         return SSL_FAILURE;
     }
     match sanitize_ptr_for_mut_ref(ssl_ptr) {
@@ -1434,7 +1457,7 @@ pub extern "C" fn mesalink_SSL_write(
     buf_len: c_int,
 ) -> c_int {
     if buf_ptr.is_null() || buf_len < 0 {
-        ErrorQueue::push_error(ErrorCode::MesalinkErrorBadFuncArg, callsite!());
+        ErrorQueue::push_error(ErrorCode::MesalinkErrorBadFuncArg, call_site!());
         return SSL_FAILURE;
     }
     match sanitize_ptr_for_mut_ref(ssl_ptr) {
@@ -1444,11 +1467,11 @@ pub extern "C" fn mesalink_SSL_write(
                 Ok(count) => count as c_int,
                 Err(e) => match e.kind() {
                     io::ErrorKind::WouldBlock => {
-                        ErrorQueue::push_error(ErrorCode::MesalinkErrorWantWrite, callsite!());
+                        ErrorQueue::push_error(ErrorCode::MesalinkErrorWantWrite, call_site!());
                         SSL_ERROR
                     }
                     _ => {
-                        ErrorQueue::push_error(ErrorCode::from(&e), callsite!());
+                        ErrorQueue::push_error(ErrorCode::from(&e), call_site!());
                         SSL_FAILURE
                     }
                 },
@@ -1591,32 +1614,6 @@ mod util {
 
     pub fn get_context_mut(ctx: &mut ssl::MESALINK_CTX_ARC) -> &mut ssl::MESALINK_CTX {
         Arc::make_mut(ctx)
-    }
-}
-
-#[macro_use]
-mod macros {
-    #[cfg(all(feature = "nightly", feature = "error_strings"))]
-    macro_rules! callsite {
-        () => {{
-            fn f() {}
-            fn type_name_of<T>(_: T) -> &'static str {
-                extern crate core;
-                unsafe { core::intrinsics::type_name::<T>() }
-            }
-            let name = type_name_of(f);
-            &name[6..name.len() - 4]
-        }};
-    }
-
-    #[cfg(not(all(feature = "nightly", feature = "error_strings")))]
-    const NO_CALLSITE: &'static str = "callsite information not enabled";
-
-    #[cfg(not(all(feature = "nightly", feature = "error_strings")))]
-    macro_rules! callsite {
-        () => {{
-            NO_CALLSITE
-        }};
     }
 }
 

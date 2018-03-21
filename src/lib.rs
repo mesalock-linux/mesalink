@@ -312,8 +312,8 @@
 //! MesaLink is provided under the 3-Clause BSD license. For a copy, see the
 //! LICENSE file.
 
-#![cfg(feature = "nightly")]
-#![feature(core_intrinsics)]
+//#![cfg(feature = "nightly")]
+//#![feature(core_intrinsics)]
 
 #![deny(trivial_numeric_casts, unused_qualifications)]
 #![forbid(anonymous_parameters, unused_extern_crates, unused_import_braces, unused_results,

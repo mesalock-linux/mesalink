@@ -708,14 +708,14 @@ pub extern "C" fn mesalink_ERR_reason_error_string(e: c_ulong) -> *const c_char 
 pub struct ErrorQueue {}
 
 impl ErrorQueue {
-    pub fn push_error<'a>(e: ErrorCode, origin_func: &'a str) {
+    pub fn push_error<'a>(e: ErrorCode, call_site: &'static str) {
         use std::str;
         ERROR_QUEUE.with(|q| {
             if e != ErrorCode::MesalinkErrorNone {
                 let error_string = format!(
                     "error:[0x{:X}]:[mesalink]:[{}]:[{}]\n",
                     e as c_ulong,
-                    &origin_func,
+                    &call_site,
                     str::from_utf8(e.as_u8_slice()).unwrap(),
                 );
                 q.borrow_mut().push_back((e, error_string));
