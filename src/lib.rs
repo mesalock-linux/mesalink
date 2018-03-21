@@ -312,8 +312,9 @@
 //! MesaLink is provided under the 3-Clause BSD license. For a copy, see the
 //! LICENSE file.
 
+#![feature(core_intrinsics)]
 
-#![deny(trivial_numeric_casts, unstable_features, unused_qualifications)]
+#![deny(trivial_numeric_casts, unused_qualifications)]
 #![forbid(anonymous_parameters, unused_extern_crates, unused_import_braces, unused_results,
           variant_size_differences, warnings)]
 

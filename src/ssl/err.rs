@@ -151,7 +151,7 @@ use webpki;
 use std::cell::RefCell;
 use std::collections::VecDeque;
 thread_local! {
-    static ERROR_QUEUE: RefCell<VecDeque<ErrorCode>> = RefCell::new(VecDeque::new());
+    static ERROR_QUEUE: RefCell<VecDeque<(ErrorCode, String)>> = RefCell::new(VecDeque::new());
 }
 
 #[doc(hidden)]
@@ -708,10 +708,10 @@ pub extern "C" fn mesalink_ERR_reason_error_string(e: c_ulong) -> *const c_char 
 pub struct ErrorQueue {}
 
 impl ErrorQueue {
-    pub fn push_error(e: ErrorCode) {
-        ERROR_QUEUE.with(|f| {
+    pub fn push_error<'a>(e: ErrorCode, origin_func: &'a str) {
+        ERROR_QUEUE.with(|q| {
             if e != ErrorCode::MesalinkErrorNone {
-                f.borrow_mut().push_back(e);
+                q.borrow_mut().push_back((e, origin_func.to_string()));
             }
         });
     }
@@ -728,8 +728,8 @@ impl ErrorQueue {
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_get_error() -> c_ulong {
-    ERROR_QUEUE.with(|f| match f.borrow_mut().pop_front() {
-        Some(e) => e as c_ulong,
+    ERROR_QUEUE.with(|q| match q.borrow_mut().pop_front() {
+        Some((e, _)) => e as c_ulong,
         None => 0,
     })
 }
@@ -744,8 +744,8 @@ pub extern "C" fn mesalink_ERR_get_error() -> c_ulong {
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_peek_last_error() -> c_ulong {
-    ERROR_QUEUE.with(|f| match f.borrow().front() {
-        Some(e) => (*e) as c_ulong,
+    ERROR_QUEUE.with(|q| match q.borrow().front() {
+        Some(&(e, _)) => e as c_ulong,
         None => 0,
     })
 }
@@ -759,8 +759,8 @@ pub extern "C" fn mesalink_ERR_peek_last_error() -> c_ulong {
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_clear_error() {
-    ERROR_QUEUE.with(|f| {
-        f.borrow_mut().clear();
+    ERROR_QUEUE.with(|q| {
+        q.borrow_mut().clear();
     });
 }
 
@@ -787,14 +787,15 @@ pub extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
         return;
     }
     let mut file = unsafe { fs::File::from_raw_fd(fd) };
-    ERROR_QUEUE.with(|f| {
-        let mut queue = f.borrow_mut();
-        for error in queue.drain(0..) {
+    ERROR_QUEUE.with(|q| {
+        let mut queue = q.borrow_mut();
+        for (error, origin_func) in queue.drain(0..) {
             let buf = format!(
-                "[{:?}]:[error code: 0x{:X}]:[ {} ]\n\0",
+                "[{:?}]:[error code: 0x{:X}]:[ {} ]:[ {} ]\n\0",
                 tid,
                 error as c_ulong,
                 str::from_utf8(error.as_u8_slice()).unwrap(),
+                &origin_func
             );
             let _ = file.write(buf.as_bytes());
         }
