@@ -1213,6 +1213,8 @@ fn inner_mesalink_ssl_set_tlsext_host_name(
             .to_str()
             .map_err(|_| ErrorCode::MesalinkErrorBadFuncArg)?
     };
+    let _ = webpki::DNSNameRef::try_from_ascii_str(hostname)
+        .map_err(|_| ErrorCode::MesalinkErrorBadFuncArg)?;
     ssl.hostname = Some(hostname.to_owned());
     Ok(SSL_SUCCESS)
 }
@@ -1978,6 +1980,26 @@ mod tests {
         assert_ne!(
             SSL_SUCCESS,
             mesalink_SSL_set_tlsext_host_name(ssl_ptr, ptr::null() as *const c_char)
+        );
+    }
+
+    #[test]
+    fn mesalink_ssl_set_invalid_host_name() {
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLSv1_2_client_method());
+        let ssl_ptr = mesalink_SSL_new(ctx_ptr);
+        assert_ne!(
+            SSL_SUCCESS,
+            mesalink_SSL_set_tlsext_host_name(ssl_ptr, b"@#$%^&*(\0".as_ptr() as *const c_char)
+        );
+    }
+
+    #[test]
+    fn mesalink_ssl_set_good_host_name() {
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLSv1_2_client_method());
+        let ssl_ptr = mesalink_SSL_new(ctx_ptr);
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_set_tlsext_host_name(ssl_ptr, b"google.com\0".as_ptr() as *const c_char)
         );
     }
 
