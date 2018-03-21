@@ -342,6 +342,31 @@ extern crate lazy_static;
 #[macro_use]
 extern crate enum_to_str_derive;
 
+#[macro_use]
+mod macros {
+    #[cfg(all(feature = "nightly", feature = "error_strings"))]
+    #[macro_export]
+    macro_rules! call_site {
+        () => {{
+            fn f() {}
+            fn type_name_of<T>(_: T) -> &'static str {
+                extern crate core;
+                unsafe { core::intrinsics::type_name::<T>() }
+            }
+            let name = type_name_of(f);
+            &name[6..name.len() - 4]
+        }};
+    }
+
+    #[cfg(not(all(feature = "nightly", feature = "error_strings")))]
+    #[macro_export]
+    macro_rules! call_site {
+        () => {{
+            "call_site information not enabled"
+        }};
+    }
+}
+
 /// The ssl module is the counterpart of the OpenSSL ssl library.
 pub mod ssl;
 

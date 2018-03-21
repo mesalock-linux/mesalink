@@ -48,29 +48,6 @@ use std::os::unix::io::{AsRawFd, FromRawFd};
 use ring::rand::SecureRandom;
 use rustls::Session;
 
-#[macro_use]
-mod macros {
-    #[cfg(all(feature = "nightly", feature = "error_strings"))]
-    macro_rules! call_site {
-        () => {{
-            fn f() {}
-            fn type_name_of<T>(_: T) -> &'static str {
-                extern crate core;
-                unsafe { core::intrinsics::type_name::<T>() }
-            }
-            let name = type_name_of(f);
-            &name[6..name.len() - 4]
-        }};
-    }
-
-    #[cfg(not(all(feature = "nightly", feature = "error_strings")))]
-    macro_rules! call_site {
-        () => {{
-            "call_site information not enabled"
-        }};
-    }
-}
-
 const MAGIC_SIZE: usize = 4;
 lazy_static! {
     static ref MAGIC: [u8; MAGIC_SIZE] = {
@@ -429,7 +406,6 @@ pub enum VerifyModes {
     VerifyFailIfNoPeerCert = 2,
 }
 
-#[inline(always)]
 fn sanitize_const_ptr_for_ref<'a, T>(ptr: *const T) -> Result<&'a T, ErrorCode>
 where
     T: MesalinkOpaquePointerType,
@@ -438,7 +414,6 @@ where
     sanitize_ptr_for_mut_ref(ptr).map(|r| r as &'a T)
 }
 
-#[inline(always)]
 fn sanitize_ptr_for_ref<'a, T>(ptr: *mut T) -> Result<&'a T, ErrorCode>
 where
     T: MesalinkOpaquePointerType,
@@ -446,7 +421,6 @@ where
     sanitize_ptr_for_mut_ref(ptr).map(|r| r as &'a T)
 }
 
-#[inline(always)]
 fn sanitize_ptr_for_mut_ref<'a, T>(ptr: *mut T) -> Result<&'a mut T, ErrorCode>
 where
     T: MesalinkOpaquePointerType,
@@ -461,7 +435,6 @@ where
     Ok(obj_ref)
 }
 
-#[inline(always)]
 fn check_inner_result_for_int(ret: Result<c_int, ErrorCode>) -> c_int {
     match ret {
         Ok(r) => r,
@@ -474,7 +447,6 @@ fn check_inner_result_for_int(ret: Result<c_int, ErrorCode>) -> c_int {
     }
 }
 
-#[inline(always)]
 fn check_inner_result_for_mut_ptr<T>(ret: Result<*mut T, ErrorCode>) -> *mut T {
     match ret {
         Ok(ptr) => ptr,
@@ -485,7 +457,6 @@ fn check_inner_result_for_mut_ptr<T>(ret: Result<*mut T, ErrorCode>) -> *mut T {
     }
 }
 
-#[inline(always)]
 fn check_inner_result_for_const_ptr<T>(ret: Result<*const T, ErrorCode>) -> *const T {
     match ret {
         Ok(ptr) => ptr,
