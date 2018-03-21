@@ -1283,13 +1283,36 @@ fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> Result<c_int, Error
     let dnsname = webpki::DNSNameRef::try_from_ascii_str(hostname)
         .map_err(|_| ErrorCode::MesalinkErrorBadFuncArg)?;
     let mut session = rustls::ClientSession::new(&ssl.client_config, dnsname);
-    let _ = do_handshake_io(&mut session, io).map_err(|e| ErrorCode::from(&e))?;
+    let _ = do_handshake_io(&mut session as &mut Session, io).map_err(|e| ErrorCode::from(&e))?;
+    ssl.session = Some(Box::new(session));
+    Ok(SSL_SUCCESS)
+}
+
+/// `SSL_accept` - wait for a TLS client to initiate the TLS handshake. The
+/// communication channel must already have been set and assigned to the ssl by
+/// setting SSL_set_fd.
+///
+/// ```text
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_accept(SSL *ssl);
+/// ```text
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
+    check_inner_result_for_int(inner_mesalink_ssl_accept(ssl_ptr))
+}
+
+fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> Result<c_int, ErrorCode> {
+    let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
+    let mut session = rustls::ServerSession::new(&ssl.server_config);
+    let io = ssl.io.as_mut().ok_or(ErrorCode::MesalinkErrorBadFuncArg)?;
+    let _ = do_handshake_io(&mut session as &mut Session, io).map_err(|e| ErrorCode::from(&e))?;
     ssl.session = Some(Box::new(session));
     Ok(SSL_SUCCESS)
 }
 
 fn do_handshake_io(
-    session: &mut rustls::ClientSession,
+    session: &mut Session,
     io: &mut net::TcpStream,
 ) -> Result<(usize, usize), io::Error> {
     let until_handshaked = session.is_handshaking();
@@ -1330,27 +1353,6 @@ fn do_handshake_io(
             (..) => (),
         }
     }
-}
-
-/// `SSL_accept` - wait for a TLS client to initiate the TLS handshake. The
-/// communication channel must already have been set and assigned to the ssl by
-/// setting SSL_set_fd.
-///
-/// ```text
-/// #include <mesalink/openssl/ssl.h>
-///
-/// int SSL_accept(SSL *ssl);
-/// ```text
-#[no_mangle]
-pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
-    check_inner_result_for_int(inner_mesalink_ssl_accept(ssl_ptr))
-}
-
-fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> Result<c_int, ErrorCode> {
-    let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
-    let session = rustls::ServerSession::new(&ssl.server_config);
-    ssl.session = Some(Box::new(session));
-    Ok(SSL_SUCCESS)
 }
 
 /// `SSL_get_error` - obtain result code for TLS/SSL I/O operation

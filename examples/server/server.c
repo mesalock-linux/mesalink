@@ -101,6 +101,14 @@ int main(int argc, char *argv[]) {
         }
         if (SSL_accept(ssl) == SSL_SUCCESS) {
             int recvlen = -1;
+
+            int cipher_bits = 0;
+            SSL_get_cipher_bits(ssl, &cipher_bits);
+            printf(
+                "[+] Negotiated ciphersuite: %s, enc_length=%d, version=%s\n",
+                SSL_get_cipher_name(ssl), cipher_bits,
+                SSL_get_cipher_version(ssl));
+
             while ((recvlen = SSL_read(ssl, recvbuf, sizeof(recvbuf) - 1)) >
                    0) {
                 recvbuf[recvlen] = 0;
