@@ -193,14 +193,14 @@ pub struct MESALINK_CTX {
 #[allow(non_camel_case_types)]
 pub type MESALINK_CTX_ARC = Arc<MESALINK_CTX>;
 
-impl<'a> MesalinkOpaquePointerType for MESALINK_CTX_ARC {
+impl MesalinkOpaquePointerType for MESALINK_CTX_ARC {
     fn check_magic(&self) -> bool {
         self.magic == *MAGIC
     }
 }
 
-impl<'a> MESALINK_CTX {
-    fn new(method: &'a MESALINK_METHOD) -> MESALINK_CTX {
+impl MESALINK_CTX {
+    fn new(method: &MESALINK_METHOD) -> MESALINK_CTX {
         let mut client_config = rustls::ClientConfig::new();
         let mut server_config = rustls::ServerConfig::new(rustls::NoClientAuth::new());
 
@@ -249,7 +249,7 @@ pub struct MESALINK_SSL {
     eof: bool,
 }
 
-impl<'a> MesalinkOpaquePointerType for MESALINK_SSL {
+impl MesalinkOpaquePointerType for MESALINK_SSL {
     fn check_magic(&self) -> bool {
         self.magic == *MAGIC
     }
@@ -922,13 +922,11 @@ fn inner_mesalink_ssl_ctx_set_verify(
 /// SSL *SSL_new(SSL_CTX *ctx);
 /// ```text
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_new<'a>(ctx_ptr: *mut MESALINK_CTX_ARC) -> *mut MESALINK_SSL {
+pub extern "C" fn mesalink_SSL_new(ctx_ptr: *mut MESALINK_CTX_ARC) -> *mut MESALINK_SSL {
     check_inner_result_for_mut_ptr(inner_mesalink_ssl_new(ctx_ptr))
 }
 
-fn inner_mesalink_ssl_new<'a>(
-    ctx_ptr: *mut MESALINK_CTX_ARC,
-) -> Result<*mut MESALINK_SSL, ErrorCode> {
+fn inner_mesalink_ssl_new(ctx_ptr: *mut MESALINK_CTX_ARC) -> Result<*mut MESALINK_SSL, ErrorCode> {
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     Ok(Box::into_raw(Box::new(MESALINK_SSL::new(ctx))))
 }
@@ -1500,8 +1498,8 @@ mod util {
     pub const CONST_TLS12_STR: &'static [u8] = b"TLS1.2\0";
     pub const CONST_TLS13_STR: &'static [u8] = b"TLS1.3\0";
 
-    pub fn try_get_context_certs_and_key<'a>(
-        ctx: &'a mut ssl::MESALINK_CTX_ARC,
+    pub fn try_get_context_certs_and_key(
+        ctx: &mut ssl::MESALINK_CTX_ARC,
     ) -> Result<(Vec<rustls::Certificate>, rustls::PrivateKey), ()> {
         let certs = ctx.certificates.as_ref().ok_or(())?;
         let priv_key = ctx.private_key.as_ref().ok_or(())?;
@@ -1538,7 +1536,7 @@ mod util {
         }
     }
 
-    pub fn get_context_mut<'a>(ctx: &'a mut ssl::MESALINK_CTX_ARC) -> &mut ssl::MESALINK_CTX {
+    pub fn get_context_mut(ctx: &mut ssl::MESALINK_CTX_ARC) -> &mut ssl::MESALINK_CTX {
         Arc::make_mut(ctx)
     }
 }
@@ -1554,16 +1552,16 @@ mod tests {
     const CONST_KEY_FILE: &'static [u8] = b"tests/test.rsa\0";
     const CONST_SERVER_ADDR: &'static str = "127.0.0.1";
 
-    struct MesalinkTestSession<'a> {
+    struct MesalinkTestSession {
         ctx: *mut MESALINK_CTX_ARC,
-        ssl: *mut MESALINK_SSL<'a>,
+        ssl: *mut MESALINK_SSL,
     }
 
-    impl<'a> MesalinkTestSession<'a> {
+    impl MesalinkTestSession {
         fn new_client_session(
             method: *const MESALINK_METHOD,
             sockfd: c_int,
-        ) -> MesalinkTestSession<'a> {
+        ) -> MesalinkTestSession {
             let ctx = mesalink_SSL_CTX_new(method);
             assert_ne!(ctx, ptr::null_mut(), "CTX is null");
             assert_eq!(
@@ -1591,7 +1589,7 @@ mod tests {
         fn new_server_session(
             method: *const MESALINK_METHOD,
             sockfd: c_int,
-        ) -> MesalinkTestSession<'a> {
+        ) -> MesalinkTestSession {
             let ctx = mesalink_SSL_CTX_new(method);
             assert_ne!(ctx, ptr::null_mut(), "CTX is null");
             assert_eq!(
@@ -1653,7 +1651,7 @@ mod tests {
         }
     }
 
-    impl<'a> Drop for MesalinkTestSession<'a> {
+    impl Drop for MesalinkTestSession {
         fn drop(&mut self) {
             mesalink_SSL_free(self.ssl);
             mesalink_SSL_CTX_free(self.ctx);
