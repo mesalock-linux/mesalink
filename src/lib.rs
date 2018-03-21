@@ -344,6 +344,7 @@ extern crate enum_to_str_derive;
 
 #[macro_use]
 mod macros {
+
     #[cfg(all(feature = "nightly", feature = "error_strings"))]
     #[macro_export]
     macro_rules! call_site {

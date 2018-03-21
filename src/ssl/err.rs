@@ -816,7 +816,7 @@ mod tests {
     #[test]
     fn push() {
         let error_code = ErrorCode::MesalinkErrorNullPointer;
-        ErrorQueue::push_error(error_code);
+        ErrorQueue::push_error(error_code, call_site!());
         assert_eq!(error_code, ErrorCode::from(mesalink_ERR_get_error()));
         mesalink_ERR_clear_error();
     }
@@ -824,7 +824,7 @@ mod tests {
     #[test]
     fn clear() {
         let error_code = ErrorCode::MesalinkErrorNullPointer;
-        ErrorQueue::push_error(error_code);
+        ErrorQueue::push_error(error_code, call_site!());
         mesalink_ERR_clear_error();
         assert_eq!(0, mesalink_ERR_get_error());
         mesalink_ERR_clear_error();
@@ -833,7 +833,7 @@ mod tests {
     #[test]
     fn get_should_remove_error() {
         let error_code = ErrorCode::MesalinkErrorNullPointer;
-        ErrorQueue::push_error(error_code);
+        ErrorQueue::push_error(error_code, call_site!());
         let _ = mesalink_ERR_get_error();
         assert_eq!(0, mesalink_ERR_get_error());
         mesalink_ERR_clear_error();
@@ -842,7 +842,7 @@ mod tests {
     #[test]
     fn peek_should_not_remove_error() {
         let error_code = ErrorCode::MesalinkErrorNullPointer;
-        ErrorQueue::push_error(error_code);
+        ErrorQueue::push_error(error_code, "");
         let _ = mesalink_ERR_peek_last_error();
         assert_eq!(error_code, ErrorCode::from(mesalink_ERR_get_error()));
         mesalink_ERR_clear_error();
@@ -852,11 +852,11 @@ mod tests {
     fn error_queue_is_thread_local() {
         let thread = thread::spawn(|| {
             let error_code = ErrorCode::MesalinkErrorNullPointer;
-            ErrorQueue::push_error(error_code);
+            ErrorQueue::push_error(error_code, call_site!());
             ErrorCode::from(mesalink_ERR_get_error())
         });
         let error_code = ErrorCode::MesalinkErrorMalformedObject;
-        ErrorQueue::push_error(error_code);
+        ErrorQueue::push_error(error_code, call_site!());
 
         let main_thread_error_code = ErrorCode::from(mesalink_ERR_get_error());
         let sub_thread_error_code = thread.join().unwrap();
@@ -1232,7 +1232,7 @@ mod tests {
     fn err_print_errors_fp() {
         use std::io;
         use std::os::unix::io::AsRawFd;
-        ErrorQueue::push_error(ErrorCode::MesalinkErrorSsl);
+        ErrorQueue::push_error(ErrorCode::MesalinkErrorSsl, call_site!());
         let fd = io::stderr().as_raw_fd();
         let mode = b"wb\0".as_ptr() as *const c_char;
         let file = unsafe { libc::fdopen(fd, mode) };
