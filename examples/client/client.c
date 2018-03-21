@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "[-] Got nothing\n");
         }
     } else {
-        fprintf(stderr, "[-] Socket not connected");
+        fprintf(stderr, "[-] Socket not connected\n");
         ERR_print_errors_fp(stderr);
         return -1;
     }

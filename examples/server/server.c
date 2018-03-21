@@ -116,7 +116,7 @@ int main(int argc, char *argv[]) {
                 SSL_write(ssl, response, (int)strlen(response));
             }
         } else {
-            fprintf(stderr, "[-] Socket not accepted");
+            fprintf(stderr, "[-] Socket not accepted\n");
             ERR_print_errors_fp(stderr);
         }
         client_sockfd = SSL_get_fd(ssl);
