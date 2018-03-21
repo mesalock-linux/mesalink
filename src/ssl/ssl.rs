@@ -48,29 +48,6 @@ use std::os::unix::io::{AsRawFd, FromRawFd};
 use ring::rand::SecureRandom;
 use rustls::Session;
 
-#[macro_use]
-mod macros {
-    #[cfg(all(feature = "nightly", feature = "error_strings"))]
-    macro_rules! callsite {
-        () => {{
-            fn f() {}
-            fn type_name_of<T>(_: T) -> &'static str {
-                extern crate core;
-                unsafe { core::intrinsics::type_name::<T>() }
-            }
-            let name = type_name_of(f);
-            &name[6..name.len() - 4]
-        }};
-    }
-
-    #[cfg(not(all(feature = "nightly", feature = "error_strings")))]
-    macro_rules! callsite {
-        () => {{
-            "callsite information not enabled"
-        }};
-    }
-}
-
 const MAGIC_SIZE: usize = 4;
 lazy_static! {
     static ref MAGIC: [u8; MAGIC_SIZE] = {
@@ -1614,6 +1591,32 @@ mod util {
 
     pub fn get_context_mut(ctx: &mut ssl::MESALINK_CTX_ARC) -> &mut ssl::MESALINK_CTX {
         Arc::make_mut(ctx)
+    }
+}
+
+#[macro_use]
+mod macros {
+    #[cfg(all(feature = "nightly", feature = "error_strings"))]
+    macro_rules! callsite {
+        () => {{
+            fn f() {}
+            fn type_name_of<T>(_: T) -> &'static str {
+                extern crate core;
+                unsafe { core::intrinsics::type_name::<T>() }
+            }
+            let name = type_name_of(f);
+            &name[6..name.len() - 4]
+        }};
+    }
+
+    #[cfg(not(all(feature = "nightly", feature = "error_strings")))]
+    const NO_CALLSITE: &'static str = "callsite information not enabled";
+
+    #[cfg(not(all(feature = "nightly", feature = "error_strings")))]
+    macro_rules! callsite {
+        () => {{
+            NO_CALLSITE
+        }};
     }
 }
 
