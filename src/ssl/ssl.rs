@@ -40,7 +40,7 @@ use libc::{c_char, c_int, c_uchar};
 use rustls::{self, internal, sign};
 use ring::rand;
 use webpki;
-use ssl::err::{ErrorCode, ErrorQueue};
+use ssl::err::{ErrorCode, ErrorQueue, MesalinkError, MesalinkInnerResult};
 
 // Trait imports
 use std::io::{Read, Write};
@@ -292,7 +292,7 @@ impl Read for MESALINK_SSL {
                                 } else {
                                     self.error = ErrorCode::from(&e);
                                 }
-                                ErrorQueue::push_error(self.error, call_site!());
+                                ErrorQueue::push_error(error!(self.error));
                                 return Err(e);
                             }
                         }
@@ -304,7 +304,7 @@ impl Read for MESALINK_SSL {
                                     return Ok(0); // EOF
                                 } else {
                                     self.error = ErrorCode::IoErrorUnexpectedEof;
-                                    ErrorQueue::push_error(self.error, call_site!());
+                                    ErrorQueue::push_error(error!(self.error));
                                     return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
                                 }
                             }
@@ -314,7 +314,7 @@ impl Read for MESALINK_SSL {
                                 } else {
                                     self.error = ErrorCode::from(&e);
                                 }
-                                ErrorQueue::push_error(self.error, call_site!());
+                                ErrorQueue::push_error(error!(self.error));
                                 return Err(e);
                             }
                             Ok(_) => if let Err(tls_err) = session.process_new_packets() {
@@ -322,13 +322,13 @@ impl Read for MESALINK_SSL {
                                     let _ = session.write_tls(io);
                                 }
                                 self.error = ErrorCode::from(&tls_err);
-                                ErrorQueue::push_error(self.error, call_site!());
+                                ErrorQueue::push_error(error!(self.error));
                                 return Err(io::Error::new(io::ErrorKind::InvalidData, tls_err));
                             },
                         }
                     } else {
                         self.error = ErrorCode::MesalinkErrorZeroReturn;
-                        ErrorQueue::push_error(self.error, call_site!());
+                        ErrorQueue::push_error(error!(self.error));
                         return Ok(0);
                     },
                     Ok(n) => {
@@ -337,13 +337,13 @@ impl Read for MESALINK_SSL {
                     }
                     Err(e) => {
                         self.error = ErrorCode::from(&e);
-                        ErrorQueue::push_error(self.error, call_site!());
+                        ErrorQueue::push_error(error!(self.error));
                         return Err(e);
                     }
                 }
             },
             _ => {
-                ErrorQueue::push_error(ErrorCode::IoErrorInvalidInput, call_site!());
+                ErrorQueue::push_error(error!(ErrorCode::MesalinkErrorBadFuncArg));
                 Err(io::Error::from(io::ErrorKind::Other))
             }
         }
@@ -360,7 +360,7 @@ impl Write for MESALINK_SSL {
                 Ok(len)
             }
             _ => {
-                ErrorQueue::push_error(ErrorCode::MesalinkErrorNullPointer, call_site!());
+                ErrorQueue::push_error(error!(ErrorCode::MesalinkErrorNullPointer));
                 Err(io::Error::from(io::ErrorKind::Other))
             }
         }
@@ -374,7 +374,7 @@ impl Write for MESALINK_SSL {
                 ret
             }
             _ => {
-                ErrorQueue::push_error(ErrorCode::MesalinkErrorNullPointer, call_site!());
+                ErrorQueue::push_error(error!(ErrorCode::MesalinkErrorNullPointer));
                 Err(io::Error::from(io::ErrorKind::Other))
             }
         }
@@ -406,7 +406,7 @@ pub enum VerifyModes {
     VerifyFailIfNoPeerCert = 2,
 }
 
-fn sanitize_const_ptr_for_ref<'a, T>(ptr: *const T) -> Result<&'a T, ErrorCode>
+fn sanitize_const_ptr_for_ref<'a, T>(ptr: *const T) -> MesalinkInnerResult<&'a T>
 where
     T: MesalinkOpaquePointerType,
 {
@@ -414,54 +414,54 @@ where
     sanitize_ptr_for_mut_ref(ptr).map(|r| r as &'a T)
 }
 
-fn sanitize_ptr_for_ref<'a, T>(ptr: *mut T) -> Result<&'a T, ErrorCode>
+fn sanitize_ptr_for_ref<'a, T>(ptr: *mut T) -> MesalinkInnerResult<&'a T>
 where
     T: MesalinkOpaquePointerType,
 {
     sanitize_ptr_for_mut_ref(ptr).map(|r| r as &'a T)
 }
 
-fn sanitize_ptr_for_mut_ref<'a, T>(ptr: *mut T) -> Result<&'a mut T, ErrorCode>
+fn sanitize_ptr_for_mut_ref<'a, T>(ptr: *mut T) -> MesalinkInnerResult<&'a mut T>
 where
     T: MesalinkOpaquePointerType,
 {
     if ptr.is_null() {
-        return Err(ErrorCode::MesalinkErrorNullPointer);
+        return Err(error!(ErrorCode::MesalinkErrorNullPointer));
     }
     let obj_ref: &mut T = unsafe { &mut *ptr };
     if !obj_ref.check_magic() {
-        return Err(ErrorCode::MesalinkErrorMalformedObject);
+        return Err(error!(ErrorCode::MesalinkErrorMalformedObject));
     }
     Ok(obj_ref)
 }
 
-fn check_inner_result_for_int(ret: Result<c_int, ErrorCode>) -> c_int {
+fn check_inner_result_for_int(ret: MesalinkInnerResult<c_int>) -> c_int {
     match ret {
         Ok(r) => r,
-        Err(e) => if e == ErrorCode::MesalinkErrorNone {
+        Err(e) => if e.code == ErrorCode::MesalinkErrorNone {
             SSL_SUCCESS
         } else {
-            ErrorQueue::push_error(e, call_site!());
+            ErrorQueue::push_error(e);
             SSL_FAILURE
         },
     }
 }
 
-fn check_inner_result_for_mut_ptr<T>(ret: Result<*mut T, ErrorCode>) -> *mut T {
+fn check_inner_result_for_mut_ptr<T>(ret: MesalinkInnerResult<*mut T>) -> *mut T {
     match ret {
         Ok(ptr) => ptr,
         Err(e) => {
-            ErrorQueue::push_error(e, call_site!());
+            ErrorQueue::push_error(e);
             ptr::null_mut()
         }
     }
 }
 
-fn check_inner_result_for_const_ptr<T>(ret: Result<*const T, ErrorCode>) -> *const T {
+fn check_inner_result_for_const_ptr<T>(ret: MesalinkInnerResult<*const T>) -> *const T {
     match ret {
         Ok(ptr) => ptr,
         Err(e) => {
-            ErrorQueue::push_error(e, call_site!());
+            ErrorQueue::push_error(e);
             ptr::null()
         }
     }
@@ -746,7 +746,7 @@ pub extern "C" fn mesalink_SSL_CTX_new(
 
 fn inner_mesalink_ssl_ctx_new(
     method_ptr: *const MESALINK_METHOD,
-) -> Result<*mut MESALINK_CTX_ARC, ErrorCode> {
+) -> MesalinkInnerResult<*mut MESALINK_CTX_ARC> {
     let method = sanitize_const_ptr_for_ref(method_ptr)?;
     let context = MESALINK_CTX::new(method);
     let _ = unsafe { Box::from_raw(method_ptr as *mut MESALINK_METHOD) };
@@ -779,25 +779,25 @@ pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
 fn inner_mesalink_ssl_ctx_use_certificate_chain_file(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     filename_ptr: *const c_char,
-) -> Result<c_int, ErrorCode> {
+) -> MesalinkInnerResult<c_int> {
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     if filename_ptr.is_null() {
-        return Err(ErrorCode::MesalinkErrorNullPointer);
+        return Err(error!(ErrorCode::MesalinkErrorNullPointer));
     }
     let filename = unsafe {
         ffi::CStr::from_ptr(filename_ptr)
             .to_str()
-            .map_err(|_| ErrorCode::MesalinkErrorBadFuncArg)?
+            .map_err(|_| error!(ErrorCode::MesalinkErrorBadFuncArg))?
     };
-    let file = fs::File::open(filename).map_err(|e| ErrorCode::from(&e))?;
+    let file = fs::File::open(filename).map_err(|e| error!(ErrorCode::from(&e)))?;
     let certs = internal::pemfile::certs(&mut io::BufReader::new(file))
-        .map_err(|_| ErrorCode::TLSErrorWebpkiBadDER)?;
+        .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
     if certs.len() <= 0 {
-        return Err(ErrorCode::TLSErrorWebpkiBadDER);
+        return Err(error!(ErrorCode::TLSErrorWebpkiBadDER));
     }
     util::get_context_mut(ctx).certificates = Some(certs);
     let (certs, priv_key) =
-        util::try_get_context_certs_and_key(ctx).map_err(|_| ErrorCode::MesalinkErrorNone)?;
+        util::try_get_context_certs_and_key(ctx).map_err(|_| error!(ErrorCode::MesalinkErrorNone))?;
     util::get_context_mut(ctx)
         .server_config
         .set_single_cert(certs, priv_key);
@@ -828,21 +828,21 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
 fn inner_mesalink_ssl_ctx_use_privatekey_file(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     filename_ptr: *const c_char,
-) -> Result<c_int, ErrorCode> {
+) -> MesalinkInnerResult<c_int> {
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     if filename_ptr.is_null() {
-        return Err(ErrorCode::MesalinkErrorNullPointer);
+        return Err(error!(ErrorCode::MesalinkErrorNullPointer));
     }
     let filename = unsafe {
         ffi::CStr::from_ptr(filename_ptr)
             .to_str()
-            .map_err(|_| ErrorCode::IoErrorInvalidInput)?
+            .map_err(|_| error!(ErrorCode::IoErrorInvalidInput))?
     };
-    let file = fs::File::open(filename).map_err(|e| ErrorCode::from(&e))?;
+    let file = fs::File::open(filename).map_err(|e| error!(ErrorCode::from(&e)))?;
     let rsa_keys = internal::pemfile::rsa_private_keys(&mut io::BufReader::new(file));
-    let file = fs::File::open(filename).map_err(|e| ErrorCode::from(&e))?;
+    let file = fs::File::open(filename).map_err(|e| error!(ErrorCode::from(&e)))?;
     let pk8_keys = internal::pemfile::pkcs8_private_keys(&mut io::BufReader::new(file));
-    let mut valid_keys: Result<Vec<_>, ErrorCode> = Err(ErrorCode::TLSErrorWebpkiBadDER);
+    let mut valid_keys = Err(error!(ErrorCode::TLSErrorWebpkiBadDER));
     valid_keys = rsa_keys
         .and_then(|keys| if keys.len() <= 0 { Err(()) } else { Ok(keys) })
         .or_else(|_| valid_keys);
@@ -852,7 +852,7 @@ fn inner_mesalink_ssl_ctx_use_privatekey_file(
     let keys = valid_keys?;
     util::get_context_mut(ctx).private_key = Some(keys[0].clone());
     let (certs, priv_key) =
-        util::try_get_context_certs_and_key(ctx).map_err(|_| ErrorCode::MesalinkErrorNone)?;
+        util::try_get_context_certs_and_key(ctx).map_err(|_| error!(ErrorCode::MesalinkErrorNone))?;
     util::get_context_mut(ctx)
         .server_config
         .set_single_cert(certs, priv_key);
@@ -874,18 +874,18 @@ pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX_
 
 fn inner_mesalink_ssl_ctx_check_private_key(
     ctx_ptr: *mut MESALINK_CTX_ARC,
-) -> Result<c_int, ErrorCode> {
+) -> MesalinkInnerResult<c_int> {
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     match (&ctx.certificates, &ctx.private_key) {
         (&Some(ref certs), &Some(ref key)) => {
-            let rsa_key =
-                sign::RSASigningKey::new(&key).map_err(|_| ErrorCode::TLSErrorWebpkiBadDER)?;
+            let rsa_key = sign::RSASigningKey::new(&key)
+                .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
             sign::CertifiedKey::new(certs.clone(), Arc::new(Box::new(rsa_key)))
                 .cross_check_end_entity_cert(None)
-                .map_err(|e| ErrorCode::from(&e))?;
+                .map_err(|e| error!(ErrorCode::from(&e)))?;
             Ok(SSL_SUCCESS)
         }
-        _ => Err(ErrorCode::MesalinkErrorBadFuncArg),
+        _ => Err(error!(ErrorCode::MesalinkErrorBadFuncArg)),
     }
 }
 
@@ -902,7 +902,7 @@ pub extern "C" fn mesalink_SSL_CTX_set_verify(
 fn inner_mesalink_ssl_ctx_set_verify(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     mode: c_int,
-) -> Result<c_int, ErrorCode> {
+) -> MesalinkInnerResult<c_int> {
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     if mode == VerifyModes::VerifyNone as c_int {
         util::get_context_mut(ctx)
@@ -926,7 +926,9 @@ pub extern "C" fn mesalink_SSL_new(ctx_ptr: *mut MESALINK_CTX_ARC) -> *mut MESAL
     check_inner_result_for_mut_ptr(inner_mesalink_ssl_new(ctx_ptr))
 }
 
-fn inner_mesalink_ssl_new(ctx_ptr: *mut MESALINK_CTX_ARC) -> Result<*mut MESALINK_SSL, ErrorCode> {
+fn inner_mesalink_ssl_new(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+) -> MesalinkInnerResult<*mut MESALINK_SSL> {
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     Ok(Box::into_raw(Box::new(MESALINK_SSL::new(ctx))))
 }
@@ -946,11 +948,11 @@ pub extern "C" fn mesalink_SSL_get_SSL_CTX(ssl_ptr: *mut MESALINK_SSL) -> *const
 
 fn inner_mesalink_ssl_get_ssl_ctx(
     ssl_ptr: *mut MESALINK_SSL,
-) -> Result<*const MESALINK_CTX_ARC, ErrorCode> {
+) -> MesalinkInnerResult<*const MESALINK_CTX_ARC> {
     let ssl = sanitize_ptr_for_ref(ssl_ptr)?;
     let ctx = ssl.context
         .as_ref()
-        .ok_or(ErrorCode::MesalinkErrorBadFuncArg)?;
+        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     Ok(ctx as *const MESALINK_CTX_ARC)
 }
 
@@ -972,7 +974,7 @@ pub extern "C" fn mesalink_SSL_set_SSL_CTX(
 fn inner_mesalink_ssl_set_ssl_ctx(
     ssl_ptr: *mut MESALINK_SSL,
     ctx_ptr: *mut MESALINK_CTX_ARC,
-) -> Result<*const MESALINK_CTX_ARC, ErrorCode> {
+) -> MesalinkInnerResult<*const MESALINK_CTX_ARC> {
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     ssl.context = Some(ctx.clone());
@@ -980,7 +982,7 @@ fn inner_mesalink_ssl_set_ssl_ctx(
     ssl.server_config = Arc::new(ctx.server_config.clone());
     let ctx_ref = ssl.context
         .as_ref()
-        .ok_or(ErrorCode::MesalinkErrorBadFuncArg)?;
+        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     Ok(ctx_ref as *const MESALINK_CTX_ARC)
 }
 
@@ -1003,14 +1005,14 @@ pub extern "C" fn mesalink_SSL_get_current_cipher(
 
 fn inner_mesalink_ssl_get_current_cipher(
     ssl_ptr: *mut MESALINK_SSL,
-) -> Result<*mut MESALINK_CIPHER, ErrorCode> {
+) -> MesalinkInnerResult<*mut MESALINK_CIPHER> {
     let ssl = sanitize_ptr_for_ref(ssl_ptr)?;
     let session = ssl.session
         .as_ref()
-        .ok_or(ErrorCode::MesalinkErrorBadFuncArg)?;
+        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     let ciphersuite = session
         .get_negotiated_ciphersuite()
-        .ok_or(ErrorCode::MesalinkErrorBadFuncArg)?;
+        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     Ok(Box::into_raw(Box::new(MESALINK_CIPHER::new(ciphersuite)))) // Allocates memory!
 }
 
@@ -1032,7 +1034,7 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_name(cipher_ptr: *mut MESALINK_CIPHER)
 #[cfg(feature = "error_strings")]
 fn inner_mesalink_ssl_cipher_get_name(
     cipher_ptr: *mut MESALINK_CIPHER,
-) -> Result<*const c_char, ErrorCode> {
+) -> MesalinkInnerResult<*const c_char> {
     let ciphersuite = sanitize_ptr_for_ref(cipher_ptr)?;
     Ok(util::suite_to_name_str(ciphersuite.ciphersuite.suite.get_u16()).as_ptr() as *const c_char)
 }
@@ -1046,7 +1048,7 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_name(cipher_ptr: *mut MESALINK_CIPHER)
 #[cfg(not(feature = "error_strings"))]
 fn inner_mesalink_ssl_cipher_get_name(
     cipher_ptr: *mut MESALINK_CIPHER,
-) -> Result<*const c_char, ErrorCode> {
+) -> MesalinkInnerResult<*const c_char> {
     let _ = sanitize_ptr_for_ref(cipher_ptr)?;
     Ok(CONST_NOTBUILTIN_STR.as_ptr() as *const c_char)
 }
@@ -1071,11 +1073,11 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_bits(
 fn inner_mesalink_ssl_cipher_get_bits(
     cipher_ptr: *mut MESALINK_CIPHER,
     bits_ptr: *mut c_int,
-) -> Result<c_int, ErrorCode> {
+) -> MesalinkInnerResult<c_int> {
     let ciphersuite = sanitize_ptr_for_ref(cipher_ptr)?;
     unsafe {
         if bits_ptr.is_null() {
-            return Err(ErrorCode::MesalinkErrorNullPointer);
+            return Err(error!(ErrorCode::MesalinkErrorNullPointer));
         }
         ptr::write(bits_ptr, ciphersuite.ciphersuite.enc_key_len as c_int);
     }
@@ -1102,7 +1104,7 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_version(
 
 fn inner_mesalink_ssl_cipher_get_version(
     cipher_ptr: *mut MESALINK_CIPHER,
-) -> Result<*const c_char, ErrorCode> {
+) -> MesalinkInnerResult<*const c_char> {
     match sanitize_ptr_for_ref(cipher_ptr) {
         Ok(ciphersuite) => {
             let version =
@@ -1203,18 +1205,18 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
 fn inner_mesalink_ssl_set_tlsext_host_name(
     ssl_ptr: *mut MESALINK_SSL,
     hostname_ptr: *const c_char,
-) -> Result<c_int, ErrorCode> {
+) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     if hostname_ptr.is_null() {
-        return Err(ErrorCode::MesalinkErrorNullPointer);
+        return Err(error!(ErrorCode::MesalinkErrorNullPointer));
     }
     let hostname = unsafe {
         ffi::CStr::from_ptr(hostname_ptr)
             .to_str()
-            .map_err(|_| ErrorCode::MesalinkErrorBadFuncArg)?
+            .map_err(|_| error!(ErrorCode::MesalinkErrorBadFuncArg))?
     };
     let _ = webpki::DNSNameRef::try_from_ascii_str(hostname)
-        .map_err(|_| ErrorCode::MesalinkErrorBadFuncArg)?;
+        .map_err(|_| error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     ssl.hostname = Some(hostname.to_owned());
     Ok(SSL_SUCCESS)
 }
@@ -1233,10 +1235,10 @@ pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> 
     check_inner_result_for_int(inner_mesalink_ssl_set_fd(ssl_ptr, fd))
 }
 
-fn inner_mesalink_ssl_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> Result<c_int, ErrorCode> {
+fn inner_mesalink_ssl_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     if fd < 0 {
-        return Err(ErrorCode::MesalinkErrorBadFuncArg);
+        return Err(error!(ErrorCode::MesalinkErrorBadFuncArg));
     }
     let socket = unsafe { net::TcpStream::from_raw_fd(fd) };
     ssl.io = Some(socket);
@@ -1255,9 +1257,11 @@ pub extern "C" fn mesalink_SSL_get_fd(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     check_inner_result_for_int(inner_measlink_ssl_get_fd(ssl_ptr))
 }
 
-fn inner_measlink_ssl_get_fd(ssl_ptr: *mut MESALINK_SSL) -> Result<c_int, ErrorCode> {
+fn inner_measlink_ssl_get_fd(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_ref(ssl_ptr)?;
-    let socket = ssl.io.as_ref().ok_or(ErrorCode::MesalinkErrorBadFuncArg)?;
+    let socket = ssl.io
+        .as_ref()
+        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     Ok(socket.as_raw_fd())
 }
 
@@ -1274,16 +1278,19 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     check_inner_result_for_int(inner_mesalink_ssl_connect(ssl_ptr))
 }
 
-fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> Result<c_int, ErrorCode> {
+fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     let hostname = ssl.hostname
         .as_ref()
-        .ok_or(ErrorCode::MesalinkErrorBadFuncArg)?;
-    let io = ssl.io.as_mut().ok_or(ErrorCode::MesalinkErrorBadFuncArg)?;
+        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+    let io = ssl.io
+        .as_mut()
+        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     let dnsname = webpki::DNSNameRef::try_from_ascii_str(hostname)
-        .map_err(|_| ErrorCode::MesalinkErrorBadFuncArg)?;
+        .map_err(|_| error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     let mut session = rustls::ClientSession::new(&ssl.client_config, dnsname);
-    let _ = do_handshake_io(&mut session as &mut Session, io).map_err(|e| ErrorCode::from(&e))?;
+    let _ =
+        do_handshake_io(&mut session as &mut Session, io).map_err(|e| error!(ErrorCode::from(&e)))?;
     ssl.session = Some(Box::new(session));
     Ok(SSL_SUCCESS)
 }
@@ -1302,11 +1309,14 @@ pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     check_inner_result_for_int(inner_mesalink_ssl_accept(ssl_ptr))
 }
 
-fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> Result<c_int, ErrorCode> {
+fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     let mut session = rustls::ServerSession::new(&ssl.server_config);
-    let io = ssl.io.as_mut().ok_or(ErrorCode::MesalinkErrorBadFuncArg)?;
-    let _ = do_handshake_io(&mut session as &mut Session, io).map_err(|e| ErrorCode::from(&e))?;
+    let io = ssl.io
+        .as_mut()
+        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+    let _ =
+        do_handshake_io(&mut session as &mut Session, io).map_err(|e| error!(ErrorCode::from(&e)))?;
     ssl.session = Some(Box::new(session));
     Ok(SSL_SUCCESS)
 }
@@ -1370,7 +1380,7 @@ pub extern "C" fn mesalink_SSL_get_error(ssl_ptr: *mut MESALINK_SSL, ret: c_int)
 fn inner_mesalink_ssl_get_error(
     ssl_ptr: *mut MESALINK_SSL,
     ret: c_int,
-) -> Result<c_int, ErrorCode> {
+) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     if ret > 0 {
         Ok(0)
@@ -1394,7 +1404,7 @@ pub extern "C" fn mesalink_SSL_read(
     buf_len: c_int,
 ) -> c_int {
     if buf_ptr.is_null() || buf_len < 0 {
-        ErrorQueue::push_error(ErrorCode::MesalinkErrorBadFuncArg, call_site!());
+        ErrorQueue::push_error(error!(ErrorCode::MesalinkErrorBadFuncArg));
         return SSL_FAILURE;
     }
     match sanitize_ptr_for_mut_ref(ssl_ptr) {
@@ -1428,7 +1438,7 @@ pub extern "C" fn mesalink_SSL_write(
     buf_len: c_int,
 ) -> c_int {
     if buf_ptr.is_null() || buf_len < 0 {
-        ErrorQueue::push_error(ErrorCode::MesalinkErrorBadFuncArg, call_site!());
+        ErrorQueue::push_error(error!(ErrorCode::MesalinkErrorBadFuncArg));
         return SSL_FAILURE;
     }
     match sanitize_ptr_for_mut_ref(ssl_ptr) {
@@ -1438,11 +1448,11 @@ pub extern "C" fn mesalink_SSL_write(
                 Ok(count) => count as c_int,
                 Err(e) => match e.kind() {
                     io::ErrorKind::WouldBlock => {
-                        ErrorQueue::push_error(ErrorCode::MesalinkErrorWantWrite, call_site!());
+                        ErrorQueue::push_error(error!(ErrorCode::MesalinkErrorWantWrite));
                         SSL_ERROR
                     }
                     _ => {
-                        ErrorQueue::push_error(ErrorCode::from(&e), call_site!());
+                        ErrorQueue::push_error(error!(ErrorCode::from(&e)));
                         SSL_FAILURE
                     }
                 },
@@ -1464,11 +1474,11 @@ pub extern "C" fn mesalink_SSL_shutdown(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     check_inner_result_for_int(inner_mesalink_ssl_shutdown(ssl_ptr))
 }
 
-fn inner_mesalink_ssl_shutdown(ssl_ptr: *mut MESALINK_SSL) -> Result<c_int, ErrorCode> {
+fn inner_mesalink_ssl_shutdown(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     let session = ssl.session
         .as_mut()
-        .ok_or(ErrorCode::MesalinkErrorBadFuncArg)?;
+        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     session.send_close_notify();
     Ok(SSL_SUCCESS)
 }
@@ -1485,14 +1495,16 @@ pub extern "C" fn mesalink_SSL_get_version(ssl_ptr: *mut MESALINK_SSL) -> *const
     check_inner_result_for_const_ptr(inner_mesalink_ssl_get_version(ssl_ptr))
 }
 
-fn inner_mesalink_ssl_get_version(ssl_ptr: *mut MESALINK_SSL) -> Result<*const c_char, ErrorCode> {
+fn inner_mesalink_ssl_get_version(
+    ssl_ptr: *mut MESALINK_SSL,
+) -> MesalinkInnerResult<*const c_char> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     let session = ssl.session
         .as_ref()
-        .ok_or(ErrorCode::MesalinkErrorBadFuncArg)?;
+        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     let version = session
         .get_protocol_version()
-        .ok_or(ErrorCode::MesalinkErrorBadFuncArg)?;
+        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     match version {
         rustls::ProtocolVersion::TLSv1_2 => Ok(util::CONST_TLS12_STR.as_ptr() as *const c_char),
         rustls::ProtocolVersion::TLSv1_3 => Ok(util::CONST_TLS13_STR.as_ptr() as *const c_char),
@@ -1512,7 +1524,7 @@ pub extern "C" fn mesalink_SSL_CTX_free(ctx_ptr: *mut MESALINK_CTX_ARC) {
     let _ = check_inner_result_for_int(inner_mesalink_ssl_ctx_free(ctx_ptr));
 }
 
-fn inner_mesalink_ssl_ctx_free(ctx_ptr: *mut MESALINK_CTX_ARC) -> Result<c_int, ErrorCode> {
+fn inner_mesalink_ssl_ctx_free(ctx_ptr: *mut MESALINK_CTX_ARC) -> MesalinkInnerResult<c_int> {
     let _ = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     let _ = unsafe { Box::from_raw(ctx_ptr) };
     Ok(SSL_SUCCESS)
@@ -1530,7 +1542,7 @@ pub extern "C" fn mesalink_SSL_free(ssl_ptr: *mut MESALINK_SSL) {
     let _ = check_inner_result_for_int(inner_mesalink_ssl_free(ssl_ptr));
 }
 
-fn inner_mesalink_ssl_free(ssl_ptr: *mut MESALINK_SSL) -> Result<c_int, ErrorCode> {
+fn inner_mesalink_ssl_free(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let _ = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     let _ = unsafe { Box::from_raw(ssl_ptr) };
     Ok(SSL_SUCCESS)

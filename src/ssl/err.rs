@@ -151,7 +151,31 @@ use webpki;
 use std::cell::RefCell;
 use std::collections::VecDeque;
 thread_local! {
-    static ERROR_QUEUE: RefCell<VecDeque<(ErrorCode, String)>> = RefCell::new(VecDeque::new());
+    static ERROR_QUEUE: RefCell<VecDeque<MesalinkError>> = RefCell::new(VecDeque::new());
+}
+
+#[macro_use]
+macro_rules! error {
+    ($code: expr) => {
+        MesalinkError::new($code, call_site!())
+    };
+}
+
+pub type MesalinkInnerResult<T> = Result<T, MesalinkError>;
+
+#[doc(hidden)]
+pub struct MesalinkError {
+    pub code: ErrorCode,
+    call_site: &'static str,
+}
+
+impl MesalinkError {
+    pub fn new(code: ErrorCode, call_site: &'static str) -> MesalinkError {
+        MesalinkError {
+            code: code,
+            call_site: call_site,
+        }
+    }
 }
 
 #[doc(hidden)]
@@ -708,17 +732,10 @@ pub extern "C" fn mesalink_ERR_reason_error_string(e: c_ulong) -> *const c_char 
 pub struct ErrorQueue {}
 
 impl ErrorQueue {
-    pub fn push_error<'a>(e: ErrorCode, call_site: &'static str) {
-        use std::str;
+    pub fn push_error<'a>(e: MesalinkError) {
         ERROR_QUEUE.with(|q| {
-            if e != ErrorCode::MesalinkErrorNone {
-                let error_string = format!(
-                    "error:[0x{:X}]:[mesalink]:[{}]:[{}]\n",
-                    e as c_ulong,
-                    &call_site,
-                    str::from_utf8(e.as_u8_slice()).unwrap(),
-                );
-                q.borrow_mut().push_back((e, error_string));
+            if e.code != ErrorCode::MesalinkErrorNone {
+                q.borrow_mut().push_back(e);
             }
         });
     }
@@ -736,7 +753,7 @@ impl ErrorQueue {
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_get_error() -> c_ulong {
     ERROR_QUEUE.with(|q| match q.borrow_mut().pop_front() {
-        Some((e, _)) => e as c_ulong,
+        Some(e) => e.code as c_ulong,
         None => 0,
     })
 }
@@ -752,7 +769,7 @@ pub extern "C" fn mesalink_ERR_get_error() -> c_ulong {
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_peek_last_error() -> c_ulong {
     ERROR_QUEUE.with(|q| match q.borrow().front() {
-        Some(&(e, _)) => e as c_ulong,
+        Some(e) => e.code as c_ulong,
         None => 0,
     })
 }
@@ -782,7 +799,7 @@ pub extern "C" fn mesalink_ERR_clear_error() {
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
-    use std::fs;
+    use std::{fs, str};
     use std::os::unix::io::FromRawFd;
     use std::io::Write;
     if fp.is_null() {
@@ -795,7 +812,13 @@ pub extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
     let mut file = unsafe { fs::File::from_raw_fd(fd) };
     ERROR_QUEUE.with(|q| {
         let mut queue = q.borrow_mut();
-        for (_, error_string) in queue.drain(0..) {
+        for e in queue.drain(0..) {
+            let error_string = format!(
+                "error:[0x{:X}]:[mesalink]:[{}]:[{}]\n",
+                e.code as c_ulong,
+                e.call_site,
+                str::from_utf8(e.code.as_u8_slice()).unwrap(),
+            );
             let _ = file.write(error_string.as_bytes());
         }
     });
@@ -815,16 +838,16 @@ mod tests {
 
     #[test]
     fn push() {
-        let error_code = ErrorCode::MesalinkErrorNullPointer;
-        ErrorQueue::push_error(error_code, call_site!());
+        let error = MesalinkError::new(ErrorCode::MesalinkErrorNullPointer, call_site!());
+        ErrorQueue::push_error(error);
         assert_eq!(error_code, ErrorCode::from(mesalink_ERR_get_error()));
         mesalink_ERR_clear_error();
     }
 
     #[test]
     fn clear() {
-        let error_code = ErrorCode::MesalinkErrorNullPointer;
-        ErrorQueue::push_error(error_code, call_site!());
+        let error = MesalinkError::new(ErrorCode::MesalinkErrorNullPointer, call_site!());
+        ErrorQueue::push_error(error);
         mesalink_ERR_clear_error();
         assert_eq!(0, mesalink_ERR_get_error());
         mesalink_ERR_clear_error();
@@ -832,8 +855,8 @@ mod tests {
 
     #[test]
     fn get_should_remove_error() {
-        let error_code = ErrorCode::MesalinkErrorNullPointer;
-        ErrorQueue::push_error(error_code, call_site!());
+        let error = MesalinkError::new(ErrorCode::MesalinkErrorNullPointer, call_site!());
+        ErrorQueue::push_error(error);
         let _ = mesalink_ERR_get_error();
         assert_eq!(0, mesalink_ERR_get_error());
         mesalink_ERR_clear_error();
@@ -841,8 +864,8 @@ mod tests {
 
     #[test]
     fn peek_should_not_remove_error() {
-        let error_code = ErrorCode::MesalinkErrorNullPointer;
-        ErrorQueue::push_error(error_code, "");
+        let error = MesalinkError::new(ErrorCode::MesalinkErrorNullPointer, call_site!());
+        ErrorQueue::push_error(error);
         let _ = mesalink_ERR_peek_last_error();
         assert_eq!(error_code, ErrorCode::from(mesalink_ERR_get_error()));
         mesalink_ERR_clear_error();
@@ -851,12 +874,12 @@ mod tests {
     #[test]
     fn error_queue_is_thread_local() {
         let thread = thread::spawn(|| {
-            let error_code = ErrorCode::MesalinkErrorNullPointer;
-            ErrorQueue::push_error(error_code, call_site!());
+            let error = MesalinkError::new(ErrorCode::MesalinkErrorNullPointer, call_site!());
+            ErrorQueue::push_error(error);
             ErrorCode::from(mesalink_ERR_get_error())
         });
-        let error_code = ErrorCode::MesalinkErrorMalformedObject;
-        ErrorQueue::push_error(error_code, call_site!());
+        let error = MesalinkError::new(ErrorCode::MesalinkErrorNullPointer, call_site!());
+        ErrorQueue::push_error(error);
 
         let main_thread_error_code = ErrorCode::from(mesalink_ERR_get_error());
         let sub_thread_error_code = thread.join().unwrap();
