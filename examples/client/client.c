@@ -89,6 +89,13 @@ int main(int argc, char *argv[]) {
     }
     if (SSL_connect(ssl) == SSL_SUCCESS) {
         int sendlen = -1, recvlen = -1, total_recvlen = 0;
+
+        int cipher_bits = 0;
+        SSL_get_cipher_bits(ssl, &cipher_bits);
+        printf("[+] Negotiated ciphersuite: %s, enc_length=%d, version=%s\n",
+               SSL_get_cipher_name(ssl), cipher_bits,
+               SSL_get_cipher_version(ssl));
+
         snprintf(sendbuf, sizeof(sendbuf), REQUEST, hostname);
         sendlen = SSL_write(ssl, sendbuf, (int)strlen(sendbuf));
         printf("[+] Sent %d bytes\n\n%s\n", sendlen, sendbuf);
@@ -104,12 +111,7 @@ int main(int argc, char *argv[]) {
             if ((tls_version = SSL_get_version(ssl))) {
                 printf("[+] TLS protocol version: %s\n", tls_version);
             }
-            int cipher_bits = 0;
-            SSL_get_cipher_bits(ssl, &cipher_bits);
-            printf(
-                "[+] Negotiated ciphersuite: %s, enc_length=%d, version=%s\n",
-                SSL_get_cipher_name(ssl), cipher_bits,
-                SSL_get_cipher_version(ssl));
+
             printf("\n[+] Received %d bytes\n", total_recvlen);
             SSL_free(ssl);
         } else {
