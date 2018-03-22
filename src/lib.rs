@@ -312,8 +312,6 @@
 //! MesaLink is provided under the 3-Clause BSD license. For a copy, see the
 //! LICENSE file.
 
-#![cfg_attr(feature = "nightly", feature(core_intrinsics))]
-
 #![deny(trivial_numeric_casts, unused_qualifications)]
 #![forbid(anonymous_parameters, unused_extern_crates, unused_import_braces, unused_results,
           variant_size_differences, warnings)]
@@ -344,7 +342,7 @@ extern crate enum_to_str_derive;
 
 #[macro_use]
 mod macros {
-    #[cfg(all(feature = "nightly", feature = "error_strings"))]
+    #[cfg(feature = "error_strings")]
     #[macro_export]
     macro_rules! call_site {
         () => {{
@@ -352,7 +350,7 @@ mod macros {
         }};
     }
 
-    #[cfg(not(all(feature = "nightly", feature = "error_strings")))]
+    #[cfg(not(feature = "error_strings"))]
     #[macro_export]
     macro_rules! call_site {
         () => {{
