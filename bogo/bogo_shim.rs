@@ -221,13 +221,15 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC) {
 
     if !opts.server {
         if ssl::mesalink_SSL_connect(ssl) != 1 {
+            let err = ErrorCode::from(ssl::mesalink_SSL_get_error(ssl, -1) as libc::c_ulong);
             ssl::mesalink_SSL_free(ssl);
-            quit_err("mesalink_SSL_connect failed");
+            handle_err(err);
         }
     } else {
         if ssl::mesalink_SSL_accept(ssl) != 1 {
+            let err = ErrorCode::from(ssl::mesalink_SSL_get_error(ssl, -1) as libc::c_ulong);
             ssl::mesalink_SSL_free(ssl);
-            quit_err("mesalink_SSL_accept failed");
+            handle_err(err);
         }
     }
 
@@ -279,7 +281,7 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC) {
                 return;
             }
         } else if len < 0 {
-            let err: ErrorCode = ErrorCode::from(err::mesalink_ERR_get_error());
+            let err = ErrorCode::from(ssl::mesalink_SSL_get_error(ssl, len) as libc::c_ulong);
             handle_err(err);
         }
 

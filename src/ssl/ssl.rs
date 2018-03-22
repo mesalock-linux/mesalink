@@ -1275,7 +1275,11 @@ fn inner_measlink_ssl_get_fd(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
-    check_inner_result_for_int(inner_mesalink_ssl_connect(ssl_ptr))
+    let ret = inner_mesalink_ssl_connect(ssl_ptr);
+    if ret.is_err() {
+        eprintln!("{:?}", ret);
+    }
+    check_inner_result_for_int(ret)
 }
 
 fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
@@ -1285,7 +1289,15 @@ fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult
         .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     let dnsname = webpki::DNSNameRef::try_from_ascii_str(hostname)
         .map_err(|_| error!(ErrorCode::MesalinkErrorBadFuncArg))?;
-    let session = rustls::ClientSession::new(&ssl.client_config, dnsname);
+    let mut session = rustls::ClientSession::new(&ssl.client_config, dnsname);
+    let io = ssl.io
+        .as_mut()
+        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+    let ret = complete_handshake_io(&mut session as &mut Session, io);
+    if let Err(e) = ret {
+        ssl.error = e.code;
+        return Err(e);
+    }
     ssl.session = Some(Box::new(session));
     Ok(SSL_SUCCESS)
 }
@@ -1306,9 +1318,60 @@ pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 
 fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
-    let session = rustls::ServerSession::new(&ssl.server_config);
+    let mut session = rustls::ServerSession::new(&ssl.server_config);
+    let io = ssl.io
+        .as_mut()
+        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+    let ret = complete_handshake_io(&mut session as &mut Session, io);
+    if let Err(e) = ret {
+        ssl.error = e.code;
+        return Err(e);
+    }
     ssl.session = Some(Box::new(session));
     Ok(SSL_SUCCESS)
+}
+
+fn complete_handshake_io(
+    session: &mut Session,
+    io: &mut net::TcpStream,
+) -> MesalinkInnerResult<(usize, usize)> {
+    let until_handshaked = session.is_handshaking();
+    let mut eof = false;
+    let mut wrlen = 0;
+    let mut rdlen = 0;
+    loop {
+        while session.wants_write() {
+            wrlen += session
+                .write_tls(io)
+                .map_err(|e| error!(ErrorCode::from(&e)))?;
+        }
+        if !until_handshaked && wrlen > 0 {
+            return Ok((rdlen, wrlen));
+        }
+        if !eof && session.wants_read() {
+            match session
+                .read_tls(io)
+                .map_err(|e| error!(ErrorCode::from(&e)))?
+            {
+                0 => eof = true,
+                n => rdlen += n,
+            }
+        }
+        match session.process_new_packets() {
+            Ok(_) => {}
+            Err(e) => {
+                let _ignored = session.write_tls(io);
+                return Err(error!(ErrorCode::from(&e)));
+            }
+        };
+
+        match (eof, until_handshaked, session.is_handshaking()) {
+            (_, true, false) => return Ok((rdlen, wrlen)),
+            (_, false, _) => return Ok((rdlen, wrlen)),
+            (true, true, true) => return Err(error!(ErrorCode::IoErrorUnexpectedEof)),
+            (..) => (),
+        }
+    }
 }
 
 /// `SSL_get_error` - obtain result code for TLS/SSL I/O operation
