@@ -54,4 +54,4 @@ maintainer-clean-local:
 	-rm libtool
 	-rm stamp-h1
 	-rm -rf bogo/bogo
-	-rm bogo/runner.tar.gz
+	-rm -rf bogo/runner.tar.gz

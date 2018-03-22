@@ -1283,14 +1283,9 @@ fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult
     let hostname = ssl.hostname
         .as_ref()
         .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
-    let io = ssl.io
-        .as_mut()
-        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     let dnsname = webpki::DNSNameRef::try_from_ascii_str(hostname)
         .map_err(|_| error!(ErrorCode::MesalinkErrorBadFuncArg))?;
-    let mut session = rustls::ClientSession::new(&ssl.client_config, dnsname);
-    let _ =
-        do_handshake_io(&mut session as &mut Session, io).map_err(|e| error!(ErrorCode::from(&e)))?;
+    let session = rustls::ClientSession::new(&ssl.client_config, dnsname);
     ssl.session = Some(Box::new(session));
     Ok(SSL_SUCCESS)
 }
@@ -1311,58 +1306,9 @@ pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 
 fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
-    let mut session = rustls::ServerSession::new(&ssl.server_config);
-    let io = ssl.io
-        .as_mut()
-        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
-    let _ =
-        do_handshake_io(&mut session as &mut Session, io).map_err(|e| error!(ErrorCode::from(&e)))?;
+    let session = rustls::ServerSession::new(&ssl.server_config);
     ssl.session = Some(Box::new(session));
     Ok(SSL_SUCCESS)
-}
-
-fn do_handshake_io(
-    session: &mut Session,
-    io: &mut net::TcpStream,
-) -> Result<(usize, usize), io::Error> {
-    let until_handshaked = session.is_handshaking();
-    let mut eof = false;
-    let mut wrlen = 0;
-    let mut rdlen = 0;
-
-    loop {
-        while session.wants_write() {
-            wrlen += session.write_tls(io)?;
-        }
-
-        if !until_handshaked && wrlen > 0 {
-            return Ok((rdlen, wrlen));
-        }
-
-        if !eof && session.wants_read() {
-            match session.read_tls(io)? {
-                0 => eof = true,
-                n => rdlen += n,
-            }
-        }
-        match session.process_new_packets() {
-            Ok(_) => {}
-            Err(e) => {
-                // In case we have an alert to send describing this error,
-                // try a last-gasp write -- but don't predate the primary
-                // error.
-                let _ignored = session.write_tls(io);
-
-                return Err(io::Error::new(io::ErrorKind::InvalidData, e));
-            }
-        };
-        match (eof, until_handshaked, session.is_handshaking()) {
-            (_, true, false) => return Ok((rdlen, wrlen)),
-            (_, false, _) => return Ok((rdlen, wrlen)),
-            (true, true, true) => return Err(io::Error::from(io::ErrorKind::UnexpectedEof)),
-            (..) => (),
-        }
-    }
 }
 
 /// `SSL_get_error` - obtain result code for TLS/SSL I/O operation
