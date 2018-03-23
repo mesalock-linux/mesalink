@@ -1,5 +1,9 @@
-# MesaLink
-MesaLink is a safe, secure and OpenSSL-compatible TLS library.
+<p align="center"><img src="logo.png" height="86" /></p>
+
+# MesaLink: A safe, secure and OpenSSL-compatible TLS library
+
+Mesalink is a OpenSSL-compatible TLS library written in Rust, a programming
+language that guaranteed memory safety and thread safety.
 
 To get better functionality along with strong security guarantees, MesaLink
 follows the following rules-of-thumb for hybrid memory-safe architecture
@@ -29,16 +33,15 @@ project.
    safe-guarding TLS connections against even quantum computers.
 
 MesaLink depends on two Rust crates: [rustls](https://github.com/ctz/rustls) and
-[ring](https://github.com/briansmith/ring). With them, MesaLink provides the
-following features that are considered secure for most use cases:
+[sct](https://github.com/ctz/sct.rs). With them, MesaLink provides the following
+features that are considered secure for most use cases:
 
 * TLS 1.2 and TLS 1.3 draft 22
 * ALPN and SNI support
 * Forced hostname validation
 * Safe and fast crypto implementations from Google's BoringSSL
 * ECDHE key exchange with forward secrecy
-* AES-GCM and Chacha20Poly1305 bulk encryption
-* Non-blocking I/O
+* AES-256-GCM and Chacha20-Poly1305 bulk encryption
 * Built-in Mozilla's CA root certificates
 
 ## Dodged bullets
@@ -84,10 +87,10 @@ To build MesaLink from source, the following tools are needed:
 
 On Ubuntu, you can install them with:
 
-```
+```text
 $ sudo apt-get install m4 autoconf automake libtool make gcc curl
 $ curl https://sh.rustup.rs -sSf | sh
-```
+```text
 
 On other platforms, please use the corresponding package managing tool to
 install them before proceeding. Note that MesaLink always targets the
@@ -96,21 +99,21 @@ compatibility with older releases.
 
 The source code can be downloaded from iCode:
 
-```
-$ git clone --recurse-submodules ssh://jingyiming@icode.baidu.com:8235/baidu/mesalink/mesalink
-```
+```text
+$ git clone --recurse-submodules git@github.com:mesalock-linux/mesalink.git
+```text
 
 To configure MesaLink, execute the following:
 
-```
+```text
 $ ./autogen.sh [OPTIONS]
-```
+```text
 
 By default, `autogen.sh` generates the `configure` script and runs it with the
 default configuration. A non-exhaustive list of options that can be passed to
 either of these scripts are shown as follows:
 
-```
+```text
   --prefix=PREFIX         install architecture-independent files in PREFIX
                           [/usr/local]
   --includedir=DIR        C header files [PREFIX/include]
@@ -131,11 +134,11 @@ either of these scripts are shown as follows:
                           exchange (default: enabled)
   --enable-ecdsa          Enable curve secp256r1 and secp384r1 for signature
                           verification (default: enabled)
-```
+```text
 
 At the end of the configuration, a configuration summary is shown. For example,
 
-```
+```text
 Configuration summary for mesalink version 0.1.0
 
    * Installation prefix:        /usr/local
@@ -155,13 +158,13 @@ Configuration summary for mesalink version 0.1.0
    * EC key exchange:            yes
    * RSA signature verification: yes
    * EC signature verification:  yes
-```
+```text
 
 Finally, simple run `make` to compile the MesaLink library.
 
-```
+```text
 $ make
-```
+```text
 
 ## Examples
 MesaLink comes with two examples that demonstrate a TLS client and a TLS
@@ -170,12 +173,12 @@ server. Both of them are located at `examples/`.
 The client example connects to a remote HTTPS server and prints the server's
 response.
 
-```
+```text
 $ ./examples/client/client api.ipify.org
-[+] Requesting api.ipify.org ...
+[+] Negotiated ciphersuite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, enc_length=16, version=TLS1.2
 [+] Sent 85 bytes
 
-GET / HTTP/1.1
+GET / HTTP/1.0
 Host: api.ipify.org
 Connection: close
 Accept-Encoding: identity
@@ -185,13 +188,14 @@ Server: Cowboy
 Connection: close
 Content-Type: text/plain
 Vary: Origin
-Date: Fri, 15 Dec 2017 19:46:36 GMT
+Date: Thu, 15 Feb 2018 23:58:39 GMT
 Content-Length: 10
 Via: 1.1 vegur
 
 1.2.3.4
+[+] TLS protocol version: TLS1.2
 [+] Received 177 bytes
-```
+```text
 
 The server example comes with a pair of certificate and private key. The
 certificate file is in the PEM format and contains a chain of certificates from
@@ -200,12 +204,13 @@ contains a PKCS8-encoded private key in the PEM format. Once the server is up
 and running, open [https://127.0.0.1:8443](https://127.0.0.1:8443) and expect to
 see the hello message.
 
-```
+```text
 $ ./examples/server/server
 Usage: ./examples/server/server <portnum> <cert_file> <private_key_file>
 $ cd examples/server/server
 $ ./server 8443 certificates private_key
 [+] Listening at 0.0.0.0:8443
+[+] Negotiated ciphersuite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, enc_length=16, version=TLS1.2
 [+] Received:
 GET / HTTP/1.1
 Host: 127.0.0.1:8443
@@ -216,21 +221,20 @@ Upgrade-Insecure-Requests: 1
 Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng
 Accept-Encoding: gzip, deflate, br
 Accept-Language: en-US,en;q=0.9
-```
+```text
 
 ## Want libcurl? No problem!
 MesaLink proudly supports libcurl as one of its TLS backends. To compile and
 install libcurl with the MesaLink backend, run the following commands:
 
-```
-$ git clone https://github.com/kevinis/curl.git
+```text
+$ git clone git@github.com:mesalock-linux/curl.git
 $ cd curl && git checkout mesalink
 $ autoreconf -i && ./configure --with-mesalink --without-ssl -without-gtls
 $ make && make install
-```
+```text
 
-We have tested git 2.16.2 linked with MesaLink-powered libcurl and everything goes
-well!
+The MesaLink backend is verified to work well with git 2.16.2.
 
 ## Unit tests
 MesaLink uses cargo for unit tests. The test cases are designed for the the
@@ -238,21 +242,21 @@ default configuration of MesaLink, in which all the optional features are
 enabled. So before running the test cases, please rebuild MesaLink with the
 default configuration:
 
-```
+```text
 $ ./configure
 $ make
 $ cargo test
-```
+```text
 
 ## BoringSSL SSL tests
 [BoGo](https://github.com/google/boringssl/tree/master/ssl/test) is BoringSSL's
 protocol level test suite. We have ported BoGo for testing the functionality and
 compatibility of MesaLink. To run BoGo test cases, run the following:
 
-```
+```text
 $ cargo build --release --examples
 $ (cd bogo && ./fetch-and-build && ./runme)
-```
+```text
 
 ## Crypto benchmarks
 MesaLink's underlying crypto library is
@@ -273,13 +277,13 @@ the available benchmarks is shown as follows:
 To run the benchmarks, run the following. Note you must have OpenSSL/LibreSSL or
 wolfSSL installed to run the corresponding benchmarks.
 
-```
+```text
 $ git clone https://github.com/kevinis/crypto-bench.git
 $ cd crypto-bench && git checkout dev
 $ (cd ring && cargo bench)
 $ (cd openssl && cargo bench)
 $ (cd wolfssl && cargo bench)
-```
+```text
 
 ## Maintainer
 
