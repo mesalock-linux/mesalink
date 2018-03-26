@@ -118,10 +118,6 @@ fn quit_err(why: &str) -> ! {
 }
 
 fn handle_err(err: ErrorCode) -> ! {
-    use std::{thread, time};
-
-    thread::sleep(time::Duration::from_millis(100));
-
     match err {
         ErrorCode::TLSErrorInappropriateMessage
         | ErrorCode::TLSErrorInappropriateHandshakeMessage => quit(":UNEXPECTED_MESSAGE:"),
@@ -195,40 +191,62 @@ fn setup_ctx(opts: &Options) -> *mut ssl::MESALINK_CTX_ARC {
     ctx
 }
 
+fn cleanup(ssl: *mut ssl::MESALINK_SSL, ctx: *mut ssl::MESALINK_CTX_ARC) {
+    if !ssl.is_null() {
+        ssl::mesalink_SSL_free(ssl);
+    }
+    if !ctx.is_null() {
+        ssl::mesalink_SSL_CTX_free(ctx);
+    }
+}
+
+fn flush(ssl: *mut ssl::MESALINK_SSL, conn: &mut net::TcpStream) {
+    unsafe {
+        let ssl_ref = &mut *ssl;
+        let _ = ssl_ref.flush();
+    }
+    let _ = conn.flush();
+}
+
 fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC) {
     use std::os::unix::io::AsRawFd;
-    let conn = net::TcpStream::connect(("localhost", opts.port)).expect("cannot connect");
+    let mut conn = net::TcpStream::connect(("localhost", opts.port)).expect("cannot connect");
     let mut sent_shutdown = false;
     let mut seen_eof = false;
 
     let ssl: *mut ssl::MESALINK_SSL = ssl::mesalink_SSL_new(ctx);
 
     if ssl.is_null() {
-        ssl::mesalink_SSL_free(ssl);
+        ssl::mesalink_SSL_CTX_free(ctx);
         quit_err("MESALINK_SSL is null");
     }
 
     if ssl::mesalink_SSL_set_tlsext_host_name(ssl, opts.host_name.as_ptr() as *const libc::c_char)
         != 1
     {
-        ssl::mesalink_SSL_free(ssl);
+        cleanup(ssl, ctx);
         quit_err("mesalink_SSL_set_tlsext_host_name failed\n");
     }
     if ssl::mesalink_SSL_set_fd(ssl, conn.as_raw_fd()) != 1 {
-        ssl::mesalink_SSL_free(ssl);
+        cleanup(ssl, ctx);
         quit_err("mesalink_SSL_set_fd failed\n");
     }
 
+    use std::{thread, time};
     if !opts.server {
         if ssl::mesalink_SSL_connect(ssl) != 1 {
             let err = ErrorCode::from(ssl::mesalink_SSL_get_error(ssl, -1) as libc::c_ulong);
-            ssl::mesalink_SSL_free(ssl);
+            flush(ssl, &mut conn);
+            thread::sleep(time::Duration::from_millis(200));
+            cleanup(ssl, ctx);
             handle_err(err);
         }
     } else {
         if ssl::mesalink_SSL_accept(ssl) != 1 {
             let err = ErrorCode::from(ssl::mesalink_SSL_get_error(ssl, -1) as libc::c_ulong);
-            ssl::mesalink_SSL_free(ssl);
+            flush(ssl, &mut conn);
+            thread::sleep(time::Duration::from_millis(200));
+            cleanup(ssl, ctx);
             handle_err(err);
         }
     }
@@ -244,6 +262,8 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC) {
     let mut len;
     let mut buf = [0u8; 1024];
     loop {
+        flush(ssl, &mut conn);
+
         len = ssl::mesalink_SSL_read(
             ssl,
             buf.as_mut_ptr() as *mut libc::c_uchar,
@@ -259,29 +279,38 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC) {
                         println!("close notify ok");
                     }
                     println!("EOF (tls)");
+                    flush(ssl, &mut conn);
                     ssl::mesalink_SSL_free(ssl);
                     return;
                 }
                 ErrorCode::IoErrorConnectionReset => if opts.check_close_notify {
-                    ssl::mesalink_SSL_free(ssl);
+                    cleanup(ssl, ctx);
                     quit_err(":CLOSE_WITHOUT_CLOSE_NOTIFY:")
                 },
-                _ => handle_err(error),
+                _ => {
+                    flush(ssl, &mut conn);
+                    cleanup(ssl, ctx);
+                    handle_err(error);
+                }
             };
             if opts.check_close_notify {
                 if !seen_eof {
                     seen_eof = true;
                 } else {
-                    ssl::mesalink_SSL_free(ssl);
+                    flush(ssl, &mut conn);
+                    cleanup(ssl, ctx);
                     quit_err(":CLOSE_WITHOUT_CLOSE_NOTIFY:");
                 }
             } else {
-                ssl::mesalink_SSL_free(ssl);
                 println!("EOF (plain)");
+                flush(ssl, &mut conn);
+                ssl::mesalink_SSL_free(ssl);
                 return;
             }
         } else if len < 0 {
             let err = ErrorCode::from(ssl::mesalink_SSL_get_error(ssl, len) as libc::c_ulong);
+            flush(ssl, &mut conn);
+            cleanup(ssl, ctx);
             handle_err(err);
         }
 
@@ -490,8 +519,15 @@ fn main() {
     println!("opts {:?}", opts);
 
     let ctx = setup_ctx(&opts);
+
+    if ctx.is_null() {
+        quit_err("MESALINK_SSL_CTX is null");
+    }
+
     for _ in 0..opts.resume_count + 1 {
         do_connection(&opts, ctx);
     }
-    ssl::mesalink_SSL_CTX_free(ctx);
+    if !ctx.is_null() {
+        ssl::mesalink_SSL_CTX_free(ctx);
+    }
 }

@@ -318,9 +318,11 @@ impl Read for MESALINK_SSL {
                                 return Err(e);
                             }
                             Ok(_) => if let Err(tls_err) = session.process_new_packets() {
-                                if session.wants_write() {
-                                    let _ = session.write_tls(io);
+                                // flush io to send any unsent alerts
+                                while session.wants_write() {
+                                    let _ = session.write_tls(io)?;
                                 }
+                                let _ = io.flush()?;
                                 self.error = ErrorCode::from(&tls_err);
                                 ErrorQueue::push_error(error!(self.error));
                                 return Err(io::Error::new(io::ErrorKind::InvalidData, tls_err));
@@ -1275,11 +1277,7 @@ fn inner_measlink_ssl_get_fd(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
-    let ret = inner_mesalink_ssl_connect(ssl_ptr);
-    if ret.is_err() {
-        eprintln!("{:?}", ret);
-    }
-    check_inner_result_for_int(ret)
+    check_inner_result_for_int(inner_mesalink_ssl_connect(ssl_ptr))
 }
 
 fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
@@ -1360,7 +1358,13 @@ fn complete_handshake_io(
         match session.process_new_packets() {
             Ok(_) => {}
             Err(e) => {
-                let _ignored = session.write_tls(io);
+                // flush io to send any unsent alerts
+                while session.wants_write() {
+                    let _ = session
+                        .write_tls(io)
+                        .map_err(|e| error!(ErrorCode::from(&e)))?;
+                }
+                let _ = io.flush().map_err(|e| error!(ErrorCode::from(&e)))?;
                 return Err(error!(ErrorCode::from(&e)));
             }
         };

@@ -81,9 +81,10 @@
     "*CertificateRequest*": "MesaLink NYI",
     "ServerCipherFilter-ECDSA": "Rustls NYI",
     "ECDSACurveMismatch-Sign-TLS13": "Rustls NYI",
-    "Agree-Digest-*": "MesaLink NYI",
+    "Agree-Digest-*": "",
     "UnsolicitedServerNameAck-*": "",
-    "Unclean-Shutdown-Alert": "Bogo bug?"
+    "Unclean-Shutdown-*": "",
+    "Shutdown-Shim-KeyUpdate-*": ""
   },
   "ErrorMap": {
     ":HTTP_REQUEST:": ":GARBAGE:",
