@@ -2,6 +2,8 @@
 
 # MesaLink: A safe, secure and OpenSSL-compatible TLS library
 
+[![Build Status](https://travis-ci.com/mesalock-linux/mesalink.svg?token=jQ7Xyo9mbqzpz1GRwbzf&branch=master)](https://travis-ci.com/mesalock-linux/mesalink)
+
 Mesalink is a OpenSSL-compatible TLS library written in Rust, a programming
 language that guaranteed memory safety and thread safety.
 
