@@ -76,7 +76,7 @@ trait MesalinkOpaquePointerType {
 }
 
 /// An OpenSSL Cipher object
-#[repr(C)]
+#[allow(non_camel_case_types)]
 pub struct MESALINK_CIPHER {
     magic: [u8; MAGIC_SIZE],
     ciphersuite: &'static rustls::SupportedCipherSuite,
@@ -105,7 +105,7 @@ impl MESALINK_CIPHER {
 /// consume it and create a new context. Note that a `SSL_METHOD` object is
 /// implicitly freed in `SSL_CTX_new`. To avoid double free, do NOT reuse
 /// `SSL_METHOD` objects; always create new ones when needed.
-#[repr(C)]
+#[allow(non_camel_case_types)]
 pub struct MESALINK_METHOD {
     magic: [u8; MAGIC_SIZE],
     versions: Vec<rustls::ProtocolVersion>,
@@ -180,7 +180,7 @@ impl rustls::StoresClientSessions for MesalinkClientSessionCache {
 /// for a TLS client, no further action is needed as MesaLink has built-in root
 /// CA certificates and default ciphersuites. Support for configurable
 /// ciphersuites will be added soon in the next release.
-#[repr(C)]
+#[allow(non_camel_case_types)]
 #[derive(Clone)]
 pub struct MESALINK_CTX {
     magic: [u8; MAGIC_SIZE],
@@ -236,7 +236,7 @@ impl MESALINK_CTX {
 ///
 /// Pass a valid `SSL_CTX` object to `SSL_new` to create a new `SSL` object.
 /// Then associate a valid socket file descriptor with `SSL_set_fd`.
-#[repr(C)]
+#[allow(non_camel_case_types)]
 pub struct MESALINK_SSL {
     magic: [u8; MAGIC_SIZE],
     context: Option<MESALINK_CTX_ARC>,

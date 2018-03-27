@@ -1,19 +1,19 @@
 <p align="center"><img src="logo.png" height="86" /></p>
 
-# MesaLink: A memory-safe, secure and OpenSSL-compatible TLS library
+# MesaLink: A memory-safe and OpenSSL-compatible TLS library
 
 [![Build Status](https://travis-ci.com/mesalock-linux/mesalink.svg?token=jQ7Xyo9mbqzpz1GRwbzf&branch=master)](https://travis-ci.com/mesalock-linux/mesalink)
 
-MesaLink is a memory-safe, secure, and OpenSSL-compatible TLS library. Since
-2014, the industry has seen a huge impact and loss due to memory vulnerabilities
-in TLS stacks; such as the infamous "Heartbleed" bug. MesaLink is born with the
-goal of eradicating memory vulnerabilities in TLS stacks; and it is written in
-Rust, a programming language that guarantees memory safety. This significantly
-reduces the attack surfaces; which further facilitates auditing and restricting
-the remaining attack surfaces. MesaLink is cross-platform and provides
+MesaLink is a memory-safe and OpenSSL-compatible TLS library. Since 2014, the
+industry has seen a huge impact and loss due to memory vulnerabilities in TLS
+stacks; such as the infamous "Heartbleed" bug. MesaLink is born with the goal of
+eradicating memory vulnerabilities in TLS stacks; and it is written in Rust, a
+programming language that guarantees memory safety. This significantly reduces
+the attack surfaces; which further facilitates auditing and restricting the
+remaining attack surfaces. MesaLink is cross-platform and provides
 OpenSSL-compatible APIs. It works seamlessly in desktop, mobile, and IoT
-devices. With the growth of the ecosystem, MesaLock Linux would also be adopted
-in the server environment in the future.
+devices. With the growth of the ecosystem, MesaLink would also be adopted in the
+server environment in the future.
 
 To get better functionality along with strong security guarantees, MesaLink
 follows the following rules-of-thumb for hybrid memory-safe architecture

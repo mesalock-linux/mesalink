@@ -42,7 +42,7 @@ rustls = { path = "./rustls" }
 
 [profile.release]
 lto = true
-panic = "abort"
+panic = "unwind"
 
 [[example]]
 name = "bogo_shim"
