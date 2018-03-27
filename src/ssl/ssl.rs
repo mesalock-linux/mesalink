@@ -431,10 +431,10 @@ where
         return Err(error!(ErrorCode::MesalinkErrorNullPointer));
     }
     let obj_ref: &mut T = unsafe { &mut *ptr };
-    if !obj_ref.check_magic() {
-        return Err(error!(ErrorCode::MesalinkErrorMalformedObject));
+    match obj_ref.check_magic() {
+        true => Ok(obj_ref),
+        false => Err(error!(ErrorCode::MesalinkErrorMalformedObject)),
     }
-    Ok(obj_ref)
 }
 
 fn check_inner_result_for_int(ret: MesalinkInnerResult<c_int>) -> c_int {
