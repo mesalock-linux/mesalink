@@ -437,11 +437,15 @@ where
     }
 }
 
+// A utility macro that wraps each inner API implementation and checks its
+// returned value. This macro also catches panics and prevents unwinding across
+// FFI boundaries. Note that the panic mode must be set to `unwind` in
+// Cargo.toml.
 macro_rules! check_inner_result {
     ($inner: expr, $err_ret: expr) => {{
-        let ret = panic::catch_unwind(panic::AssertUnwindSafe(|| $inner))
-            .unwrap_or_else(|_| Err(error!(ErrorCode::MesalinkErrorPanic)));
-        match ret {
+        match panic::catch_unwind(panic::AssertUnwindSafe(|| $inner))
+            .unwrap_or_else(|_| Err(error!(ErrorCode::MesalinkErrorPanic)))
+        {
             Ok(r) => r,
             Err(e) => {
                 ErrorQueue::push_error(e);
