@@ -51,6 +51,7 @@
 //!   MESALINK_ERROR_NULL_POINTER = 0xe0,
 //!   MESALINK_ERROR_MALFORMED_OBJECT = 0xe1,
 //!   MESALINK_ERROR_BAD_FUNC_ARG = 0xe2,
+//!   MESALINK_ERROR_PANIC = 0xe3,
 //!   IO_ERROR_NOT_FOUND = 0x02000001,
 //!   IO_ERROR_PERMISSION_DENIED = 0x02000002,
 //!   IO_ERROR_CONNECTION_REFUSED = 0x02000003,
@@ -196,6 +197,7 @@ pub enum ErrorCode {
     MesalinkErrorNullPointer = 0xe0,
     MesalinkErrorMalformedObject = 0xe1,
     MesalinkErrorBadFuncArg = 0xe2,
+    MesalinkErrorPanic = 0xe3,
     // Rust IO ErrorKind codes
     IoErrorNotFound = 0x02000001,
     IoErrorPermissionDenied = 0x02000002,
@@ -325,6 +327,7 @@ impl From<u32> for ErrorCode {
             0xe0 => ErrorCode::MesalinkErrorNullPointer,
             0xe1 => ErrorCode::MesalinkErrorMalformedObject,
             0xe2 => ErrorCode::MesalinkErrorBadFuncArg,
+            0xe3 => ErrorCode::MesalinkErrorPanic,
             0x02000001 => ErrorCode::IoErrorNotFound,
             0x02000002 => ErrorCode::IoErrorPermissionDenied,
             0x02000003 => ErrorCode::IoErrorConnectionRefused,
@@ -444,6 +447,7 @@ pub enum MesalinkBuiltinError {
     ErrorNullPointer,
     ErrorMalformedObject,
     ErrorBadFuncArg,
+    ErrorPanic,
 }
 
 impl MesalinkErrorType for MesalinkBuiltinError {}
@@ -465,6 +469,7 @@ impl<'a> From<&'a MesalinkBuiltinError> for ErrorCode {
             &MesalinkBuiltinError::ErrorNullPointer => ErrorCode::MesalinkErrorNullPointer,
             &MesalinkBuiltinError::ErrorMalformedObject => ErrorCode::MesalinkErrorMalformedObject,
             &MesalinkBuiltinError::ErrorBadFuncArg => ErrorCode::MesalinkErrorBadFuncArg,
+            &MesalinkBuiltinError::ErrorPanic => ErrorCode::MesalinkErrorPanic,
         }
     }
 }

@@ -34,7 +34,7 @@
 //! used to shut down the connection.
 
 // Module imports
-use std::{ffi, fs, io, net, ptr, slice};
+use std::{ffi, fs, io, net, panic, ptr, slice};
 use std::sync::Arc;
 use libc::{c_char, c_int, c_uchar};
 use rustls::{self, internal, sign};
@@ -437,36 +437,18 @@ where
     }
 }
 
-fn check_inner_result_for_int(ret: MesalinkInnerResult<c_int>) -> c_int {
-    match ret {
-        Ok(r) => r,
-        Err(e) => if e.code == ErrorCode::MesalinkErrorNone {
-            SSL_SUCCESS
-        } else {
-            ErrorQueue::push_error(e);
-            SSL_FAILURE
-        },
-    }
-}
-
-fn check_inner_result_for_mut_ptr<T>(ret: MesalinkInnerResult<*mut T>) -> *mut T {
-    match ret {
-        Ok(ptr) => ptr,
-        Err(e) => {
-            ErrorQueue::push_error(e);
-            ptr::null_mut()
+macro_rules! check_inner_result {
+    ($inner: expr, $err_ret: expr) => {{
+        let ret = panic::catch_unwind(panic::AssertUnwindSafe(|| $inner))
+            .unwrap_or_else(|_| Err(error!(ErrorCode::MesalinkErrorPanic)));
+        match ret {
+            Ok(r) => r,
+            Err(e) => {
+                ErrorQueue::push_error(e);
+                $err_ret
+            }
         }
-    }
-}
-
-fn check_inner_result_for_const_ptr<T>(ret: MesalinkInnerResult<*const T>) -> *const T {
-    match ret {
-        Ok(ptr) => ptr,
-        Err(e) => {
-            ErrorQueue::push_error(e);
-            ptr::null()
-        }
-    }
+    }};
 }
 
 /// For OpenSSL compatibility only. Always returns 1.
@@ -743,7 +725,7 @@ pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
 pub extern "C" fn mesalink_SSL_CTX_new(
     method_ptr: *const MESALINK_METHOD,
 ) -> *mut MESALINK_CTX_ARC {
-    check_inner_result_for_mut_ptr(inner_mesalink_ssl_ctx_new(method_ptr))
+    check_inner_result!(inner_mesalink_ssl_ctx_new(method_ptr), ptr::null_mut())
 }
 
 fn inner_mesalink_ssl_ctx_new(
@@ -772,10 +754,10 @@ pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
     filename_ptr: *const c_char,
     _format: c_int,
 ) -> c_int {
-    check_inner_result_for_int(inner_mesalink_ssl_ctx_use_certificate_chain_file(
-        ctx_ptr,
-        filename_ptr,
-    ))
+    check_inner_result!(
+        inner_mesalink_ssl_ctx_use_certificate_chain_file(ctx_ptr, filename_ptr,),
+        SSL_FAILURE
+    )
 }
 
 fn inner_mesalink_ssl_ctx_use_certificate_chain_file(
@@ -821,10 +803,10 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
     filename_ptr: *const c_char,
     _format: c_int,
 ) -> c_int {
-    check_inner_result_for_int(inner_mesalink_ssl_ctx_use_privatekey_file(
-        ctx_ptr,
-        filename_ptr,
-    ))
+    check_inner_result!(
+        inner_mesalink_ssl_ctx_use_privatekey_file(ctx_ptr, filename_ptr,),
+        SSL_FAILURE
+    )
 }
 
 fn inner_mesalink_ssl_ctx_use_privatekey_file(
@@ -871,7 +853,10 @@ fn inner_mesalink_ssl_ctx_use_privatekey_file(
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX_ARC) -> c_int {
-    check_inner_result_for_int(inner_mesalink_ssl_ctx_check_private_key(ctx_ptr))
+    check_inner_result!(
+        inner_mesalink_ssl_ctx_check_private_key(ctx_ptr),
+        SSL_FAILURE
+    )
 }
 
 fn inner_mesalink_ssl_ctx_check_private_key(
@@ -898,7 +883,10 @@ pub extern "C" fn mesalink_SSL_CTX_set_verify(
     mode: c_int,
     _cb: Option<extern "C" fn(c_int, *mut MESALINK_CTX) -> c_int>,
 ) -> c_int {
-    check_inner_result_for_int(inner_mesalink_ssl_ctx_set_verify(ctx_ptr, mode))
+    check_inner_result!(
+        inner_mesalink_ssl_ctx_set_verify(ctx_ptr, mode),
+        SSL_FAILURE
+    )
 }
 
 fn inner_mesalink_ssl_ctx_set_verify(
@@ -925,7 +913,7 @@ fn inner_mesalink_ssl_ctx_set_verify(
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_new(ctx_ptr: *mut MESALINK_CTX_ARC) -> *mut MESALINK_SSL {
-    check_inner_result_for_mut_ptr(inner_mesalink_ssl_new(ctx_ptr))
+    check_inner_result!(inner_mesalink_ssl_new(ctx_ptr), ptr::null_mut())
 }
 
 fn inner_mesalink_ssl_new(
@@ -945,7 +933,7 @@ fn inner_mesalink_ssl_new(
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_SSL_CTX(ssl_ptr: *mut MESALINK_SSL) -> *const MESALINK_CTX_ARC {
-    check_inner_result_for_const_ptr(inner_mesalink_ssl_get_ssl_ctx(ssl_ptr))
+    check_inner_result!(inner_mesalink_ssl_get_ssl_ctx(ssl_ptr), ptr::null())
 }
 
 fn inner_mesalink_ssl_get_ssl_ctx(
@@ -970,7 +958,10 @@ pub extern "C" fn mesalink_SSL_set_SSL_CTX(
     ssl_ptr: *mut MESALINK_SSL,
     ctx_ptr: *mut MESALINK_CTX_ARC,
 ) -> *const MESALINK_CTX_ARC {
-    check_inner_result_for_const_ptr(inner_mesalink_ssl_set_ssl_ctx(ssl_ptr, ctx_ptr))
+    check_inner_result!(
+        inner_mesalink_ssl_set_ssl_ctx(ssl_ptr, ctx_ptr),
+        ptr::null()
+    )
 }
 
 fn inner_mesalink_ssl_set_ssl_ctx(
@@ -1002,7 +993,10 @@ fn inner_mesalink_ssl_set_ssl_ctx(
 pub extern "C" fn mesalink_SSL_get_current_cipher(
     ssl_ptr: *mut MESALINK_SSL,
 ) -> *mut MESALINK_CIPHER {
-    check_inner_result_for_mut_ptr(inner_mesalink_ssl_get_current_cipher(ssl_ptr))
+    check_inner_result!(
+        inner_mesalink_ssl_get_current_cipher(ssl_ptr),
+        ptr::null_mut()
+    )
 }
 
 fn inner_mesalink_ssl_get_current_cipher(
@@ -1030,7 +1024,7 @@ fn inner_mesalink_ssl_get_current_cipher(
 #[no_mangle]
 #[cfg(feature = "error_strings")]
 pub extern "C" fn mesalink_SSL_CIPHER_get_name(cipher_ptr: *mut MESALINK_CIPHER) -> *const c_char {
-    check_inner_result_for_const_ptr(inner_mesalink_ssl_cipher_get_name(cipher_ptr))
+    check_inner_result!(inner_mesalink_ssl_cipher_get_name(cipher_ptr), ptr::null())
 }
 
 #[cfg(feature = "error_strings")]
@@ -1044,7 +1038,7 @@ fn inner_mesalink_ssl_cipher_get_name(
 #[no_mangle]
 #[cfg(not(feature = "error_strings"))]
 pub extern "C" fn mesalink_SSL_CIPHER_get_name(cipher_ptr: *mut MESALINK_CIPHER) -> *const c_char {
-    check_inner_result_for_const_ptr(inner_mesalink_ssl_cipher_get_name(cipher_ptr))
+    check_inner_result!(inner_mesalink_ssl_cipher_get_name(cipher_ptr), ptr::null())
 }
 
 #[cfg(not(feature = "error_strings"))]
@@ -1069,7 +1063,10 @@ pub extern "C" fn mesalink_SSL_CIPHER_get_bits(
     cipher_ptr: *mut MESALINK_CIPHER,
     bits_ptr: *mut c_int,
 ) -> c_int {
-    check_inner_result_for_int(inner_mesalink_ssl_cipher_get_bits(cipher_ptr, bits_ptr))
+    check_inner_result!(
+        inner_mesalink_ssl_cipher_get_bits(cipher_ptr, bits_ptr),
+        SSL_FAILURE
+    )
 }
 
 fn inner_mesalink_ssl_cipher_get_bits(
@@ -1101,7 +1098,10 @@ fn inner_mesalink_ssl_cipher_get_bits(
 pub extern "C" fn mesalink_SSL_CIPHER_get_version(
     cipher_ptr: *mut MESALINK_CIPHER,
 ) -> *const c_char {
-    check_inner_result_for_const_ptr(inner_mesalink_ssl_cipher_get_version(cipher_ptr))
+    check_inner_result!(
+        inner_mesalink_ssl_cipher_get_version(cipher_ptr),
+        ptr::null()
+    )
 }
 
 fn inner_mesalink_ssl_cipher_get_version(
@@ -1198,10 +1198,10 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
     ssl_ptr: *mut MESALINK_SSL,
     hostname_ptr: *const c_char,
 ) -> c_int {
-    check_inner_result_for_int(inner_mesalink_ssl_set_tlsext_host_name(
-        ssl_ptr,
-        hostname_ptr,
-    ))
+    check_inner_result!(
+        inner_mesalink_ssl_set_tlsext_host_name(ssl_ptr, hostname_ptr,),
+        SSL_FAILURE
+    )
 }
 
 fn inner_mesalink_ssl_set_tlsext_host_name(
@@ -1234,7 +1234,7 @@ fn inner_mesalink_ssl_set_tlsext_host_name(
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> c_int {
-    check_inner_result_for_int(inner_mesalink_ssl_set_fd(ssl_ptr, fd))
+    check_inner_result!(inner_mesalink_ssl_set_fd(ssl_ptr, fd), SSL_FAILURE)
 }
 
 fn inner_mesalink_ssl_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> MesalinkInnerResult<c_int> {
@@ -1256,7 +1256,7 @@ fn inner_mesalink_ssl_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> MesalinkI
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_fd(ssl_ptr: *mut MESALINK_SSL) -> c_int {
-    check_inner_result_for_int(inner_measlink_ssl_get_fd(ssl_ptr))
+    check_inner_result!(inner_measlink_ssl_get_fd(ssl_ptr), SSL_FAILURE)
 }
 
 fn inner_measlink_ssl_get_fd(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
@@ -1277,7 +1277,7 @@ fn inner_measlink_ssl_get_fd(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
-    check_inner_result_for_int(inner_mesalink_ssl_connect(ssl_ptr))
+    check_inner_result!(inner_mesalink_ssl_connect(ssl_ptr), SSL_FAILURE)
 }
 
 fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
@@ -1311,7 +1311,7 @@ fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
-    check_inner_result_for_int(inner_mesalink_ssl_accept(ssl_ptr))
+    check_inner_result!(inner_mesalink_ssl_accept(ssl_ptr), SSL_FAILURE)
 }
 
 fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
@@ -1387,7 +1387,7 @@ fn complete_handshake_io(
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_error(ssl_ptr: *mut MESALINK_SSL, ret: c_int) -> c_int {
-    check_inner_result_for_int(inner_mesalink_ssl_get_error(ssl_ptr, ret))
+    check_inner_result!(inner_mesalink_ssl_get_error(ssl_ptr, ret), SSL_FAILURE)
 }
 
 fn inner_mesalink_ssl_get_error(
@@ -1484,7 +1484,7 @@ pub extern "C" fn mesalink_SSL_write(
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_shutdown(ssl_ptr: *mut MESALINK_SSL) -> c_int {
-    check_inner_result_for_int(inner_mesalink_ssl_shutdown(ssl_ptr))
+    check_inner_result!(inner_mesalink_ssl_shutdown(ssl_ptr), SSL_FAILURE)
 }
 
 fn inner_mesalink_ssl_shutdown(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
@@ -1505,7 +1505,7 @@ fn inner_mesalink_ssl_shutdown(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResul
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_version(ssl_ptr: *mut MESALINK_SSL) -> *const c_char {
-    check_inner_result_for_const_ptr(inner_mesalink_ssl_get_version(ssl_ptr))
+    check_inner_result!(inner_mesalink_ssl_get_version(ssl_ptr), ptr::null())
 }
 
 fn inner_mesalink_ssl_get_version(
@@ -1534,7 +1534,7 @@ fn inner_mesalink_ssl_get_version(
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_CTX_free(ctx_ptr: *mut MESALINK_CTX_ARC) {
-    let _ = check_inner_result_for_int(inner_mesalink_ssl_ctx_free(ctx_ptr));
+    let _ = check_inner_result!(inner_mesalink_ssl_ctx_free(ctx_ptr), SSL_FAILURE);
 }
 
 fn inner_mesalink_ssl_ctx_free(ctx_ptr: *mut MESALINK_CTX_ARC) -> MesalinkInnerResult<c_int> {
@@ -1552,7 +1552,7 @@ fn inner_mesalink_ssl_ctx_free(ctx_ptr: *mut MESALINK_CTX_ARC) -> MesalinkInnerR
 /// ```text
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_free(ssl_ptr: *mut MESALINK_SSL) {
-    let _ = check_inner_result_for_int(inner_mesalink_ssl_free(ssl_ptr));
+    let _ = check_inner_result!(inner_mesalink_ssl_free(ssl_ptr), SSL_FAILURE);
 }
 
 fn inner_mesalink_ssl_free(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
