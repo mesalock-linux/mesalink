@@ -54,30 +54,6 @@ features that are considered secure for most use cases:
 * AES-256-GCM and Chacha20-Poly1305 bulk encryption
 * Built-in Mozilla's CA root certificates
 
-## Dodged bullets
-
-This section lists a few vulnerabilities that affected other TLS libraries in
-2017 but will not be possible in MesaLink.
-
-* [CVE-2017-3730](https://www.cvedetails.com/cve/CVE-2017-3730/): In OpenSSL
-  1.1.0 before 1.1.0d, if a malicious server supplies bad parameters for a DHE
-  or ECDHE key exchange then this can result in the client attempting to
-  dereference a NULL pointer leading to a client crash. This could be exploited
-  in a Denial of Service attack.
-* [CVE-2017-3735](https://www.cvedetails.com/cve/CVE-2017-3735/): While OpenSSL
-  parses an IPAddressFamily extension in an X.509 certificate, it is possible to
-  do a one-byte overread.
-* [CVE-2017-2784](https://www.cvedetails.com/cve/CVE-2017-2784/): An exploitable
-  free of a stack pointer vulnerability exists in the x509 certificate parsing
-  code of ARM mbed TLS before 1.3.19, 2.x before 2.1.7, and 2.4.x before 2.4.2.
-* [CVE-2017-2800](https://www.cvedetails.com/cve/CVE-2017-2800/): A specially
-  crafted x509 certificate can cause a single out of bounds byte overwrite in
-  wolfSSL through 3.10.2 resulting in potential certificate validation
-  vulnerabilities, denial of service and possible remote code execution.
-* [CVE-2017-8854](https://www.cvedetails.com/cve/CVE-2017-8854/): wolfSSL before
-  3.10.2 has an out-of-bounds memory access with loading crafted DH parameters,
-  aka a buffer overflow triggered by a malformed temporary DH file.
-
 ## Building the MesaLink library from source
 
 MesaLink is currently only available on Linux, Android and macOS. We will
@@ -295,9 +271,25 @@ $ (cd openssl && cargo bench)
 $ (cd wolfssl && cargo bench)
 ```
 
+## Acknowledgments
+The MesaLink project would not have been possible without the following high-quality
+open source projects in the Rust community. Thanks for code and inspiration!
+
+  * `rustls`: A modern TLS library in Rust, maintained by Joseph Birr-Pixton
+    [@ctz](https://github.com/ctz)
+  * `sct.rs`: Certificate transparency SCT verification library in rust,
+    maintained by Joseph Birr-Pixton [@ctz](https://github.com/ctz)
+  * `ring`: Safe, fast, small crypto using Rust, by Brian Smith
+    [@briansmith](https://github.com/briansmith)
+  * `webpki`: WebPKI X.509 Certificate Validation in Rust, maintained by Brian Smith
+    [@briansmith](https://github.com/briansmith)
+  * `crypto-bench`: Benchmarks for crypto libraries, maintained by Brian Smith
+    [@briansmith](https://github.com/briansmith)
+  * Special thanks to Brian Smith for insights and valuable discussion
+
 ## Maintainer
 
- * Yiming Jing <jingyiming@baidu.com>
+ * Yiming Jing `<jingyiming@baidu.com>` [@kevinis](https://github.com/kevinis)
 
 ## License
 MesaLink is provided under the 3-Clause BSD license. For a copy, see the LICENSE
