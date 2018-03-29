@@ -1438,13 +1438,10 @@ fn inner_mesalink_ssl_read(
     let buf = unsafe { slice::from_raw_parts_mut(buf_ptr, buf_len as usize) };
     match ssl.read(buf) {
         Ok(count) => Ok(count as c_int),
-        Err(e) => {
-            if e.kind() == io::ErrorKind::WouldBlock {
-                Ok(SSL_ERROR)
-            } else {
-                Err(error!(ErrorCode::from(&e)))
-            }
-        }
+        Err(e) => match e.kind() {
+            io::ErrorKind::WouldBlock | io::ErrorKind::NotConnected => Ok(SSL_ERROR),
+            _ => Err(error!(ErrorCode::from(&e))),
+        },
     }
 }
 
@@ -1480,13 +1477,10 @@ fn inner_mesalink_ssl_write(
     let buf = unsafe { slice::from_raw_parts(buf_ptr, buf_len as usize) };
     match ssl.write(buf) {
         Ok(count) => Ok(count as c_int),
-        Err(e) => {
-            if e.kind() == io::ErrorKind::WouldBlock {
-                Ok(SSL_ERROR)
-            } else {
-                Err(error!(ErrorCode::from(&e)))
-            }
-        }
+        Err(e) => match e.kind() {
+            io::ErrorKind::WouldBlock | io::ErrorKind::NotConnected => Ok(SSL_ERROR),
+            _ => Err(error!(ErrorCode::from(&e))),
+        },
     }
 }
 
