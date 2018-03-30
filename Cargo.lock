@@ -157,7 +157,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "mesalink"
-version = "0.1.0"
+version = "0.6.0"
 dependencies = [
  "enum_to_str_derive 0.1.0 (git+https://github.com/kevinis/enum_to_str_derive.git)",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -1,22 +1,28 @@
 language: rust
 cache: cargo
 sudo: false
+
 matrix:
   include:
   - os: linux
     dist: trusty
     rust: stable
+    env:
+    - ARCH=linux_x86_64
   - os: linux
     dist: trusty
     rust: nightly
   - os: osx
     rust: stable
+    env:
+    - ARCH=macos_x86_64
   - os: osx
     rust: nightly
   - os: linux
     dist: trusty
     rust: stable
     env:
+    - ARCH=arm_linux
     - TARGET=arm-linux-gnueabi
     - RUST_TARGET=arm-unknown-linux-gnueabi
     addons:
@@ -29,6 +35,7 @@ matrix:
     dist: trusty
     rust: stable
     env:
+    - ARCH=aarch64_linux
     - TARGET=aarch64-linux-gnu
     - RUST_TARGET=aarch64-unknown-linux-gnu
     addons:
@@ -41,12 +48,14 @@ matrix:
     dist: trusty
     rust: stable
     env:
+    - ARCH=arm_android
     - TARGET=arm-linux-androideabi
     - RUST_TARGET=arm-linux-androideabi
   - os: linux
     dist: trusty
     rust: stable
     env:
+    - ARCH=aarch64_android
     - TARGET=aarch64-linux-android
     - RUST_TARGET=aarch64-linux-android
 install:
@@ -64,14 +73,18 @@ script:
 - if [[ x"$TARGET" == "x" ]]; then ( cd bogo && ./runme ) ; fi
 
 before_deploy:
-  - tar -C $TRAVIS_BUILD_DIR/inst -zcvf $TRAVIS_BUILD_DIR/mesalink-$VERSION.tar.gz $TRAVIS_BUILD_DIR/inst/*
+  - if [[ x""$ARCH != "x" ]]; then
+      mkdir -p $TRAVIS_BUILD_DIR/releases
+      tar -C $TRAVIS_BUILD_DIR/inst -zcvf $TRAVIS_BUILD_DIR/releases/mesalink-$TRAVIS_TAG-$ARCH.tar.gz $TRAVIS_BUILD_DIR/inst/*
+    fi
 
 deploy:
   provider: releases
   api_key:
     secure: ZysiUFL+AzI8LW/bkRFNK9xMrstS5zJUm16D6XiSx9Gu00El/raS1nP5qp7dR4F+MszXj5SMaxu2zHahZC5yvudaUnOvPmbOuMRDTQdH0Mo4Mdn8LAIul/xuYdifdmJzqNbf2uq5WDqIeuDbAM9odNSzcajLez0CKgf/8HOXsWYlan8sTTz5yjOBhKVR+FCCjwM9z6/i+/W57cq5yEG1IfmahHr9fkmypn08nMpBlzV0QdD77uYRl1yIBGXmymG1/554208TwAqhsTEFNmGq8j9cY8Fig+1BJcwVwKRlem03INpN8qJUa4vzGjf5rZEViJ49JGnW6p7zyXMTMCVgPsUuufTH84FAoV6iujYrTAvM1rtcQqhb71/aUeve75uUFC5o71AFbozhdPv2zujk9aGFF7el98IrvLsKxK9pxRgW7b7Gyi787Q8wyi/Krpw1sbJbd6hCFNmVIGsnOzf8/7xLFs8a29PU7Q+/p6xw2nSMhwZLFYvfDszyCiv91EengxABH+/V+AaF0KjKNKXDKx3bC0RgomtrIZlFzeTubs840GdvDoaHCnjjHkLs8BhvwioF+Mrsr6IGhxs/OLIQVeqPRQboXlYGB1+ck/0XAyK0APQrUs2uDe2GRCoheS4iLVKf7SKe4oodNyhA9V1rLh1Vd0afsjObqSoJPEjufXo=
-  file: mesalink.tar.gz
+  file: releases/*
+  file_glob: true
   on:
     repo: mesalock-linux/mesalink
-    branch: releases
+    branch: master
     tags: true
