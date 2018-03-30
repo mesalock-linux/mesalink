@@ -24,7 +24,7 @@ LT_PREREQ([2.2])
 LT_INIT
 LT_LANG([C])
 
-MESALINK_LIBRARY_VERSION=1:0:0
+MESALINK_LIBRARY_VERSION=6:0:0
 #                        | | |
 #                 +------+ | +---+
 #                 |        |     |
@@ -86,12 +86,12 @@ AC_ARG_ENABLE([rusthost],
 if test "x$RUST_HOST" = "x"
 then
     CARGO_TARGET_ARGS=""
-    CARGO_RUSTC_ARGS="-- -C overflow-checks=yes"
+    CARGO_RUSTC_ARGS=""
     CARGO_TARGET_SUBDIR="$CARGO_TARGET_SUBDIR"
     CARGO_TARGET_SUBDIR_ENV_VAR=
 else
     CARGO_TARGET_ARGS="--target $RUST_HOST"
-    CARGO_RUSTC_ARGS="-- -C overflow-checks=yes -C linker=$CC"
+    CARGO_RUSTC_ARGS="-- -C linker=$CC"
     CARGO_TARGET_SUBDIR="$RUST_HOST/$CARGO_TARGET_SUBDIR"
     CARGO_TARGET_SUBDIR_ENV_VAR="CARGO_TARGET_SUBDIR=$CARGO_TARGET_SUBDIR"
 fi

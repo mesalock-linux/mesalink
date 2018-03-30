@@ -1,12 +1,18 @@
 [package]
 name = "mesalink"
-version = "0.1.0"
+version = "0.6.0"
 authors = ["The MesaLink Project Contributors"]
 license = "BSD-3-Clause"
 readme = "README.md"
 description = "MesaLink is a memory-safe and OpenSSL-compatible TLS library based on Rustls and Ring."
+keywords = ["tls", "ssl", "rust"]
+homepage = "https://github.com/mesalock-linux/mesalink"
+repository = "https://github.com/mesalock-linux/mesalink"
 categories = ["network-programming"]
 build = "build.rs"
+
+[badges]
+travis-ci = { repository = "mesalock-linux/mesalink", branch = "master"  }
 
 [lib]
 name = "mesalink_internals"
@@ -43,6 +49,7 @@ rustls = { path = "./rustls" }
 [profile.release]
 lto = true
 panic = "unwind"
+overflow-checks = true
 
 [[example]]
 name = "bogo_shim"
