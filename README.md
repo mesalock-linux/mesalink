@@ -291,6 +291,11 @@ open source projects in the Rust community. Thanks for code and inspiration!
 
  * Yiming Jing `<jingyiming@baidu.com>` [@kevinis](https://github.com/kevinis)
 
+## Steering Committee
+
+  - Tao Wei
+  - Yulong Zhang
+
 ## License
 MesaLink is provided under the 3-Clause BSD license. For a copy, see the LICENSE
 file.
