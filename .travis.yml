@@ -1,79 +1,74 @@
 language: rust
 cache: cargo
 sudo: false
-
 matrix:
   include:
-    - os: linux
-      dist: trusty
-      rust: stable
-    - os: linux
-      dist: trusty
-      rust: nightly
-    - os: osx
-      rust: stable
-    - os: osx
-      rust: nightly
-    - os: linux
-      dist: trusty
-      rust: stable
-      env:
-        - TARGET=arm-linux-gnueabi
-        - RUST_TARGET=arm-unknown-linux-gnueabi
-      addons:
-        apt:
-          packages:
-            - gcc-arm-linux-gnueabi
-            - libc6-armel-cross
-            - libc6-dev-armel-cross
-    - os: linux
-      dist: trusty
-      rust: stable
-      env:
-        - TARGET=aarch64-linux-gnu
-        - RUST_TARGET=aarch64-unknown-linux-gnu
-      addons:
-        apt:
-          packages:
-            - gcc-aarch64-linux-gnu
-            - libc6-arm64-cross
-            - libc6-dev-arm64-cross
-    - os: linux
-      dist: trusty
-      rust: stable
-      env:
-        - TARGET=arm-linux-androideabi
-        - RUST_TARGET=arm-linux-androideabi
-    - os: linux
-      dist: trusty
-      rust: stable
-      env:
-        - TARGET=aarch64-linux-android
-        - RUST_TARGET=aarch64-linux-android
-
+  - os: linux
+    dist: trusty
+    rust: stable
+  - os: linux
+    dist: trusty
+    rust: nightly
+  - os: osx
+    rust: stable
+  - os: osx
+    rust: nightly
+  - os: linux
+    dist: trusty
+    rust: stable
+    env:
+    - TARGET=arm-linux-gnueabi
+    - RUST_TARGET=arm-unknown-linux-gnueabi
+    addons:
+      apt:
+        packages:
+        - gcc-arm-linux-gnueabi
+        - libc6-armel-cross
+        - libc6-dev-armel-cross
+  - os: linux
+    dist: trusty
+    rust: stable
+    env:
+    - TARGET=aarch64-linux-gnu
+    - RUST_TARGET=aarch64-unknown-linux-gnu
+    addons:
+      apt:
+        packages:
+        - gcc-aarch64-linux-gnu
+        - libc6-arm64-cross
+        - libc6-dev-arm64-cross
+  - os: linux
+    dist: trusty
+    rust: stable
+    env:
+    - TARGET=arm-linux-androideabi
+    - RUST_TARGET=arm-linux-androideabi
+  - os: linux
+    dist: trusty
+    rust: stable
+    env:
+    - TARGET=aarch64-linux-android
+    - RUST_TARGET=aarch64-linux-android
 install:
-  - if [ x"$TARGET" = "xarm-linux-androideabi" ] || [ x"$TARGET" = "xaarch64-linux-android" ]; then
-      wget https://dl.google.com/android/repository/android-ndk-r16b-linux-x86_64.zip;
-      unzip android-ndk-r16b-linux-x86_64.zip  2>&1 >/dev/null;
-
-      if [[ x"$TARGET" = "xarm-linux-androideabi" ]]; then
-        ./android-ndk-r16b/build/tools/make_standalone_toolchain.py --arch arm --api 19 --install-dir $PWD/cross;
-      else
-        ./android-ndk-r16b/build/tools/make_standalone_toolchain.py --arch arm64 --api 21 --install-dir $PWD/cross;
-      fi
-
-      export PATH="$PATH:$PWD/cross/bin";
-    fi
-
+- |-
+  if [ x"$TARGET" = "xarm-linux-androideabi" ] || [ x"$TARGET" = "xaarch64-linux-android" ]; then wget https://dl.google.com/android/repository/android-ndk-r16b-linux-x86_64.zip; unzip android-ndk-r16b-linux-x86_64.zip  2>&1 >/dev/null;
+  if [[ x"$TARGET" = "xarm-linux-androideabi" ]]; then ./android-ndk-r16b/build/tools/make_standalone_toolchain.py --arch arm --api 19 --install-dir $PWD/cross; else ./android-ndk-r16b/build/tools/make_standalone_toolchain.py --arch arm64 --api 21 --install-dir $PWD/cross; fi
+  export PATH="$PATH:$PWD/cross/bin"; fi
 script:
-  - autoreconf -ivf
-  - if [[ x"$TARGET" == "x" ]]; then
-      ./configure;
-    else
-      rustup target add $RUST_TARGET;
-      ./configure --host=$TARGET --enable-rusthost=$RUST_TARGET --disable-examples;
-    fi
-  - make
-  - if [[ x"$TARGET" == "x" ]]; then ./examples/client/client www.google.com ; fi
-  - if [[ x"$TARGET" == "x" ]]; then RUST_BACKTRACE=1 cargo test ; fi
-  - if [[ x"$TARGET" == "x" ]]; then ( cd bogo && ./runme ) ; fi
+- autoreconf -ivf
+- if [[ x"$TARGET" == "x" ]]; then ./configure; else rustup target add $RUST_TARGET;
+  ./configure --host=$TARGET --enable-rusthost=$RUST_TARGET --disable-examples; fi
+- make
+- if [[ x"$TARGET" == "x" ]]; then ./examples/client/client www.google.com ; fi
+- if [[ x"$TARGET" == "x" ]]; then RUST_BACKTRACE=1 cargo test ; fi
+- if [[ x"$TARGET" == "x" ]]; then ( cd bogo && ./runme ) ; fi
+
+deploy:
+  provider: releases
+  api_key:
+    secure: ZysiUFL+AzI8LW/bkRFNK9xMrstS5zJUm16D6XiSx9Gu00El/raS1nP5qp7dR4F+MszXj5SMaxu2zHahZC5yvudaUnOvPmbOuMRDTQdH0Mo4Mdn8LAIul/xuYdifdmJzqNbf2uq5WDqIeuDbAM9odNSzcajLez0CKgf/8HOXsWYlan8sTTz5yjOBhKVR+FCCjwM9z6/i+/W57cq5yEG1IfmahHr9fkmypn08nMpBlzV0QdD77uYRl1yIBGXmymG1/554208TwAqhsTEFNmGq8j9cY8Fig+1BJcwVwKRlem03INpN8qJUa4vzGjf5rZEViJ49JGnW6p7zyXMTMCVgPsUuufTH84FAoV6iujYrTAvM1rtcQqhb71/aUeve75uUFC5o71AFbozhdPv2zujk9aGFF7el98IrvLsKxK9pxRgW7b7Gyi787Q8wyi/Krpw1sbJbd6hCFNmVIGsnOzf8/7xLFs8a29PU7Q+/p6xw2nSMhwZLFYvfDszyCiv91EengxABH+/V+AaF0KjKNKXDKx3bC0RgomtrIZlFzeTubs840GdvDoaHCnjjHkLs8BhvwioF+Mrsr6IGhxs/OLIQVeqPRQboXlYGB1+ck/0XAyK0APQrUs2uDe2GRCoheS4iLVKf7SKe4oodNyhA9V1rLh1Vd0afsjObqSoJPEjufXo=
+  file: mesalink.tar.gz
+  on:
+    repo: mesalock-linux/mesalink
+    branch: releases
+    tags: true
