@@ -236,19 +236,6 @@
 //! Accept-Language: en-US,en;q=0.9
 //! ```text
 //!
-//! ## Want libcurl? No problem!
-//! MesaLink proudly supports libcurl as one of its TLS backends. To compile and
-//! install libcurl with the MesaLink backend, run the following commands:
-//!
-//! ```text
-//! $ git clone git@github.com:mesalock-linux/curl.git
-//! $ cd curl && git checkout mesalink
-//! $ autoreconf -i && ./configure --with-mesalink --without-ssl -without-gtls
-//! $ make && make install
-//! ```text
-//!
-//! The MesaLink backend is verified to work well with git 2.16.2.
-//!
 //! ## Unit tests
 //! MesaLink uses cargo for unit tests. The test cases are designed for the the
 //! default configuration of MesaLink, in which all the optional features are
@@ -287,15 +274,13 @@
 //! | ECDH (suite B) key exchange         |  ✔️   |                  |         |
 //! | X25519 (Curve25519) key exchange    |  ✔️   |                  |         |
 //!
-//! To run the benchmarks, run the following. Note you must have OpenSSL/LibreSSL or
-//! wolfSSL installed to run the corresponding benchmarks.
+//! To run the benchmarks, run the following command with nightly Rust. Note you
+//! must have OpenSSL/LibreSSL or wolfSSL installed to run the corresponding
+//! benchmarks.
 //!
 //! ```text
-//! $ git clone https://github.com/kevinis/crypto-bench.git
-//! $ cd crypto-bench && git checkout dev
-//! $ (cd ring && cargo bench)
-//! $ (cd openssl && cargo bench)
-//! $ (cd wolfssl && cargo bench)
+//! $ rustup default nightly
+//! $ cd crypto-bench && ./cargo_all update && ./cargo_all bench
 //! ```text
 //!
 //! ## Maintainer

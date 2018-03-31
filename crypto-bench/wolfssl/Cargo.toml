@@ -1,0 +1,42 @@
+[package]
+authors = ["Yiming Jing <yimingjing.cn@gmail.com>"]
+name = "crypto_bench_wolfssl"
+version = "0.1.0"
+links = "wolfssl"
+build = "build.rs"
+
+[lib]
+name = "crypto_bench_wolfssl"
+path = "wolfssl.rs"
+
+[dependencies.crypto_bench]
+path = "../crypto_bench"
+
+[build-dependencies]
+bindgen = "0.32.3"
+
+# Ensure that the bench, release, and test settings are the same.
+
+[profile.bench]
+opt-level = 3
+debug = true
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+
+[profile.release]
+opt-level = 3
+debug = true
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+
+[profile.test]
+opt-level = 3
+debug = true
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1

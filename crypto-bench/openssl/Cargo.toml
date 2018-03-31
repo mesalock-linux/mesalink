@@ -1,0 +1,44 @@
+[package]
+authors = ["Brian Smith <brian@briansmith.org>"]
+name = "crypto_bench_openssl"
+version = "0.1.0"
+
+[lib]
+name = "crypto_bench_openssl"
+path = "openssl.rs"
+
+[dependencies.crypto_bench]
+path = "../crypto_bench"
+
+[features]
+openssl_110 = ["openssl/v110"]
+
+[dependencies]
+openssl = { git = "https://github.com/sfackler/rust-openssl" }
+
+
+# Ensure that the bench, release, and test settings are the same.
+
+[profile.bench]
+opt-level = 3
+debug = true
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+
+[profile.release]
+opt-level = 3
+debug = true
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+
+[profile.test]
+opt-level = 3
+debug = true
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1

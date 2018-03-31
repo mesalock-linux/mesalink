@@ -1,0 +1,5 @@
+#!/bin/sh
+
+(cd openssl && cargo update && cargo bench)
+(cd wolfssl && cargo update && cargo bench)
+(cd ring && cargo update && cargo bench)
