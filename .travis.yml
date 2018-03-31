@@ -84,6 +84,7 @@ deploy:
     secure: ZysiUFL+AzI8LW/bkRFNK9xMrstS5zJUm16D6XiSx9Gu00El/raS1nP5qp7dR4F+MszXj5SMaxu2zHahZC5yvudaUnOvPmbOuMRDTQdH0Mo4Mdn8LAIul/xuYdifdmJzqNbf2uq5WDqIeuDbAM9odNSzcajLez0CKgf/8HOXsWYlan8sTTz5yjOBhKVR+FCCjwM9z6/i+/W57cq5yEG1IfmahHr9fkmypn08nMpBlzV0QdD77uYRl1yIBGXmymG1/554208TwAqhsTEFNmGq8j9cY8Fig+1BJcwVwKRlem03INpN8qJUa4vzGjf5rZEViJ49JGnW6p7zyXMTMCVgPsUuufTH84FAoV6iujYrTAvM1rtcQqhb71/aUeve75uUFC5o71AFbozhdPv2zujk9aGFF7el98IrvLsKxK9pxRgW7b7Gyi787Q8wyi/Krpw1sbJbd6hCFNmVIGsnOzf8/7xLFs8a29PU7Q+/p6xw2nSMhwZLFYvfDszyCiv91EengxABH+/V+AaF0KjKNKXDKx3bC0RgomtrIZlFzeTubs840GdvDoaHCnjjHkLs8BhvwioF+Mrsr6IGhxs/OLIQVeqPRQboXlYGB1+ck/0XAyK0APQrUs2uDe2GRCoheS4iLVKf7SKe4oodNyhA9V1rLh1Vd0afsjObqSoJPEjufXo=
   file: releases/*
   file_glob: true
+  skip_cleanup: true
   on:
     repo: mesalock-linux/mesalink
     branch: master
