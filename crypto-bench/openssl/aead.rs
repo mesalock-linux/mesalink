@@ -62,7 +62,10 @@ macro_rules! openssl_seal_benches {
                                       &crypto_bench::aead::TLS12_AD);
             openssl_seal_bench!(tls13_4k, $algorithm, 4*1024,
                                       &crypto_bench::aead::TLS13_AD);
-
+            openssl_seal_bench!(tls12_8k, $algorithm, 8*1024,
+                                      &crypto_bench::aead::TLS12_AD);
+            openssl_seal_bench!(tls13_8k, $algorithm, 8*1024,
+                                      &crypto_bench::aead::TLS13_AD);
             openssl_seal_bench!(tls12_1m, $algorithm, 1024*1024,
                                       &crypto_bench::aead::TLS12_AD);
             openssl_seal_bench!(tls13_1m, $algorithm, 1024*1024,

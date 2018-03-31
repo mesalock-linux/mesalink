@@ -69,7 +69,10 @@ macro_rules! ring_seal_in_place_benches {
                                       &crypto_bench::aead::TLS12_AD);
             ring_seal_in_place_bench!(tls13_4k, $algorithm, 4*1024,
                                       &crypto_bench::aead::TLS13_AD);
-
+            ring_seal_in_place_bench!(tls12_8k, $algorithm, 8*1024,
+                                      &crypto_bench::aead::TLS12_AD);
+            ring_seal_in_place_bench!(tls13_8k, $algorithm, 8*1024,
+                                      &crypto_bench::aead::TLS13_AD);
             ring_seal_in_place_bench!(tls12_1m, $algorithm, 1024*1024,
                                       &crypto_bench::aead::TLS12_AD);
             ring_seal_in_place_bench!(tls13_1m, $algorithm, 1024*1024,

@@ -97,11 +97,13 @@ macro_rules! wolfssl_seal_benches {
                                       &crypto_bench::aead::TLS12_AD);
             wolfssl_seal_bench!(tls13_1350, $key_len, 1350,
                                       &crypto_bench::aead::TLS13_AD);
-
-            // For comparison with BoringSSL.
             wolfssl_seal_bench!(tls12_4k, $key_len, 4*1024,
                                       &crypto_bench::aead::TLS12_AD);
             wolfssl_seal_bench!(tls13_4k, $key_len, 4*1024,
+                                      &crypto_bench::aead::TLS13_AD);
+            wolfssl_seal_bench!(tls12_8k, $key_len, 8*1024,
+                                      &crypto_bench::aead::TLS12_AD);
+            wolfssl_seal_bench!(tls13_8k, $key_len, 8*1024,
                                       &crypto_bench::aead::TLS13_AD);
             wolfssl_seal_bench!(tls12_1m, $key_len, 1024*1024,
                                       &crypto_bench::aead::TLS12_AD);

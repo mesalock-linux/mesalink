@@ -85,7 +85,8 @@ macro_rules! wolfssl_seal_benches {
 
             wolfssl_seal_bench!(tls12_4k, 4*1024, &crypto_bench::aead::TLS12_AD);
             wolfssl_seal_bench!(tls13_4k, 4*1024, &crypto_bench::aead::TLS13_AD);
-
+            wolfssl_seal_bench!(tls12_8k, 8*1024, &crypto_bench::aead::TLS12_AD);
+            wolfssl_seal_bench!(tls13_8k, 8*1024, &crypto_bench::aead::TLS13_AD);
             wolfssl_seal_bench!(tls12_1m, 1024*1024, &crypto_bench::aead::TLS12_AD);
             wolfssl_seal_bench!(tls13_1m, 1024*1024, &crypto_bench::aead::TLS13_AD);
         }
