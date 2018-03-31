@@ -74,8 +74,10 @@ script:
 
 before_deploy:
   - if [[ x"$ARCH" != "x" ]]; then
-      mkdir -p $TRAVIS_BUILD_DIR/releases;
-      tar -C $TRAVIS_BUILD_DIR/inst -zcvf $TRAVIS_BUILD_DIR/releases/mesalink-$TRAVIS_TAG-$ARCH.tar.gz $TRAVIS_BUILD_DIR/inst/*;
+      mkdir -p $TRAVIS_BUILD_DIR/releases ;
+      cd $TRAVIS_BUILD_DIR/inst ;
+      tar -zcvf $TRAVIS_BUILD_DIR/releases/mesalink-$TRAVIS_TAG-$ARCH.tar.gz * ;
+      cd $TRAVIS_BUILD_DIR ;
     fi
 
 deploy:
