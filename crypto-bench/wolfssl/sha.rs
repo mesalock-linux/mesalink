@@ -40,7 +40,7 @@ mod bench_sha {
         ffi::wc_Sha256Update,
         ffi::wc_Sha256Final
     );
-    wolfssl_digest_benches!(
+    /*wolfssl_digest_benches!(
         sha384,
         ffi::WC_SHA384_BLOCK_SIZE,
         ffi::WC_SHA384_DIGEST_SIZE,
@@ -57,7 +57,7 @@ mod bench_sha {
         ffi::wc_InitSha512,
         ffi::wc_Sha512Update,
         ffi::wc_Sha512Final
-    );
+    );*/ // disabled for wolfSSL 3.14
 }
 
 #[cfg(target_os = "macos")]
@@ -80,7 +80,7 @@ mod bench_sha {
         ffi::wc_Sha256Update,
         ffi::wc_Sha256Final
     );
-    wolfssl_digest_benches!(
+    /*wolfssl_digest_benches!(
         sha384,
         ffi::SHA384_BLOCK_SIZE,
         ffi::SHA384_DIGEST_SIZE,
@@ -97,5 +97,5 @@ mod bench_sha {
         ffi::wc_InitSha512,
         ffi::wc_Sha512Update,
         ffi::wc_Sha512Final
-    );
+    );*/ // disabled for wolfSSL 3.14
 }
