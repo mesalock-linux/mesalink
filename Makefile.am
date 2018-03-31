@@ -33,6 +33,9 @@ install-generic-config:
 maintainer-clean-local:
 	-cargo clean
 	-rm -rf target
+	-rm -rf crypto-bench/openssl/target
+	-rm -rf crypto-bench/wolfssl/target
+	-rm -rf crypto-bench/ring/target
 	-rm Makefile.in
 	-rm Makefile
 	-rm mesalink-config

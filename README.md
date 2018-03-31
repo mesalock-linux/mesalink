@@ -253,7 +253,7 @@ benchmarks.
 
 ```
 $ rustup default nightly
-$ cd crypto-bench && ./cargo_all update && ./cargo_all bench
+$ cd crypto-bench && ./bench_all
 ```
 
 ## Acknowledgments
