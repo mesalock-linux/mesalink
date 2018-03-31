@@ -67,7 +67,7 @@ script:
 - autoreconf -ivf
 - if [[ x"$TARGET" == "x" ]]; then ./configure; else rustup target add $RUST_TARGET;
   ./configure --host=$TARGET --enable-rusthost=$RUST_TARGET --disable-examples; fi
-- make DESTDIR=$TRAVIS_BUILD_DIR/inst install
+- make DESTDIR=$TRAVIS_BUILD_DIR/inst install-strip
 - if [[ x"$TARGET" == "x" ]]; then ./examples/client/client www.google.com ; fi
 - if [[ x"$TARGET" == "x" ]]; then RUST_BACKTRACE=1 cargo test ; fi
 - if [[ x"$TARGET" == "x" ]]; then ( cd bogo && ./runme ) ; fi
