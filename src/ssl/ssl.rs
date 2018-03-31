@@ -604,12 +604,29 @@ pub extern "C" fn mesalink_TLSv1_3_client_method() -> *const MESALINK_METHOD {
 /// ```text
 ///
 #[no_mangle]
+#[cfg(feature = "tls13")]
 pub extern "C" fn mesalink_TLS_client_method() -> *const MESALINK_METHOD {
     let method = MESALINK_METHOD::new(vec![
         rustls::ProtocolVersion::TLSv1_3,
         rustls::ProtocolVersion::TLSv1_2,
     ]);
     Box::into_raw(Box::new(method))
+}
+
+/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
+/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
+/// pointers. Others simply return NULL.
+///
+/// ```text
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const SSL_METHOD *TLSv1_client_method(void);
+/// ```text
+///
+#[no_mangle]
+#[cfg(not(feature = "tls13"))]
+pub extern "C" fn mesalink_TLS_client_method() -> *const MESALINK_METHOD {
+    mesalink_TLSv1_2_client_method()
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
