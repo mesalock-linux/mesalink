@@ -79,16 +79,15 @@ macro_rules! wolfssl_seal_benches {
                                       crypto_bench::aead::TLS13_FINISHED_LEN,
                                       &crypto_bench::aead::TLS13_AD);
 
-            // For comparison with BoringSSL.
-            wolfssl_seal_bench!(tls12_16, 16, &crypto_bench::aead::TLS12_AD);
-
             // ~1 packet of data in TLS.
             wolfssl_seal_bench!(tls12_1350, 1350, &crypto_bench::aead::TLS12_AD);
             wolfssl_seal_bench!(tls13_1350, 1350, &crypto_bench::aead::TLS13_AD);
 
-            // For comparison with BoringSSL.
-            wolfssl_seal_bench!(tls12_8k, 8*1024, &crypto_bench::aead::TLS12_AD);
-            wolfssl_seal_bench!(tls13_8k, 8*1024, &crypto_bench::aead::TLS13_AD);
+            wolfssl_seal_bench!(tls12_4k, 4*1024, &crypto_bench::aead::TLS12_AD);
+            wolfssl_seal_bench!(tls13_4k, 4*1024, &crypto_bench::aead::TLS13_AD);
+
+            wolfssl_seal_bench!(tls12_1m, 1024*1024, &crypto_bench::aead::TLS12_AD);
+            wolfssl_seal_bench!(tls13_1m, 1024*1024, &crypto_bench::aead::TLS13_AD);
         }
     }
 }

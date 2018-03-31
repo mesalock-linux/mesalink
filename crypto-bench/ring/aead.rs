@@ -59,20 +59,20 @@ macro_rules! ring_seal_in_place_benches {
                                       crypto_bench::aead::TLS13_FINISHED_LEN,
                                       &crypto_bench::aead::TLS13_AD);
 
-            // For comparison with BoringSSL.
-            ring_seal_in_place_bench!(tls12_16, $algorithm, 16,
-                                      &crypto_bench::aead::TLS12_AD);
-
             // ~1 packet of data in TLS.
             ring_seal_in_place_bench!(tls12_1350, $algorithm, 1350,
                                       &crypto_bench::aead::TLS12_AD);
             ring_seal_in_place_bench!(tls13_1350, $algorithm, 1350,
                                       &crypto_bench::aead::TLS13_AD);
 
-            // For comparison with BoringSSL.
-            ring_seal_in_place_bench!(tls12_8192, $algorithm, 8192,
+            ring_seal_in_place_bench!(tls12_4k, $algorithm, 4*1024,
                                       &crypto_bench::aead::TLS12_AD);
-            ring_seal_in_place_bench!(tls13_8192, $algorithm, 8192,
+            ring_seal_in_place_bench!(tls13_4k, $algorithm, 4*1024,
+                                      &crypto_bench::aead::TLS13_AD);
+
+            ring_seal_in_place_bench!(tls12_1m, $algorithm, 1024*1024,
+                                      &crypto_bench::aead::TLS12_AD);
+            ring_seal_in_place_bench!(tls13_1m, $algorithm, 1024*1024,
                                       &crypto_bench::aead::TLS13_AD);
         }
     }
