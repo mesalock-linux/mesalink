@@ -115,6 +115,32 @@ CARGO_FEATURES=$CARGO_FEATURES" \""
 
 CONFIG_OPTIONS=""
 
+AC_ARG_ENABLE([client],
+    [AS_HELP_STRING([--enable-client], [Enable client APIs (default: enabled)])],
+    [ ENABLE_CLIENT=$enableval ],
+    [ ENABLE_CLIENT=yes ]
+    )
+if test "$ENABLE_CLIENT" = "yes"
+then
+    CARGO_FEATURES=$CARGO_FEATURES" client_apis"
+    CONFIG_OPTIONS="$CONFIG_OPTIONS HAVE_CLIENT"
+else
+    CONFIG_OPTIONS="$CONFIG_OPTIONS NO_CLIENT"
+fi
+
+AC_ARG_ENABLE([server],
+    [AS_HELP_STRING([--enable-server], [Enable server APIs (default: enabled)])],
+    [ ENABLE_SERVER=$enableval ],
+    [ ENABLE_SERVER=yes ]
+    )
+if test "$ENABLE_SERVER" = "yes"
+then
+    CARGO_FEATURES=$CARGO_FEATURES" server_apis"
+    CONFIG_OPTIONS="$CONFIG_OPTIONS HAVE_SERVER"
+else
+    CONFIG_OPTIONS="$CONFIG_OPTIONS NO_SERVER"
+fi
+
 AC_ARG_ENABLE([errorstrings],
     [AS_HELP_STRING([--enable-errorstrings], [Enable error string table (default: enabled)])],
     [ ENABLE_ERROR_STRINGS=$enableval ],
@@ -212,7 +238,7 @@ CARGO_FEATURES=$CARGO_FEATURES"\""
 AC_ARG_ENABLE([examples],
     [AS_HELP_STRING([--enable-examples], [Enable examples (default: disabled)])],
     [ ENABLE_EXAMPLES=$enableval ],
-    [ ENABLE_EXAMPLES=yes ]
+    [ ENABLE_EXAMPLES=no ]
     )
 AM_CONDITIONAL([BUILD_EXAMPLE_CLIENT], [test "x$ENABLE_EXAMPLES" = "xyes"])
 AM_CONDITIONAL([BUILD_EXAMPLE_SERVER], [test "x$ENABLE_EXAMPLES" = "xyes"])

@@ -19,7 +19,9 @@ name = "mesalink_internals"
 crate-type = ["lib", "staticlib"]
 
 [features]
-default = ["error_strings", "tls13", "aesgcm", "chachapoly", "x25519", "ecdh", "ecdsa", "verifier"]
+client_apis = []
+server_apis = []
+default = ["client_apis", "server_apis", "error_strings", "tls13", "aesgcm", "chachapoly", "x25519", "ecdh", "ecdsa", "verifier"]
 error_strings = ["rustls/logging"]
 tls13 = ["rustls/tls13"]
 aesgcm = ["rustls/aesgcm"]
@@ -29,6 +31,7 @@ ecdh = ["rustls/ecdh"]
 ecdsa = ["rustls/ecdsa"]
 verifier = ["rustls/dangerous_configuration"]
 nightly = []
+
 
 [dependencies]
 rustls = { version = "0.12.0", default-features = false }

@@ -34,11 +34,11 @@
 //! used to shut down the connection.
 
 // Module imports
-use std::{ffi, fs, io, net, panic, ptr, slice};
+use std::{ffi, io, net, panic, ptr, slice};
 use std::sync::Arc;
 use libc::{c_char, c_int, c_uchar};
-use rustls::{self, internal, sign};
 use ring::rand;
+use rustls;
 use webpki;
 use ssl::err::{ErrorCode, ErrorQueue, MesalinkError, MesalinkInnerResult};
 
@@ -512,6 +512,7 @@ fn mesalink_not_available_method() -> *const MESALINK_METHOD {
 /// ```text
 ///
 #[no_mangle]
+#[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_SSLv3_client_method() -> *const MESALINK_METHOD {
     mesalink_not_available_method()
 }
@@ -527,6 +528,7 @@ pub extern "C" fn mesalink_SSLv3_client_method() -> *const MESALINK_METHOD {
 /// ```text
 ///
 #[no_mangle]
+#[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_SSLv23_client_method() -> *const MESALINK_METHOD {
     mesalink_not_available_method()
 }
@@ -542,6 +544,7 @@ pub extern "C" fn mesalink_SSLv23_client_method() -> *const MESALINK_METHOD {
 /// ```text
 ///
 #[no_mangle]
+#[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_TLSv1_client_method() -> *const MESALINK_METHOD {
     mesalink_not_available_method()
 }
@@ -557,6 +560,7 @@ pub extern "C" fn mesalink_TLSv1_client_method() -> *const MESALINK_METHOD {
 /// ```text
 ///
 #[no_mangle]
+#[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_TLSv1_1_client_method() -> *const MESALINK_METHOD {
     mesalink_not_available_method()
 }
@@ -572,6 +576,7 @@ pub extern "C" fn mesalink_TLSv1_1_client_method() -> *const MESALINK_METHOD {
 /// ```text
 ///
 #[no_mangle]
+#[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_TLSv1_2_client_method() -> *const MESALINK_METHOD {
     let method = MESALINK_METHOD::new(vec![rustls::ProtocolVersion::TLSv1_2]);
     Box::into_raw(Box::new(method))
@@ -588,6 +593,7 @@ pub extern "C" fn mesalink_TLSv1_2_client_method() -> *const MESALINK_METHOD {
 /// ```text
 ///
 #[no_mangle]
+#[cfg(all(feature = "tls13", feature = "client_apis"))]
 pub extern "C" fn mesalink_TLSv1_3_client_method() -> *const MESALINK_METHOD {
     let method = MESALINK_METHOD::new(vec![rustls::ProtocolVersion::TLSv1_3]);
     Box::into_raw(Box::new(method))
@@ -604,7 +610,7 @@ pub extern "C" fn mesalink_TLSv1_3_client_method() -> *const MESALINK_METHOD {
 /// ```text
 ///
 #[no_mangle]
-#[cfg(feature = "tls13")]
+#[cfg(all(feature = "tls13", feature = "client_apis"))]
 pub extern "C" fn mesalink_TLS_client_method() -> *const MESALINK_METHOD {
     let method = MESALINK_METHOD::new(vec![
         rustls::ProtocolVersion::TLSv1_3,
@@ -624,7 +630,7 @@ pub extern "C" fn mesalink_TLS_client_method() -> *const MESALINK_METHOD {
 /// ```text
 ///
 #[no_mangle]
-#[cfg(not(feature = "tls13"))]
+#[cfg(all(not(feature = "tls13"), feature = "client_apis"))]
 pub extern "C" fn mesalink_TLS_client_method() -> *const MESALINK_METHOD {
     mesalink_TLSv1_2_client_method()
 }
@@ -640,6 +646,7 @@ pub extern "C" fn mesalink_TLS_client_method() -> *const MESALINK_METHOD {
 /// ```text
 ///
 #[no_mangle]
+#[cfg(feature = "server_apis")]
 pub extern "C" fn mesalink_SSLv3_server_method() -> *const MESALINK_METHOD {
     mesalink_not_available_method()
 }
@@ -655,6 +662,7 @@ pub extern "C" fn mesalink_SSLv3_server_method() -> *const MESALINK_METHOD {
 /// ```text
 ///
 #[no_mangle]
+#[cfg(feature = "server_apis")]
 pub extern "C" fn mesalink_SSLv23_server_method() -> *const MESALINK_METHOD {
     mesalink_not_available_method()
 }
@@ -670,6 +678,7 @@ pub extern "C" fn mesalink_SSLv23_server_method() -> *const MESALINK_METHOD {
 /// ```text
 ///
 #[no_mangle]
+#[cfg(feature = "server_apis")]
 pub extern "C" fn mesalink_TLSv1_server_method() -> *const MESALINK_METHOD {
     mesalink_not_available_method()
 }
@@ -685,6 +694,7 @@ pub extern "C" fn mesalink_TLSv1_server_method() -> *const MESALINK_METHOD {
 /// ```text
 ///
 #[no_mangle]
+#[cfg(feature = "server_apis")]
 pub extern "C" fn mesalink_TLSv1_1_server_method() -> *const MESALINK_METHOD {
     mesalink_not_available_method()
 }
@@ -700,8 +710,10 @@ pub extern "C" fn mesalink_TLSv1_1_server_method() -> *const MESALINK_METHOD {
 /// ```text
 ///
 #[no_mangle]
+#[cfg(feature = "server_apis")]
 pub extern "C" fn mesalink_TLSv1_2_server_method() -> *const MESALINK_METHOD {
-    mesalink_TLSv1_2_client_method()
+    let method = MESALINK_METHOD::new(vec![rustls::ProtocolVersion::TLSv1_2]);
+    Box::into_raw(Box::new(method))
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -715,8 +727,10 @@ pub extern "C" fn mesalink_TLSv1_2_server_method() -> *const MESALINK_METHOD {
 /// ```text
 ///
 #[no_mangle]
+#[cfg(all(feature = "tls13", feature = "server_apis"))]
 pub extern "C" fn mesalink_TLSv1_3_server_method() -> *const MESALINK_METHOD {
-    mesalink_TLSv1_3_client_method()
+    let method = MESALINK_METHOD::new(vec![rustls::ProtocolVersion::TLSv1_3]);
+    Box::into_raw(Box::new(method))
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -730,8 +744,19 @@ pub extern "C" fn mesalink_TLSv1_3_server_method() -> *const MESALINK_METHOD {
 /// ```text
 ///
 #[no_mangle]
+#[cfg(all(feature = "tls13", feature = "server_apis"))]
 pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
-    mesalink_TLS_client_method()
+    let method = MESALINK_METHOD::new(vec![
+        rustls::ProtocolVersion::TLSv1_3,
+        rustls::ProtocolVersion::TLSv1_2,
+    ]);
+    Box::into_raw(Box::new(method))
+}
+
+#[no_mangle]
+#[cfg(all(not(feature = "tls13"), feature = "server_apis"))]
+pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
+    mesalink_TLSv1_2_server_method()
 }
 
 /// `SSL_CTX_new` - create a new SSL_CTX object as framework to establish TLS/SSL
@@ -770,6 +795,7 @@ fn inner_mesalink_ssl_ctx_new(
 /// int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx, const char *file);
 /// ```text
 #[no_mangle]
+#[cfg(feature = "server_apis")]
 pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     filename_ptr: *const c_char,
@@ -781,10 +807,14 @@ pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
     )
 }
 
+#[cfg(feature = "server_apis")]
 fn inner_mesalink_ssl_ctx_use_certificate_chain_file(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     filename_ptr: *const c_char,
 ) -> MesalinkInnerResult<c_int> {
+    use rustls::internal;
+    use std::fs;
+
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     if filename_ptr.is_null() {
         return Err(error!(ErrorCode::MesalinkErrorNullPointer));
@@ -819,6 +849,7 @@ fn inner_mesalink_ssl_ctx_use_certificate_chain_file(
 /// int SSL_CTX_use_PrivateKey_file(SSL_CTX *ctx, const char *file, int type);
 /// ```text
 #[no_mangle]
+#[cfg(feature = "server_apis")]
 pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     filename_ptr: *const c_char,
@@ -830,10 +861,14 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
     )
 }
 
+#[cfg(feature = "server_apis")]
 fn inner_mesalink_ssl_ctx_use_privatekey_file(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     filename_ptr: *const c_char,
 ) -> MesalinkInnerResult<c_int> {
+    use rustls::internal;
+    use std::fs;
+
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     if filename_ptr.is_null() {
         return Err(error!(ErrorCode::MesalinkErrorNullPointer));
@@ -873,6 +908,7 @@ fn inner_mesalink_ssl_ctx_use_privatekey_file(
 /// int SSL_CTX_check_private_key(const SSL_CTX *ctx);
 /// ```text
 #[no_mangle]
+#[cfg(feature = "server_apis")]
 pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX_ARC) -> c_int {
     check_inner_result!(
         inner_mesalink_ssl_ctx_check_private_key(ctx_ptr),
@@ -880,9 +916,11 @@ pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX_
     )
 }
 
+#[cfg(feature = "server_apis")]
 fn inner_mesalink_ssl_ctx_check_private_key(
     ctx_ptr: *mut MESALINK_CTX_ARC,
 ) -> MesalinkInnerResult<c_int> {
+    use rustls::sign;
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     match (&ctx.certificates, &ctx.private_key) {
         (&Some(ref certs), &Some(ref key)) => {
@@ -1297,10 +1335,12 @@ fn inner_measlink_ssl_get_fd(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
 /// int SSL_connect(SSL *ssl);
 /// ```text
 #[no_mangle]
+#[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     check_inner_result!(inner_mesalink_ssl_connect(ssl_ptr), SSL_FAILURE)
 }
 
+#[cfg(feature = "client_apis")]
 fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     let hostname = ssl.hostname
@@ -1331,10 +1371,12 @@ fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult
 /// int SSL_accept(SSL *ssl);
 /// ```text
 #[no_mangle]
+#[cfg(feature = "server_apis")]
 pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     check_inner_result!(inner_mesalink_ssl_accept(ssl_ptr), SSL_FAILURE)
 }
 
+#[cfg(feature = "server_apis")]
 fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     let mut session = rustls::ServerSession::new(&ssl.server_config);
@@ -1350,6 +1392,7 @@ fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
     Ok(SSL_SUCCESS)
 }
 
+#[cfg(any(feature = "server_apis", feature = "client_apis"))]
 fn complete_handshake_io(
     session: &mut Session,
     io: &mut net::TcpStream,
@@ -1589,16 +1632,17 @@ fn inner_mesalink_ssl_free(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_
 
 mod util {
     use ssl::ssl;
-    use rustls;
     use std::sync::Arc;
 
     pub const CONST_NONE_STR: &'static [u8] = b" NONE \0";
     pub const CONST_TLS12_STR: &'static [u8] = b"TLS1.2\0";
     pub const CONST_TLS13_STR: &'static [u8] = b"TLS1.3\0";
 
+    #[cfg(feature = "server_apis")]
     pub fn try_get_context_certs_and_key(
         ctx: &mut ssl::MESALINK_CTX_ARC,
     ) -> Result<(Vec<rustls::Certificate>, rustls::PrivateKey), ()> {
+        use rustls;
         let certs = ctx.certificates.as_ref().ok_or(())?;
         let priv_key = ctx.private_key.as_ref().ok_or(())?;
         Ok((certs.clone(), priv_key.clone()))
