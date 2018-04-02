@@ -55,13 +55,13 @@ OPTIMIZE_CFLAGS="-Os -fvisibility=hidden -ffunction-sections -fdata-sections"
 if test x"$ax_cv_c_compiler_vendor" = x"gnu"
 then
     OPTIMIZE_CFLAGS="$OPTIMIZE_CFLAGS -Wl,--gc-sections"
-    CARGO_RUSTC_ARGS="-- -C link-args=-Wl,--gc-sections"
+    CARGO_RUSTC_ARGS="-- -C lto -C link-args=-Wl,--gc-sections"
 fi
 
 if test x"$ax_cv_c_compiler_vendor" = x"clang"
 then
     OPTIMIZE_CFLAGS="$OPTIMIZE_CFLAGS -Wl,-dead_strip"
-    CARGO_RUSTC_ARGS="-- -C link-args=-Wl,-dead_strip"
+    CARGO_RUSTC_ARGS="-- -C lto -C link-args=-Wl,-dead_strip"
 fi
 
 DEBUG_CFLAGS="-g -ggdb -O0 -Wall"
