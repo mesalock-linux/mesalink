@@ -50,10 +50,11 @@ AS_IF(test x$RUSTC = xno,
 )
 
 AX_COMPILER_VENDOR
-OPTIMIZE_CFLAGS="-Os -ffunction-sections -fdata-sections"
-if test "$ax_cv_c_compiler_vendor" = "gnu"
-then
-    OPTIMIZE_CFLAGS="$OPTIMIZE_CFLAGS -Wl,--gc-sections"
+OPTIMIZE_CFLAGS="-Os -fvisibility=hidden -ffunction-sections -fdata-sections"
+if test x"$ax_cv_c_compiler_vendor" = x"gnu" then
+    OPTIMIZE_CFLAGS="$OPTIMIZE_CFLAGS -Wl,-gc-sections"
+elif test x"$ax_cv_c_compiler_vendor" = x"clang" then
+    OPTIMIZE_CFLAGS="$OPTIMIZE_CFLAGS -Wl,-dead-strip"
 fi
 
 DEBUG_CFLAGS="-g -ggdb -O0 -Wall"
@@ -83,15 +84,17 @@ AC_ARG_ENABLE([rusthost],
     [ RUST_HOST= ]
     )
 
+CARGO_RUSTC_ARGS="-- -C link-args=-Wl,-gc-sections"
+
 if test "x$RUST_HOST" = "x"
 then
     CARGO_TARGET_ARGS=""
-    CARGO_RUSTC_ARGS="-- "
+    CARGO_RUSTC_ARGS="$CARGO_RUSTC_ARGS"
     CARGO_TARGET_SUBDIR="$CARGO_TARGET_SUBDIR"
     CARGO_TARGET_SUBDIR_ENV_VAR=
 else
     CARGO_TARGET_ARGS="--target $RUST_HOST"
-    CARGO_RUSTC_ARGS="-- -C linker=$CC"
+    CARGO_RUSTC_ARGS="$CARGO_RUSTC_ARGS -C linker=$CC"
     CARGO_TARGET_SUBDIR="$RUST_HOST/$CARGO_TARGET_SUBDIR"
     CARGO_TARGET_SUBDIR_ENV_VAR="CARGO_TARGET_SUBDIR=$CARGO_TARGET_SUBDIR"
 fi
