@@ -9,6 +9,9 @@ matrix:
   include:
   - os: linux
     dist: trusty
+    rust: stable
+  - os: linux
+    dist: trusty
     rust: nightly
     env:
     - ARCH=linux_x86_64
