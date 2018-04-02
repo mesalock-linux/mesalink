@@ -3,22 +3,10 @@ cache: cargo
 sudo: false
 env:
   global:
-    - CONFIGURE_PARAMETERS="--disable-server --disable-examples"
+    - CONFIGURE_PARAMETERS="--disable-server --disable-errorstrings --disable-tls13 --disable-aesgcm --disable-x25519 --disable-examples"
 
 matrix:
   include:
-  - os: linux
-    dist: trusty
-    rust: stable
-  - os: linux
-    dist: trusty
-    rust: nightly
-    env:
-    - ARCH=linux_x86_64
-  - os: osx
-    rust: nightly
-    env:
-    - ARCH=macos_x86_64
   - os: linux
     dist: trusty
     rust: nightly
