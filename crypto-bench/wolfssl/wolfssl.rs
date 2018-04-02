@@ -10,4 +10,4 @@ mod ffi;
 
 mod aesgcm;
 mod chachapoly;
-mod sha;
+// mod sha;

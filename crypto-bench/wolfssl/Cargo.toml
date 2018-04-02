@@ -1,5 +1,5 @@
 [package]
-authors = ["Yiming Jing <yimingjing.cn@gmail.com>"]
+authors = ["Yiming Jing <jingyiming@baidu.com>"]
 name = "crypto_bench_wolfssl"
 version = "0.1.0"
 links = "wolfssl"
@@ -13,7 +13,7 @@ path = "wolfssl.rs"
 path = "../crypto_bench"
 
 [build-dependencies]
-bindgen = "0.32.3"
+bindgen = "0.35"
 
 # Ensure that the bench, release, and test settings are the same.
 
