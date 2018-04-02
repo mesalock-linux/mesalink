@@ -3,27 +3,22 @@ cache: cargo
 sudo: false
 env:
   global:
-    - CONFIGURE_PARAMETERS=""
+    - CONFIGURE_PARAMETERS="--disable-server --disable-examples"
 
 matrix:
   include:
   - os: linux
     dist: trusty
-    rust: stable
+    rust: nightly
     env:
     - ARCH=linux_x86_64
-  - os: linux
-    dist: trusty
-    rust: nightly
   - os: osx
-    rust: stable
+    rust: nightly
     env:
     - ARCH=macos_x86_64
-  - os: osx
-    rust: nightly
   - os: linux
     dist: trusty
-    rust: stable
+    rust: nightly
     env:
     - ARCH=arm_linux
     - TARGET=arm-linux-gnueabi
@@ -36,7 +31,7 @@ matrix:
         - libc6-dev-armel-cross
   - os: linux
     dist: trusty
-    rust: stable
+    rust: nightly
     env:
     - ARCH=aarch64_linux
     - TARGET=aarch64-linux-gnu
@@ -49,14 +44,14 @@ matrix:
         - libc6-dev-arm64-cross
   - os: linux
     dist: trusty
-    rust: stable
+    rust: nightly
     env:
     - ARCH=arm_android
     - TARGET=arm-linux-androideabi
     - RUST_TARGET=arm-linux-androideabi
   - os: linux
     dist: trusty
-    rust: stable
+    rust: nightly
     env:
     - ARCH=aarch64_android
     - TARGET=aarch64-linux-android
@@ -70,16 +65,13 @@ install:
 
 script:
 - if [[ x"$TARGET" == "x" ]]; then
-      ./autogen.sh $CONFIGURE_PARAMETERS --enable-examples ;
+      ./autogen.sh $CONFIGURE_PARAMETERS ;
   else
       rustup target add $RUST_TARGET;
-      ./autogen.sh --host=$TARGET --enable-rusthost=$RUST_TARGET --disable-examples $CONFIGURE_PARAMETERS ;
+      ./autogen.sh --host=$TARGET --enable-rusthost=$RUST_TARGET $CONFIGURE_PARAMETERS ;
   fi
 - make DESTDIR=$TRAVIS_BUILD_DIR/inst install-strip ;
 - du -sh $TRAVIS_BUILD_DIR/inst/usr/local/lib/libmesalink.* ;
-- if [[ x"$TARGET" == "x" ]]; then ./examples/client/client google.com ; fi
-- if [[ x"$TARGET" == "x" ]]; then RUST_BACKTRACE=1 cargo test ; fi
-- if [[ x"$TARGET" == "x" ]]; then ( cd bogo && ./runme ) ; fi
 
 before_deploy:
   - if [[ x"$ARCH" != "x" ]]; then
