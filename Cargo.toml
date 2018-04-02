@@ -16,7 +16,7 @@ travis-ci = { repository = "mesalock-linux/mesalink", branch = "master"  }
 
 [lib]
 name = "mesalink_internals"
-crate-type = ["lib", "staticlib"]
+crate-type = ["staticlib"]
 
 [features]
 client_apis = []
