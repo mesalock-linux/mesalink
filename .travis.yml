@@ -2,7 +2,8 @@ language: rust
 cache: cargo
 sudo: false
 env:
-  - CONFIGURE_PARAMETERS=""
+  global:
+    - CONFIGURE_PARAMETERS=""
 
 matrix:
   include:
