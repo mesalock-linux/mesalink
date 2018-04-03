@@ -252,7 +252,8 @@ must have OpenSSL/LibreSSL or wolfSSL installed to run the corresponding
 benchmarks.
 
 ```
-$ rustup default nightly
+$ rustup install nightly-2017-12-24
+$ rustup default nightly-2017-12-24
 $ cd crypto-bench && ./bench_all
 ```
 
