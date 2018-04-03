@@ -685,7 +685,7 @@ pub extern "C" fn mesalink_ERR_free_error_strings() {
     // compatibility only
 }
 
-/// `ERR_error_string_n` - generate a human-readable string representing the
+/// `ERR_error_string_n` - generates a human-readable string representing the
 /// error code `e`, and places `len` bytes at `buf`. Note that this function is
 /// not thread-safe and does no checks on the size of the buffer.
 ///
@@ -719,7 +719,7 @@ pub extern "C" fn mesalink_ERR_error_string_n(
     }
 }
 
-/// `ERR_error_reason_error_string` - return a human-readable string representing
+/// `ERR_error_reason_error_string` - returns a human-readable string representing
 /// the error code e. This API does not allocate additional memory.
 ///
 /// ```text
@@ -746,7 +746,7 @@ impl ErrorQueue {
     }
 }
 
-/// `ERR_get_error` - return the earliest error code from the thread's error
+/// `ERR_get_error` - returns the earliest error code from the thread's error
 /// queue and removes the entry. This function can be called repeatedly until
 /// there are no more error codes to return.
 ///
@@ -763,7 +763,7 @@ pub extern "C" fn mesalink_ERR_get_error() -> c_ulong {
     })
 }
 
-/// `ERR_peek_last_error` - return the latest error code from the thread's error
+/// `ERR_peek_last_error` - returns the latest error code from the thread's error
 /// queue without modifying it.
 ///
 /// ```text

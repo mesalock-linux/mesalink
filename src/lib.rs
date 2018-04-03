@@ -161,7 +161,14 @@
 //!    * Rust Host:
 //!    * C Compiler:                 gcc
 //!    * C Compiler vendor:          clang
-//!    * C Flags:                    -Os -ffunction-sections -fdata-sections  -Werror //! -Wno-pragmas -Wall -Wno-strict-aliasing -Wextra -Wunknown-pragmas //! --param=ssp-buffer-size=1 -Waddress -Warray-bounds -Wbad-function-cast -Wchar-subscripts //! -Wcomment -Wfloat-equal -Wformat-security -Wformat=2 -Wmissing-field-initializers //! -Wmissing-noreturn -Wmissing-prototypes -Wnested-externs -Wpointer-arith -Wpointer-sign //! -Wredundant-decls -Wshadow -Wshorten-64-to-32 -Wsign-compare -Wstrict-overflow=1 //! -Wstrict-prototypes -Wswitch-enum -Wundef -Wunused -Wunused-result -Wunused-variable //! -Wwrite-strings -fwrapv
+//!    * C Flags:                    -Os -ffunction-sections -fdata-sections  -Werror
+//!                                  -Wno-pragmas -Wall -Wno-strict-aliasing -Wextra -Wunknown-pragmas
+//!                                  --param=ssp-buffer-size=1 -Waddress -Warray-bounds -Wbad-function-cast -Wchar-subscripts
+//!                                  -Wcomment -Wfloat-equal -Wformat-security -Wformat=2 -Wmissing-field-initializers
+//!                                  -Wmissing-noreturn -Wmissing-prototypes -Wnested-externs -Wpointer-arith -Wpointer-sign
+//!                                  -Wredundant-decls -Wshadow -Wshorten-64-to-32 -Wsign-compare -Wstrict-overflow=1
+//!                                  -Wstrict-prototypes -Wswitch-enum -Wundef -Wunused -Wunused-result -Wunused-variable
+//!                                  -Wwrite-strings -fwrapv
 //!    * Debug enabled:              no
 //!
 //!    Features
@@ -190,7 +197,8 @@
 //!
 //! ```text
 //! $ ./examples/client/client api.ipify.org
-//! [+] Negotiated ciphersuite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, enc_length=16, //! version=TLS1.2
+//! [+] Negotiated ciphersuite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, enc_length=16,
+//! version=TLS1.2
 //! [+] Sent 85 bytes
 //!
 //! GET / HTTP/1.0
@@ -225,7 +233,8 @@
 //! $ cd examples/server/server
 //! $ ./server 8443 certificates private_key
 //! [+] Listening at 0.0.0.0:8443
-//! [+] Negotiated ciphersuite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, enc_length=16, //! version=TLS1.2
+//! [+] Negotiated ciphersuite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, enc_length=16,
+//! version=TLS1.2
 //! [+] Received:
 //! GET / HTTP/1.1
 //! Host: 127.0.0.1:8443
