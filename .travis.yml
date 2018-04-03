@@ -3,8 +3,7 @@ cache: cargo
 sudo: false
 env:
   global:
-    - CONFIGURE_PARAMETERS=""
-
+  - CONFIGURE_PARAMETERS=""
 matrix:
   include:
   - os: linux
@@ -61,38 +60,28 @@ matrix:
     - ARCH=aarch64_android
     - TARGET=aarch64-linux-android
     - RUST_TARGET=aarch64-linux-android
-
 install:
 - |-
   if [ x"$TARGET" = "xarm-linux-androideabi" ] || [ x"$TARGET" = "xaarch64-linux-android" ]; then wget -nv https://dl.google.com/android/repository/android-ndk-r16b-linux-x86_64.zip; unzip android-ndk-r16b-linux-x86_64.zip  2>&1 >/dev/null;
   if [[ x"$TARGET" = "xarm-linux-androideabi" ]]; then ./android-ndk-r16b/build/tools/make_standalone_toolchain.py --arch arm --api 19 --install-dir $PWD/cross; else ./android-ndk-r16b/build/tools/make_standalone_toolchain.py --arch arm64 --api 21 --install-dir $PWD/cross; fi
   export PATH="$PATH:$PWD/cross/bin"; fi
-
 script:
-- if [[ x"$TARGET" == "x" ]]; then
-      ./autogen.sh $CONFIGURE_PARAMETERS --enable-examples ;
-  else
-      rustup target add $RUST_TARGET ;
-      ./autogen.sh --host=$TARGET --enable-rusthost=$RUST_TARGET $CONFIGURE_PARAMETERS ;
-  fi
+- if [[ x"$TARGET" == "x" ]]; then ./autogen.sh $CONFIGURE_PARAMETERS --enable-examples
+  ; else rustup target add $RUST_TARGET ; ./autogen.sh --host=$TARGET --enable-rusthost=$RUST_TARGET
+  $CONFIGURE_PARAMETERS ; fi
 - make DESTDIR=$TRAVIS_BUILD_DIR/inst install-strip ;
 - du -sh $TRAVIS_BUILD_DIR/inst/usr/local/lib/libmesalink.* ;
 - if [[ x"$TARGET" == "x" ]]; then ./examples/client/client google.com ; fi
 - if [[ x"$TARGET" == "x" ]]; then RUST_BACKTRACE=1 cargo test ; fi
 - if [[ x"$TARGET" == "x" ]]; then ( cd bogo && ./runme ) ; fi
-
 before_deploy:
-  - if [[ x"$ARCH" != "x" ]]; then
-      mkdir -p $TRAVIS_BUILD_DIR/releases ;
-      cd $TRAVIS_BUILD_DIR/inst ;
-      tar -zcvf $TRAVIS_BUILD_DIR/releases/mesalink-$TRAVIS_TAG-$ARCH.tar.gz * ;
-      cd $TRAVIS_BUILD_DIR ;
-    fi
-
+- if [[ x"$ARCH" != "x" ]]; then mkdir -p $TRAVIS_BUILD_DIR/releases ; cd $TRAVIS_BUILD_DIR/inst
+  ; tar -zcvf $TRAVIS_BUILD_DIR/releases/mesalink-$TRAVIS_TAG-$ARCH.tar.gz * ; cd
+  $TRAVIS_BUILD_DIR ; fi
 deploy:
   provider: releases
   api_key:
-    secure: ZysiUFL+AzI8LW/bkRFNK9xMrstS5zJUm16D6XiSx9Gu00El/raS1nP5qp7dR4F+MszXj5SMaxu2zHahZC5yvudaUnOvPmbOuMRDTQdH0Mo4Mdn8LAIul/xuYdifdmJzqNbf2uq5WDqIeuDbAM9odNSzcajLez0CKgf/8HOXsWYlan8sTTz5yjOBhKVR+FCCjwM9z6/i+/W57cq5yEG1IfmahHr9fkmypn08nMpBlzV0QdD77uYRl1yIBGXmymG1/554208TwAqhsTEFNmGq8j9cY8Fig+1BJcwVwKRlem03INpN8qJUa4vzGjf5rZEViJ49JGnW6p7zyXMTMCVgPsUuufTH84FAoV6iujYrTAvM1rtcQqhb71/aUeve75uUFC5o71AFbozhdPv2zujk9aGFF7el98IrvLsKxK9pxRgW7b7Gyi787Q8wyi/Krpw1sbJbd6hCFNmVIGsnOzf8/7xLFs8a29PU7Q+/p6xw2nSMhwZLFYvfDszyCiv91EengxABH+/V+AaF0KjKNKXDKx3bC0RgomtrIZlFzeTubs840GdvDoaHCnjjHkLs8BhvwioF+Mrsr6IGhxs/OLIQVeqPRQboXlYGB1+ck/0XAyK0APQrUs2uDe2GRCoheS4iLVKf7SKe4oodNyhA9V1rLh1Vd0afsjObqSoJPEjufXo=
+    secure: Am6ccanjzpGurPGdtL4XqVReW2p48w+weo448G8g1v7rCnyjBhH8Uhy3MjOjc6mpGrwtSGhYKv0uIPmwOs2opYPZ384qk1SsECyYg8/Q3UM6ndYN1AHhG2k9KlUO8QI6yUZyl84fsKeEzoErqoBaRuF6YibWXqLR7D/+P0Ohr3N4mEg0k64nwaFb88iL+mw4ocKDzUbRErb7zJsa3GDkpVDaixkHRkCusNv9Z49mbIyosjU0hvPXL9sI7yWpC52uUhi1U+ATHHtdQKxivSq/pAanQ3a36zkEqAlDthMGA2oRCDgf233MVJczToGNrerpBx7TtbHWoFrI8nVyYRFsCGk19S+s8dW5vr0/kk1t544QJDpI5AjcZKlD0V8JmM+JIkn7xkukSCSIQ3GFeOLFjqBGd7IuxVhMA25PiLjuQG/HDoGPCsPxDztg41Ss3VxGGha2xMTT0ESUpqv/Ik3sTtEfE8Z9zqahoeHNSvPwU/dgZXjuag8lB/YEZsEhzlXJPAD4qu6C3x6/M3Gpv1aO+PHKZU3oTXXdmEmnweY7CWVRQr8EErkNHjmi19fbRxh0CAJcBIg7VlqwlodLZ83gw509mzZamLnrx5+hUqjGWcqhpZIj6xkPE9+U7W/JTrHX5duyog/dvHd6xMHer3X1XX8xJtCIHVd6+D8psxUzZaE=
   file: releases/*
   file_glob: true
   skip_cleanup: true
