@@ -34,7 +34,7 @@ nightly = []
 
 
 [dependencies]
-rustls = { git = "https://github.com/mesalock-linux/mesalink", branch = "mesalink", default-features = false }
+rustls = { git = "https://github.com/mesalock-linux/rustls", branch = "mesalink", default-features = false }
 ring = { version = "0.13.0-alpha", features = ["rsa_signing", ] }
 webpki = "0.18.0-alpha"
 webpki-roots = "0.14.0"
