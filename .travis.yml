@@ -3,7 +3,7 @@ cache: cargo
 sudo: false
 env:
   global:
-    - CONFIGURE_PARAMETERS="--disable-server --disable-errorstrings --disable-tls13 --disable-aesgcm --disable-x25519 --disable-examples"
+    - CONFIGURE_PARAMETERS=""
 
 matrix:
   include:
