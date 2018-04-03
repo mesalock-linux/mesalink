@@ -136,6 +136,8 @@
 //!                           [default=no]
 //!   --enable-rusthost       Set the Rust host for cross compilation (default:
 //!                           disabled)
+//!   --enable-client         Enable TLS client-side APIs (default: enabled)
+//!   --enable-server         Enable TLS server-side APIs (default: enabled)
 //!   --enable-errorstrings   Enable error string table (default: enabled)
 //!   --enable-aesgcm         Enable AES-GCM bulk encryption (default: enabled)
 //!   --enable-chachapoly     Enable Chacha20Poly1305 bulk encryption (default:
