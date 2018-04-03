@@ -2,7 +2,7 @@
 
 # MesaLink: A memory-safe and OpenSSL-compatible TLS library
 
-[![Build Status](https://travis-ci.com/mesalock-linux/mesalink.svg?token=jQ7Xyo9mbqzpz1GRwbzf&branch=master)](https://travis-ci.com/mesalock-linux/mesalink)
+[![Build Status](https://travis-ci.org/mesalock-linux/mesalink.svg?token=jQ7Xyo9mbqzpz1GRwbzf&branch=master)](https://travis-ci.com/mesalock-linux/mesalink)
 
 MesaLink is a memory-safe and OpenSSL-compatible TLS library. Since 2014, the
 industry has seen a huge impact and loss due to memory vulnerabilities in TLS
