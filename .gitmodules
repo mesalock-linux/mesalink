@@ -1,8 +1,8 @@
 [submodule "rustls"]
 	path = rustls
-	url = git@github.com:mesalock-linux/rustls.git
+	url = https://github.com/mesalock-linux/sct.rs.git
 	branch = mesalink
 [submodule "sct"]
 	path = sct
-	url = git@github.com:mesalock-linux/sct.git
+	url = https://github.com/mesalock-linux/rustls.git
 	branch = mesalink
