@@ -83,10 +83,10 @@ install them before proceeding. Note that MesaLink always targets the
 **current** stable and nightly release of Rust. We do not guarantee backward
 compatibility with older releases.
 
-The source code can be downloaded from iCode:
+The source code can be downloaded from Github:
 
 ```
-$ git clone --recurse-submodules git@github.com:mesalock-linux/mesalink.git
+$ git clone https://github.com/mesalock-linux/mesalink.git
 ```
 
 To configure MesaLink, execute the following:
