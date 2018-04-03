@@ -60,7 +60,7 @@ fi
 
 if test x"$ax_cv_c_compiler_vendor" = x"clang"
 then
-    OPTIMIZE_CFLAGS="$OPTIMIZE_CFLAGS -Wl,-dead_strip"
+    OPTIMIZE_CFLAGS="$OPTIMIZE_CFLAGS"
     CARGO_RUSTC_ARGS="-- -C overflow-checks=yes -C link-args=-Wl,-dead_strip"
 fi
 
