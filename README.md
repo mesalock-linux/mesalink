@@ -9,20 +9,20 @@
 [![License](https://img.shields.io/badge/license-BSD-blue.svg)](LICENSE)
 
 MesaLink is a memory-safe and OpenSSL-compatible TLS library. Since 2014, the
-industry has seen a huge impact and loss due to memory vulnerabilities in TLS
-stacks; such as the infamous "Heartbleed" bug. MesaLink is born with the goal of
-eradicating memory vulnerabilities in TLS stacks; and it is written in Rust, a
+industry has seen a huge loss due to memory vulnerabilities in TLS
+stacks, such as the infamous "Heartbleed" bug. MesaLink is created with the goal of
+eliminating memory vulnerabilities in TLS stacks. MesaLink is written in Rust, a
 programming language that guarantees memory safety. This significantly reduces
-the attack surfaces; which further facilitates auditing and restricting the
+the attack surfaces, which facilitates auditing and restricting the
 remaining attack surfaces. MesaLink is cross-platform and provides
 OpenSSL-compatible APIs. It works seamlessly in desktop, mobile, and IoT
 devices. With the growth of the ecosystem, MesaLink would also be adopted in the
 server environment in the future.
 
-To get better functionality along with strong security guarantees, MesaLink
-follows the following rules-of-thumb for hybrid memory-safe architecture
-designing proposed by the [Rust SGX SDK](https://github.com/baidu/rust-sgx-sdk)
-project.
+To get better functionality and strong security guarantees, MesaLink
+follows three rules-of-thumb for designing a hybrid, memory-safe architecture,
+as proposed by the [Rust SGX SDK](https://github.com/baidu/rust-sgx-sdk)
+project:
 
 1. Unsafe components must not taint safe components, especially for public APIs
    and data structures.
@@ -35,12 +35,12 @@ project.
 
  * **Memory safety**. MesaLink and its dependencies are written in
    [Rust](https://www.rust-lang.org), a programming language that guarantees
-   memory safety. This extremely reduces attack surfaces of an TLS stack exposed
-   in the wild, leaving the remaining attack surfaces auditable and restricted.
+   memory safety. This extremely reduces the attack surfaces of an exposed TLS stack, 
+   leaving the remaining attack surfaces auditable and restricted.
  * **Flexibility**. MesaLink offers flexible configurations tailored to various
-   needs, for example, IoT, connected home, automobiles, the cloud and more.
- * **Simplicity**. MesaLink does not support obsolete or legacy TLS features, in
-   case that misconfigurations introduce vulnerabilities.
+   needs, such as IoT, connected home, automobiles, the cloud and more.
+ * **Simplicity**. MesaLink does not support obsolete or legacy TLS features to 
+ prevent misconfigurations that can introduce vulnerabilities.
  * **Compatibility**. MesaLink provides OpenSSL-compatible APIs. This makes it a
    breeze to port an existing OpenSSL project.
  * **Future proof**. MesaLink will support quantum-safe ciphersuites,
