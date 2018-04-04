@@ -57,7 +57,6 @@ matrix:
     env: ARCH=aarch64_android TARGET=aarch64-linux-android RUST_TARGET=aarch64-linux-android
 before_install:
 - |-
-  if [[ x"$COVERAGE" == x"yes" ]]; then cargo install cargo-tarpaulin ; fi
   if [ x"$TARGET" = "xarm-linux-androideabi" ] || [ x"$TARGET" = "xaarch64-linux-android" ]; then wget -nv https://dl.google.com/android/repository/android-ndk-r16b-linux-x86_64.zip; unzip android-ndk-r16b-linux-x86_64.zip  2>&1 >/dev/null;
   if [[ x"$TARGET" = "xarm-linux-androideabi" ]]; then ./android-ndk-r16b/build/tools/make_standalone_toolchain.py --arch arm --api 19 --install-dir $PWD/cross; else ./android-ndk-r16b/build/tools/make_standalone_toolchain.py --arch arm64 --api 21 --install-dir $PWD/cross; fi
   export PATH="$PATH:$PWD/cross/bin"; fi
