@@ -2,15 +2,17 @@ language: rust
 cache: cargo
 sudo: false
 env:
-  global:
-  - CONFIGURE_PARAMETERS=""
+  global: CONFIGURE_PARAMETERS=""
 matrix:
   include:
   - os: linux
     dist: trusty
     rust: stable
-    env:
-    - ARCH=linux_x86_64
+    env: ARCH=linux_x86_64 COVERAGE=yes
+    addons:
+      apt:
+        packages:
+        - libssl-dev
   - os: linux
     dist: trusty
     rust: nightly
@@ -23,10 +25,7 @@ matrix:
   - os: linux
     dist: trusty
     rust: nightly
-    env:
-    - ARCH=arm_linux
-    - TARGET=arm-linux-gnueabi
-    - RUST_TARGET=arm-unknown-linux-gnueabi
+    env: ARCH=arm_linux TARGET=arm-linux-gnueabi RUST_TARGET=arm-unknown-linux-gnueabi
     addons:
       apt:
         packages:
@@ -36,10 +35,7 @@ matrix:
   - os: linux
     dist: trusty
     rust: nightly
-    env:
-    - ARCH=aarch64_linux
-    - TARGET=aarch64-linux-gnu
-    - RUST_TARGET=aarch64-unknown-linux-gnu
+    env: ARCH=aarch64_linux TARGET=aarch64-linux-gnu RUST_TARGET=aarch64-unknown-linux-gnu
     addons:
       apt:
         packages:
@@ -49,31 +45,26 @@ matrix:
   - os: linux
     dist: trusty
     rust: nightly
-    env:
-    - ARCH=arm_android
-    - TARGET=arm-linux-androideabi
-    - RUST_TARGET=arm-linux-androideabi
+    env: ARCH=arm_android ARGET=arm-linux-androideabi RUST_TARGET=arm-linux-androideabi
   - os: linux
     dist: trusty
     rust: nightly
-    env:
-    - ARCH=aarch64_android
-    - TARGET=aarch64-linux-android
-    - RUST_TARGET=aarch64-linux-android
-install:
+    env: ARCH=aarch64_android TARGET=aarch64-linux-android RUST_TARGET=aarch64-linux-android
+before_install:
 - |-
+  if [[ x"$COVERAGE" == x"yes" ]]; then cargo install cargo-tarpaulin ; fi
   if [ x"$TARGET" = "xarm-linux-androideabi" ] || [ x"$TARGET" = "xaarch64-linux-android" ]; then wget -nv https://dl.google.com/android/repository/android-ndk-r16b-linux-x86_64.zip; unzip android-ndk-r16b-linux-x86_64.zip  2>&1 >/dev/null;
   if [[ x"$TARGET" = "xarm-linux-androideabi" ]]; then ./android-ndk-r16b/build/tools/make_standalone_toolchain.py --arch arm --api 19 --install-dir $PWD/cross; else ./android-ndk-r16b/build/tools/make_standalone_toolchain.py --arch arm64 --api 21 --install-dir $PWD/cross; fi
   export PATH="$PATH:$PWD/cross/bin"; fi
 script:
-- if [[ x"$TARGET" == "x" ]]; then ./autogen.sh $CONFIGURE_PARAMETERS --enable-examples
-  ; else rustup target add $RUST_TARGET ; ./autogen.sh --host=$TARGET --enable-rusthost=$RUST_TARGET
-  $CONFIGURE_PARAMETERS ; fi
-- make DESTDIR=$TRAVIS_BUILD_DIR/inst install-strip ;
-- du -sh $TRAVIS_BUILD_DIR/inst/usr/local/lib/libmesalink.* ;
-- if [[ x"$TARGET" == "x" ]]; then ./examples/client/client google.com ; fi
-- if [[ x"$TARGET" == "x" ]]; then RUST_BACKTRACE=1 cargo test ; fi
-- if [[ x"$TARGET" == "x" ]]; then ( cd bogo && ./runme ) ; fi
+- |-
+  if [[ x"$TARGET" == "x" ]]; then ./autogen.sh $CONFIGURE_PARAMETERS --enable-examples ; else rustup target add $RUST_TARGET ; ./autogen.sh --host=$TARGET --enable-rusthost=$RUST_TARGET $CONFIGURE_PARAMETERS ; fi
+  make DESTDIR=$TRAVIS_BUILD_DIR/inst install-strip ;
+  du -sh $TRAVIS_BUILD_DIR/inst/usr/local/lib/libmesalink.* ;
+  if [[ x"$TARGET" == "x" ]]; then ./examples/client/client google.com ; RUST_BACKTRACE=1 cargo test ; ( cd bogo && ./runme ) ; fi
+after_success:
+- |-
+  if [[ x"$COVERAGE" == x"yes" ]]; then bash <(cur https://raw.githubusercontent.com/xd009642/tarpaulin/master/travis-install.sh) ; cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID; fi
 before_deploy:
 - if [[ x"$ARCH" != "x" ]]; then mkdir -p $TRAVIS_BUILD_DIR/releases ; cd $TRAVIS_BUILD_DIR/inst
   ; tar -zcvf $TRAVIS_BUILD_DIR/releases/mesalink-$TRAVIS_TAG-$ARCH.tar.gz * ; cd
