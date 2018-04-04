@@ -1,12 +1,12 @@
 language: rust
 cache: cargo
-sudo: required
 env:
   global: CONFIGURE_PARAMETERS=""
 matrix:
   include:
   - os: linux
     dist: trusty
+    sudo: required
     rust: stable
     env: ARCH=linux_x86_64 COVERAGE=yes
     addons:
@@ -15,6 +15,7 @@ matrix:
         - libssl-dev
   - os: linux
     dist: trusty
+    sudo: false
     rust: nightly
   - os: osx
     rust: stable
@@ -24,6 +25,7 @@ matrix:
     rust: nightly
   - os: linux
     dist: trusty
+    sudo: false
     rust: nightly
     env: ARCH=arm_linux TARGET=arm-linux-gnueabi RUST_TARGET=arm-unknown-linux-gnueabi
     addons:
@@ -34,6 +36,7 @@ matrix:
         - libc6-dev-armel-cross
   - os: linux
     dist: trusty
+    sudo: false
     rust: nightly
     env: ARCH=aarch64_linux TARGET=aarch64-linux-gnu RUST_TARGET=aarch64-unknown-linux-gnu
     addons:
@@ -44,10 +47,12 @@ matrix:
         - libc6-dev-arm64-cross
   - os: linux
     dist: trusty
+    sudo: false
     rust: nightly
     env: ARCH=arm_android TARGET=arm-linux-androideabi RUST_TARGET=arm-linux-androideabi
   - os: linux
     dist: trusty
+    sudo: false
     rust: nightly
     env: ARCH=aarch64_android TARGET=aarch64-linux-android RUST_TARGET=aarch64-linux-android
 before_install:
