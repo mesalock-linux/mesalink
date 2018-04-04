@@ -49,7 +49,7 @@ features that are considered secure for most use cases:
 * TLS 1.2 and TLS 1.3 draft 22
 * ALPN and SNI support
 * Forced hostname validation
-* Safe and fast crypto implementations from Google's BoringSSL
+* Safe and fast crypto primitives from BoringSSL
 * ECDHE key exchange with forward secrecy
 * AES-256-GCM and Chacha20-Poly1305 bulk encryption
 * Built-in Mozilla's CA root certificates
