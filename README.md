@@ -34,8 +34,8 @@ project.
    memory safety. This extremely reduces attack surfaces of an TLS stack exposed
    in the wild, leaving the remaining attack surfaces auditable and restricted.
  * **Flexibility**. MesaLink offers flexible configurations tailored to various
-   needs, for example IoT, connected home, automobiles, the cloud and more.
- * **Simplicity**. MesaLink does not support obselete or legacy TLS features, in
+   needs, for example, IoT, connected home, automobiles, the cloud and more.
+ * **Simplicity**. MesaLink does not support obsolete or legacy TLS features, in
    case that misconfigurations introduce vulnerabilities.
  * **Compatibility**. MesaLink provides OpenSSL-compatible APIs. This makes it a
    breeze to port an existing OpenSSL project.
@@ -50,7 +50,7 @@ features that are considered secure for most use cases:
 * ALPN and SNI support
 * Forced hostname validation
 * Safe and fast crypto primitives from BoringSSL
-* ECDHE key exchange with forward secrecy
+* ECDHE key exchange with forwarding secrecy
 * AES-256-GCM and Chacha20-Poly1305 bulk encryption
 * Built-in Mozilla's CA root certificates
 
@@ -212,7 +212,7 @@ Accept-Language: en-US,en;q=0.9
 ```
 
 ## Unit tests
-MesaLink uses cargo for unit tests. The test cases are designed for the the
+MesaLink uses cargo for unit tests. The test cases are designed for the
 default configuration of MesaLink, in which all the optional features are
 enabled. So before running the test cases, please rebuild MesaLink with the
 default configuration:
