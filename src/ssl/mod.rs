@@ -13,6 +13,26 @@
  *
  */
 
+use ring::rand;
+use ring::rand::SecureRandom;
+
+pub const MAGIC_SIZE: usize = 4;
+lazy_static! {
+    pub static ref MAGIC: [u8; MAGIC_SIZE] = {
+        let mut number = [0u8; MAGIC_SIZE];
+        if rand::SystemRandom::new().fill(&mut number).is_ok() {
+            let number = number;
+            number
+        } else {
+            panic!("Getrandom error");
+        }
+    };
+}
+
+pub trait MesalinkOpaquePointerType {
+    fn check_magic(&self) -> bool;
+}
+
 /// Implementations of OpenSSL ERR APIs.
 /// Please also refer to the header file at mesalink/openssl/err.h
 #[macro_use] pub mod err;
@@ -20,3 +40,7 @@
 /// Implementations of OpenSSL SSL APIs.
 /// Please also refer to the header file at mesalink/openssl/ssl.h
 pub mod ssl;
+
+/// Implementations of OpenSSL X509 APIs.
+/// Please also refer to the header file at mesalink/openssl/x509.h
+pub mod x509;

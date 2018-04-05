@@ -39,7 +39,7 @@
 //! `ERR_reason_error_string`. An non-exhaustive list of error codes is as
 //! follows.
 //!
-//! ```textc
+//! ```c
 //!   MESALINK_ERROR_NONE = 0,
 //!   MESALINK_ERROR_ZERO_RETURN = 1,
 //!   MESALINK_ERROR_WANT_READ = 2,
@@ -142,7 +142,7 @@
 //!   TLS_ERROR_HANDSHAKE_NOT_COMPLETE = 0x03000f00,
 //!   TLS_ERROR_PEER_SENT_OVERSIZED_RECORD = 0x03001000,
 //!   UNDEFINED_ERROR = 0x0eeeeeee,
-//! ```text
+//! ```
 
 use libc::{self, c_char, c_ulong, size_t};
 use std::{io, slice};
@@ -663,11 +663,11 @@ impl<'a> From<&'a rustls::TLSError> for ErrorCode {
 
 /// `ERR_load_error_strings` - compatibility only
 ///
-/// ```text
+/// ```c
 /// #include <mesalink/openssl/err.h>
 ///
 /// void SSL_load_error_strings(void);
-/// ```text
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_load_error_strings() {
     // compatibility only
@@ -675,11 +675,11 @@ pub extern "C" fn mesalink_ERR_load_error_strings() {
 
 /// `ERR_free_error_strings` - compatibility only
 ///
-/// ```text
+/// ```c
 /// #include <mesalink/openssl/err.h>
 ///
 /// void SSL_free_error_strings(void);
-/// ```text
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_free_error_strings() {
     // compatibility only
@@ -689,11 +689,11 @@ pub extern "C" fn mesalink_ERR_free_error_strings() {
 /// error code `e`, and places `len` bytes at `buf`. Note that this function is
 /// not thread-safe and does no checks on the size of the buffer.
 ///
-/// ```text
+/// ```c
 /// #include <mesalink/openssl/err.h>
 ///
 /// void ERR_error_string_n(unsigned long e, char *buf, size_t len);
-/// ```text
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_error_string_n(
     error_code: c_ulong,
@@ -722,11 +722,11 @@ pub extern "C" fn mesalink_ERR_error_string_n(
 /// `ERR_error_reason_error_string` - returns a human-readable string representing
 /// the error code e. This API does not allocate additional memory.
 ///
-/// ```text
+/// ```c
 /// #include <mesalink/openssl/err.h>
 ///
 /// const char *ERR_reason_error_string(unsigned long e);
-/// ```text
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_reason_error_string(e: c_ulong) -> *const c_char {
     let error_code: ErrorCode = ErrorCode::from(e);
@@ -750,11 +750,11 @@ impl ErrorQueue {
 /// queue and removes the entry. This function can be called repeatedly until
 /// there are no more error codes to return.
 ///
-/// ```text
+/// ```c
 /// #include <mesalink/openssl/err.h>
 ///
 /// unsigned long ERR_get_error(void);
-/// ```text
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_get_error() -> c_ulong {
     ERROR_QUEUE.with(|q| match q.borrow_mut().pop_front() {
@@ -766,11 +766,11 @@ pub extern "C" fn mesalink_ERR_get_error() -> c_ulong {
 /// `ERR_peek_last_error` - returns the latest error code from the thread's error
 /// queue without modifying it.
 ///
-/// ```text
+/// ```c
 /// #include <mesalink/openssl/err.h>
 ///
 /// unsigned long ERR_peek_last_error(void);
-/// ```text
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_peek_last_error() -> c_ulong {
     ERROR_QUEUE.with(|q| match q.borrow().front() {
@@ -781,11 +781,11 @@ pub extern "C" fn mesalink_ERR_peek_last_error() -> c_ulong {
 
 /// `ERR_clear_error` - empty the current thread's error queue.
 ///
-/// ```text
+/// ```c
 /// #include <mesalink/openssl/err.h>
 ///
 /// void ERR_clear_error(void);
-/// ```text
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_clear_error() {
     ERROR_QUEUE.with(|q| {
@@ -797,11 +797,11 @@ pub extern "C" fn mesalink_ERR_clear_error() {
 /// strings for all errors that OpenSSL has recorded to `fp`, thus emptying the
 /// error queue.
 ///
-/// ```text
+/// ```c
 /// #include <mesalink/openssl/err.h>
 ///
 /// void ERR_print_errors_fp(FILE *fp);
-/// ```text
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
     use std::{fs, str};
