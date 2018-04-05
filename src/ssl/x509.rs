@@ -13,9 +13,8 @@
  *
  */
 
-use ring::rand;
 use rustls;
-use webpki;
+//use webpki;
 
 use ssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 
@@ -23,7 +22,7 @@ use ssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 #[allow(non_camel_case_types)]
 pub struct MESALINK_X509 {
     magic: [u8; MAGIC_SIZE],
-    cert: rustls::Certificate,
+    certs: Vec<rustls::Certificate>,
 }
 
 impl MesalinkOpaquePointerType for MESALINK_X509 {
@@ -33,10 +32,10 @@ impl MesalinkOpaquePointerType for MESALINK_X509 {
 }
 
 impl MESALINK_X509 {
-    fn new(cert: rustls::Certificate) -> MESALINK_X509 {
+    pub fn new(certs: Vec<rustls::Certificate>) -> MESALINK_X509 {
         MESALINK_X509 {
             magic:  *MAGIC,
-            cert: cert,
+            certs: certs,
         }
     }
 }

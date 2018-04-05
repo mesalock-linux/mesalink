@@ -34,19 +34,19 @@
 //! used to shut down the connection.
 
 // Module imports
-use std::{ffi, io, net, panic, ptr, slice};
-use std::sync::Arc;
 use libc::{c_char, c_int, c_uchar};
 use rustls;
-use webpki;
 use ssl::err::{ErrorCode, ErrorQueue, MesalinkError, MesalinkInnerResult};
-//use ssl::x509::MESALINK_X509;
+use ssl::x509::MESALINK_X509;
 use ssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
+use std::sync::Arc;
+use std::{ffi, io, net, panic, ptr, slice};
+use webpki;
 
 // Trait imports
+use rustls::Session;
 use std::io::{Read, Write};
 use std::os::unix::io::{AsRawFd, FromRawFd};
-use rustls::Session;
 
 const SSL_ERROR: c_int = SslConstants::SslError as c_int;
 const SSL_FAILURE: c_int = SslConstants::SslFailure as c_int;
@@ -425,7 +425,7 @@ where
 // FFI boundaries. Note that the panic mode must be set to `unwind` in
 // Cargo.toml.
 macro_rules! check_inner_result {
-    ($inner: expr, $err_ret: expr) => {{
+    ($inner:expr, $err_ret:expr) => {{
         match panic::catch_unwind(panic::AssertUnwindSafe(|| $inner))
             .unwrap_or_else(|_| Err(error!(ErrorCode::MesalinkErrorPanic)))
         {
@@ -1234,6 +1234,29 @@ pub extern "C" fn mesalink_SSL_get_cipher_version(ssl_ptr: *mut MESALINK_SSL) ->
 ///
 /// X509 *SSL_get_peer_certificate(const SSL *ssl);
 /// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_get_peer_certificate(
+    ssl_ptr: *mut MESALINK_SSL,
+) -> *mut MESALINK_X509 {
+    check_inner_result!(
+        inner_mesalink_ssl_get_peer_certificate(ssl_ptr),
+        ptr::null_mut()
+    )
+}
+
+fn inner_mesalink_ssl_get_peer_certificate(
+    ssl_ptr: *mut MESALINK_SSL,
+) -> MesalinkInnerResult<*mut MESALINK_X509> {
+    let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
+    let session = ssl.session
+        .as_mut()
+        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+    let certs = session
+        .get_peer_certificates()
+        .ok_or(error!(ErrorCode::TLSErrorHandshakeNotComplete))?;
+    let x509 = MESALINK_X509::new(certs);
+    Ok(Box::into_raw(Box::new(x509)) as *mut MESALINK_X509)
+}
 
 /// `SSL_set_tlsext_host_name` - set the server name indication ClientHello
 /// extension to contain the value name.
@@ -1249,7 +1272,7 @@ pub extern "C" fn mesalink_SSL_set_tlsext_host_name(
     hostname_ptr: *const c_char,
 ) -> c_int {
     check_inner_result!(
-        inner_mesalink_ssl_set_tlsext_host_name(ssl_ptr, hostname_ptr,),
+        inner_mesalink_ssl_set_tlsext_host_name(ssl_ptr, hostname_ptr),
         SSL_FAILURE
     )
 }
