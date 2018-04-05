@@ -13,8 +13,10 @@
  *
  */
 
+use libc::{c_uchar, c_ulong};
 use rustls;
-//use webpki;
+use untrusted;
+use webpki;
 
 use ssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 
@@ -34,8 +36,22 @@ impl MesalinkOpaquePointerType for MESALINK_X509 {
 impl MESALINK_X509 {
     pub fn new(certs: Vec<rustls::Certificate>) -> MESALINK_X509 {
         MESALINK_X509 {
-            magic:  *MAGIC,
+            magic: *MAGIC,
             certs: certs,
         }
     }
+}
+
+#[no_mangle]
+pub extern "C" fn d2i_X509(
+    px_ptr: *mut *mut MESALINK_X509,
+    in_ptr: *const *const c_uchar,
+    len: c_ulong,
+) -> *mut MESALINK_X509 {
+    ptr::null()
+}
+
+#[no_mangle]
+pub extern "C" fn X509_from() {
+
 }

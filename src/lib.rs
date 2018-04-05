@@ -318,6 +318,9 @@ extern crate rustls;
 // webpki for certificate verification
 extern crate webpki;
 
+// untrusted for parsing ASN.1 DER
+extern crate untrusted;
+
 // webpki_roots for Mozilla's CA certificates
 extern crate webpki_roots;
 
