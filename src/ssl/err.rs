@@ -182,7 +182,7 @@ impl MesalinkError {
 #[doc(hidden)]
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "error_strings", derive(EnumToStr))]
+#[cfg_attr(feature = "error_strings", derive(EnumToU8))]
 #[cfg_attr(feature = "error_strings", derive(Debug))]
 pub enum ErrorCode {
     // OpenSSL error codes
@@ -296,7 +296,7 @@ pub enum ErrorCode {
 impl ErrorCode {
     #[cfg(feature = "error_strings")]
     pub fn as_u8_slice(&self) -> &'static [u8] {
-        self.enum_to_str()
+        self.enum_to_u8()
     }
 
     #[cfg(not(feature = "error_strings"))]

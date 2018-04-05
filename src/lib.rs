@@ -331,7 +331,7 @@ extern crate lazy_static;
 // enum_to_str_derive for human-readable error numbers
 #[cfg(feature = "error_strings")]
 #[macro_use]
-extern crate enum_to_str_derive;
+extern crate enum_to_u8_slice_derive;
 
 #[macro_use]
 mod macros {
