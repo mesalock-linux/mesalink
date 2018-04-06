@@ -91,6 +91,30 @@ fn inner_mesalink_x509_get_subject_name(
 }
 
 #[no_mangle]
+pub extern "C" fn mesalink_X509_get_issuer_name(
+    x509_ptr: *mut MESALINK_X509,
+) -> *mut MESALINK_X509_NAME {
+    check_inner_result!(
+        inner_mesalink_x509_get_issuer_name(x509_ptr),
+        ptr::null_mut()
+    )
+}
+
+fn inner_mesalink_x509_get_issuer_name(
+    x509_ptr: *mut MESALINK_X509,
+) -> MesalinkInnerResult<*mut MESALINK_X509_NAME> {
+    let cert = sanitize_ptr_for_ref(x509_ptr)?;
+    let cert_der = untrusted::Input::from(&cert.cert_data.0);
+    let x509 =
+        webpki::EndEntityCert::from(cert_der).map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+    let subject_name = x509.inner.issuer.as_slice_less_safe().to_vec();
+    let subject_name =
+        String::from_utf8(subject_name).map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+    let x509_name = MESALINK_X509_NAME::new(subject_name);
+    Ok(Box::into_raw(Box::new(x509_name)) as *mut MESALINK_X509_NAME)
+}
+
+#[no_mangle]
 pub extern "C" fn mesalink_X509_NAME_oneline(
     x509_name_ptr: *mut MESALINK_X509_NAME,
     buf_ptr: *mut c_char,
