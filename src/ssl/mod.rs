@@ -35,7 +35,8 @@ pub trait MesalinkOpaquePointerType {
 
 /// Implementations of OpenSSL ERR APIs.
 /// Please also refer to the header file at mesalink/openssl/err.h
-#[macro_use] pub mod err;
+#[macro_use]
+pub mod err;
 
 /// Implementations of OpenSSL SSL APIs.
 /// Please also refer to the header file at mesalink/openssl/ssl.h
@@ -44,3 +45,53 @@ pub mod ssl;
 /// Implementations of OpenSSL X509 APIs.
 /// Please also refer to the header file at mesalink/openssl/x509.h
 pub mod x509;
+
+#[macro_use]
+pub mod ptr_sanitizer {
+    pub fn sanitize_const_ptr_for_ref<'a, T>(ptr: *const T) -> MesalinkInnerResult<&'a T>
+    where
+        T: MesalinkOpaquePointerType,
+    {
+        let ptr = ptr as *mut T;
+        sanitize_ptr_for_mut_ref(ptr).map(|r| r as &'a T)
+    }
+
+    pub fn sanitize_ptr_for_ref<'a, T>(ptr: *mut T) -> MesalinkInnerResult<&'a T>
+    where
+        T: MesalinkOpaquePointerType,
+    {
+        sanitize_ptr_for_mut_ref(ptr).map(|r| r as &'a T)
+    }
+
+    pub fn sanitize_ptr_for_mut_ref<'a, T>(ptr: *mut T) -> MesalinkInnerResult<&'a mut T>
+    where
+        T: MesalinkOpaquePointerType,
+    {
+        if ptr.is_null() {
+            return Err(error!(ErrorCode::MesalinkErrorNullPointer));
+        }
+        let obj_ref: &mut T = unsafe { &mut *ptr };
+        match obj_ref.check_magic() {
+            true => Ok(obj_ref),
+            false => Err(error!(ErrorCode::MesalinkErrorMalformedObject)),
+        }
+    }
+
+    // A utility macro that wraps each inner API implementation and checks its
+    // returned value. This macro also catches panics and prevents unwinding across
+    // FFI boundaries. Note that the panic mode must be set to `unwind` in
+    // Cargo.toml.
+    macro_rules! check_inner_result {
+        ($inner:expr, $err_ret:expr) => {{
+            match panic::catch_unwind(panic::AssertUnwindSafe(|| $inner))
+                .unwrap_or_else(|_| Err(error!(ErrorCode::MesalinkErrorPanic)))
+            {
+                Ok(r) => r,
+                Err(e) => {
+                    ErrorQueue::push_error(e);
+                    $err_ret
+                }
+            }
+        }};
+    }
+}

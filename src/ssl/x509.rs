@@ -13,18 +13,18 @@
  *
  */
 
-use libc::{c_uchar, c_ulong};
+//use libc::{c_uchar, c_ulong};
 use rustls;
 use untrusted;
 use webpki;
-
+use ssl::ptr_sanitizer::*;
 use ssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 
 /// An OpenSSL X509 object
 #[allow(non_camel_case_types)]
 pub struct MESALINK_X509 {
     magic: [u8; MAGIC_SIZE],
-    certs: Vec<rustls::Certificate>,
+    cert_data: rustls::Certificate,
 }
 
 impl MesalinkOpaquePointerType for MESALINK_X509 {
@@ -34,24 +34,19 @@ impl MesalinkOpaquePointerType for MESALINK_X509 {
 }
 
 impl MESALINK_X509 {
-    pub fn new(certs: Vec<rustls::Certificate>) -> MESALINK_X509 {
+    // TODO: handle TrustAnchor certificates
+    pub fn new(cert: rustls::Certificate) -> MESALINK_X509 {
         MESALINK_X509 {
             magic: *MAGIC,
-            certs: certs,
+            cert_data: cert,
         }
     }
 }
 
 #[no_mangle]
-pub extern "C" fn d2i_X509(
-    px_ptr: *mut *mut MESALINK_X509,
-    in_ptr: *const *const c_uchar,
-    len: c_ulong,
-) -> *mut MESALINK_X509 {
-    ptr::null()
+pub extern "C" fn X509_get_subject_alt_names(x509_ptr: *mut MESALINK_X509) -> *mut {
+    //let cert_der = untrusted::Input::from(&cert.0);
+    //let cert_parsed = webpki::EndEntityCert::from(cert_der).ok();
 }
 
-#[no_mangle]
-pub extern "C" fn X509_from() {
-
-}
+fn inner_X509_get_subject_alt_names(x509_ptr: *mut MESALINK_X509) -> *mut 
