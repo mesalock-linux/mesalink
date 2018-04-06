@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     SSL_library_init();
     ERR_load_crypto_strings();
     SSL_load_error_strings();
-    ctx = SSL_CTX_new(TLSv1_2_client_method());
+    ctx = SSL_CTX_new(TLSv1_3_client_method());
     if (ctx == NULL) {
         fprintf(stderr, "[-] Context failed to create\n");
         ERR_print_errors_fp(stderr);
@@ -97,11 +97,11 @@ int main(int argc, char *argv[]) {
                SSL_get_cipher_name(ssl), cipher_bits,
                SSL_get_cipher_version(ssl));
 
-        X509 *cert = SSL_get_peer_certificate(ssl);
+        /*X509 *cert = SSL_get_peer_certificate(ssl);
         X509_NAME *subject = X509_get_subject_name(cert);
         X509_NAME *issuer  = X509_get_issuer_name(cert);
         printf("Certificate subject: %s\n", X509_NAME_oneline(subject));
-        printf("Certificate issuer: %s\n", X509_NAME_oneline(issuer));
+        printf("Certificate issuer: %s\n", X509_NAME_oneline(issuer));*/
 
         snprintf(sendbuf, sizeof(sendbuf), REQUEST, hostname);
         sendlen = SSL_write(ssl, sendbuf, (int)strlen(sendbuf));
