@@ -696,6 +696,7 @@ pub extern "C" fn mesalink_ERR_error_string_n(
     use std::mem;
     let error_string: &'static [u8] = ErrorCode::from(error_code).as_u8_slice();
     let error_string_len = error_string.len();
+    let buf_len: usize = buf_len;
     unsafe {
         let error_string: &'static [c_char] = mem::transmute::<&[u8], &[c_char]>(error_string);
         if buf_ptr.is_null() {

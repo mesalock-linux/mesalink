@@ -13,12 +13,12 @@
  *
  */
 
-//use libc::{c_uchar, c_ulong};
+use libc::{c_char, c_int};
 use rustls;
 use ssl::err::{ErrorCode, MesalinkInnerResult};
 use ssl::error_san::*;
 use ssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
-use std::ptr;
+use std::{ptr, slice};
 use untrusted;
 use webpki;
 
@@ -48,11 +48,21 @@ impl MESALINK_X509 {
 #[allow(non_camel_case_types)]
 pub struct MESALINK_X509_NAME {
     magic: [u8; MAGIC_SIZE],
+    name: String,
 }
 
 impl MesalinkOpaquePointerType for MESALINK_X509_NAME {
     fn check_magic(&self) -> bool {
         self.magic == *MAGIC
+    }
+}
+
+impl MESALINK_X509_NAME {
+    pub fn new(name: String) -> MESALINK_X509_NAME {
+        MESALINK_X509_NAME {
+            magic: *MAGIC,
+            name: name,
+        }
     }
 }
 
@@ -71,7 +81,48 @@ fn inner_mesalink_x509_get_subject_name(
 ) -> MesalinkInnerResult<*mut MESALINK_X509_NAME> {
     let cert = sanitize_ptr_for_ref(x509_ptr)?;
     let cert_der = untrusted::Input::from(&cert.cert_data.0);
-    let _ =
+    let x509 =
         webpki::EndEntityCert::from(cert_der).map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
-    Err(error!(ErrorCode::TLSErrorWebpkiBadDER))
+    let subject_name = x509.inner.subject.as_slice_less_safe().to_vec();
+    let subject_name =
+        String::from_utf8(subject_name).map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+    let x509_name = MESALINK_X509_NAME::new(subject_name);
+    Ok(Box::into_raw(Box::new(x509_name)) as *mut MESALINK_X509_NAME)
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_X509_NAME_oneline(
+    x509_name_ptr: *mut MESALINK_X509_NAME,
+    buf_ptr: *mut c_char,
+    size: c_int,
+) -> *mut c_char {
+    check_inner_result!(
+        inner_mesalink_x509_name_oneline(x509_name_ptr, buf_ptr, size),
+        ptr::null_mut()
+    )
+}
+
+fn inner_mesalink_x509_name_oneline(
+    x509_name_ptr: *mut MESALINK_X509_NAME,
+    buf_ptr: *mut c_char,
+    buf_len: c_int,
+) -> MesalinkInnerResult<*mut c_char> {
+    use std::mem;
+    let x509_name = sanitize_ptr_for_ref(x509_name_ptr)?;
+    let buf_len: usize = buf_len as usize;
+    unsafe {
+        let name: &[c_char] = mem::transmute::<&[u8], &[c_char]>(x509_name.name.as_bytes());
+        let name_len: usize = name.len();
+        if buf_ptr.is_null() {
+            return Err(error!(ErrorCode::MesalinkErrorNullPointer));
+        }
+        let buf = slice::from_raw_parts_mut(buf_ptr, buf_len);
+        if name.len() > buf_len {
+            buf.copy_from_slice(&name[0..buf_len]);
+            buf[buf_len - 1] = 0;
+        } else {
+            buf[0..name_len].copy_from_slice(name);
+        }
+        Ok(buf_ptr)
+    }
 }
