@@ -155,13 +155,6 @@ thread_local! {
     static ERROR_QUEUE: RefCell<VecDeque<MesalinkError>> = RefCell::new(VecDeque::new());
 }
 
-#[macro_use]
-macro_rules! error {
-    ($code: expr) => {
-        MesalinkError::new($code, call_site!())
-    };
-}
-
 pub type MesalinkInnerResult<T> = Result<T, MesalinkError>;
 #[cfg_attr(feature = "error_strings", derive(Debug))]
 #[doc(hidden)]

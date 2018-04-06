@@ -35,8 +35,39 @@ pub trait MesalinkOpaquePointerType {
 
 /// Implementations of OpenSSL ERR APIs.
 /// Please also refer to the header file at mesalink/openssl/err.h
-#[macro_use]
 pub mod err;
+
+#[macro_use]
+mod macros {
+    #[macro_export]
+    macro_rules! error {
+        ($code:expr) => {{
+            use ssl::err::MesalinkError;
+            MesalinkError::new($code, call_site!())
+        }};
+    }
+
+    // A utility macro that wraps each inner API implementation and checks its
+    // returned value. This macro also catches panics and prevents unwinding across
+    // FFI boundaries. Note that the panic mode must be set to `unwind` in
+    // Cargo.toml.
+    #[macro_export]
+    macro_rules! check_inner_result {
+        ($inner:expr, $err_ret:expr) => {{
+            use ssl::err::{ErrorCode, ErrorQueue};
+            use std::panic;
+            match panic::catch_unwind(panic::AssertUnwindSafe(|| $inner))
+                .unwrap_or_else(|_| Err(error!(ErrorCode::MesalinkErrorPanic)))
+            {
+                Ok(r) => r,
+                Err(e) => {
+                    ErrorQueue::push_error(e);
+                    $err_ret
+                }
+            }
+        }};
+    }
+}
 
 /// Implementations of OpenSSL SSL APIs.
 /// Please also refer to the header file at mesalink/openssl/ssl.h
@@ -47,7 +78,10 @@ pub mod ssl;
 pub mod x509;
 
 #[macro_use]
-pub mod ptr_sanitizer {
+pub mod error_san {
+    use ssl::MesalinkOpaquePointerType;
+    use ssl::err::{ErrorCode, MesalinkInnerResult};
+
     pub fn sanitize_const_ptr_for_ref<'a, T>(ptr: *const T) -> MesalinkInnerResult<&'a T>
     where
         T: MesalinkOpaquePointerType,
@@ -75,23 +109,5 @@ pub mod ptr_sanitizer {
             true => Ok(obj_ref),
             false => Err(error!(ErrorCode::MesalinkErrorMalformedObject)),
         }
-    }
-
-    // A utility macro that wraps each inner API implementation and checks its
-    // returned value. This macro also catches panics and prevents unwinding across
-    // FFI boundaries. Note that the panic mode must be set to `unwind` in
-    // Cargo.toml.
-    macro_rules! check_inner_result {
-        ($inner:expr, $err_ret:expr) => {{
-            match panic::catch_unwind(panic::AssertUnwindSafe(|| $inner))
-                .unwrap_or_else(|_| Err(error!(ErrorCode::MesalinkErrorPanic)))
-            {
-                Ok(r) => r,
-                Err(e) => {
-                    ErrorQueue::push_error(e);
-                    $err_ret
-                }
-            }
-        }};
     }
 }

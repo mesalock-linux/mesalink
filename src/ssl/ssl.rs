@@ -34,15 +34,16 @@
 //! used to shut down the connection.
 
 // Module imports
+
 use libc::{c_char, c_int, c_uchar};
 use rustls;
-use ssl::err::{ErrorCode, ErrorQueue, MesalinkError, MesalinkInnerResult};
+use ssl::err::{ErrorCode, ErrorQueue, MesalinkInnerResult};
+use ssl::error_san::*;
 use ssl::x509::MESALINK_X509;
 use ssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use std::sync::Arc;
-use std::{ffi, io, net, panic, ptr, slice};
+use std::{ffi, io, net, ptr, slice};
 use webpki;
-use ssl::ptr_sanitizer::*;
 
 // Trait imports
 use rustls::Session;
