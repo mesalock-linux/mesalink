@@ -1216,7 +1216,7 @@ fn inner_mesalink_ssl_get_peer_certificate(
                 Ok(certs)
             }
         })?;
-    let x509 = MESALINK_X509::new(certs[0]);
+    let x509 = MESALINK_X509::new(certs[0].clone()); // FIXME: use the whole cert chain!
     Ok(Box::into_raw(Box::new(x509)) as *mut MESALINK_X509)
 }
 

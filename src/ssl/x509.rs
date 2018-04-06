@@ -15,7 +15,7 @@
 
 //use libc::{c_uchar, c_ulong};
 use rustls;
-use ssl::err::{ErrorCode, ErrorQueue, MesalinkInnerResult};
+use ssl::err::{ErrorCode, MesalinkInnerResult};
 use ssl::error_san::*;
 use ssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use std::ptr;
@@ -36,7 +36,6 @@ impl MesalinkOpaquePointerType for MESALINK_X509 {
 }
 
 impl MESALINK_X509 {
-    // TODO: handle TrustAnchor certificates
     pub fn new(cert: rustls::Certificate) -> MESALINK_X509 {
         MESALINK_X509 {
             magic: *MAGIC,
@@ -49,7 +48,12 @@ impl MESALINK_X509 {
 #[allow(non_camel_case_types)]
 pub struct MESALINK_X509_NAME {
     magic: [u8; MAGIC_SIZE],
-    name: String,
+}
+
+impl MesalinkOpaquePointerType for MESALINK_X509_NAME {
+    fn check_magic(&self) -> bool {
+        self.magic == *MAGIC
+    }
 }
 
 #[no_mangle]
@@ -57,16 +61,17 @@ pub extern "C" fn mesalink_X509_get_subject_name(
     x509_ptr: *mut MESALINK_X509,
 ) -> *mut MESALINK_X509_NAME {
     check_inner_result!(
-        inner_mesalink_X509_get_subject_name(x509_ptr),
+        inner_mesalink_x509_get_subject_name(x509_ptr),
         ptr::null_mut()
     )
 }
 
-fn inner_mesalink_X509_get_subject_name(
+fn inner_mesalink_x509_get_subject_name(
     x509_ptr: *mut MESALINK_X509,
 ) -> MesalinkInnerResult<*mut MESALINK_X509_NAME> {
     let cert = sanitize_ptr_for_ref(x509_ptr)?;
     let cert_der = untrusted::Input::from(&cert.cert_data.0);
-    let x509 = webpki::EndEntityCert::from(cert_der).ok();
-    
+    let _ =
+        webpki::EndEntityCert::from(cert_der).map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+    Err(error!(ErrorCode::TLSErrorWebpkiBadDER))
 }
