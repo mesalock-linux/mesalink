@@ -49,4 +49,26 @@ pub extern "C" fn X509_get_subject_alt_names(x509_ptr: *mut MESALINK_X509) -> *m
     //let cert_parsed = webpki::EndEntityCert::from(cert_der).ok();
 }
 
-fn inner_X509_get_subject_alt_names(x509_ptr: *mut MESALINK_X509) -> *mut 
+fn inner_X509_get_subject_alt_names(x509_ptr: *mut MESALINK_X509) -> *mut
+
+/// An OpenSSL X509_NAME object
+#[allow(non_camel_case_types)]
+pub struct MESALINK_X509_NAME {
+    magic: [u8; MAGIC_SIZE],
+    name: String,
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_X509_get_subject_name(
+    x509_ptr: *mut MESALINK_X509,
+) -> *mut MESALINK_X509_NAME {
+    check_inner_result!()
+}
+
+fn inner_mesalink_X509_get_subject_name(
+    x509_ptr: *mut MESALINK_X509,
+) -> MesalinkInnerResult<*mut MESALINK_X509_NAME> {
+    let cert = sanitize_ptr_for_ref(x509_ptr)?;
+    let cert_der = untrusted::Input::from(&cert.cert_data.0);
+    let x509 = webpki::EndEntityCert::from(cert_der).ok();
+}
