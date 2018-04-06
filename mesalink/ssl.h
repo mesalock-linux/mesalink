@@ -23,6 +23,7 @@ extern "C" {
 #include <mesalink/options.h>
 #include <mesalink/version.h>
 #include <mesalink/visibility.h>
+#include <mesalink/x509.h>
 
 typedef struct MESALINK_METHOD MESALINK_METHOD;
 typedef struct MEASLINK_CTX MESALINK_CTX;
@@ -89,6 +90,8 @@ mesalink_SSL_CIPHER_get_version(const MESALINK_CIPHER *);
 MESALINK_API const char *mesalink_SSL_get_cipher_name(MESALINK_SSL *);
 MESALINK_API int mesalink_SSL_get_cipher_bits(MESALINK_SSL *, int *);
 MESALINK_API const char *mesalink_SSL_get_cipher_version(const MESALINK_SSL *);
+MESALINK_API MESALINK_X509 *
+mesalink_SSL_get_peer_certificate(const MESALINK_SSL *);
 MESALINK_API int mesalink_SSL_set_tlsext_host_name(MESALINK_SSL *,
                                                    const char *);
 MESALINK_API int mesalink_SSL_set_fd(MESALINK_SSL *, int);

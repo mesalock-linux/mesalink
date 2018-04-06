@@ -29,6 +29,7 @@ extern "C" {
 
 #define X509_get_subject_name mesalink_X509_get_subject_name
 #define X509_get_issuer_name mesalink_X509_get_issuer_name
+#define X509_NAME_oneline mesalink_X509_NAME_oneline
 
 #ifdef __cplusplus
 } /* extern C */

@@ -31,6 +31,7 @@ MESALINK_API MESALINK_X509_NAME *
 mesalink_X509_get_subject_name(const MESALINK_X509 *);
 MESALINK_API MESALINK_X509_NAME *
 mesalink_X509_get_issuer_name(const MESALINK_X509 *);
+MESALINK_API *char mesalink_X509_NAME_oneline(const MESALINK_X509_NAME *);
 
 #ifdef __cplusplus
 } /* extern C */
