@@ -16,7 +16,6 @@ EXTRA_DIST+= rustls
 EXTRA_DIST+= sct
 EXTRA_DIST+= autogen.sh
 EXTRA_DIST+= Cargo.toml
-EXTRA_DIST+= Cargo.lock
 EXTRA_DIST+= build.rs
 EXTRA_DIST+= LICENSE
 
@@ -32,6 +31,7 @@ install-generic-config:
 
 maintainer-clean-local:
 	-cargo clean
+	-rm -rf Cargo.lock
 	-rm -rf target
 	-rm -rf crypto-bench/openssl/target
 	-rm -rf crypto-bench/wolfssl/target
