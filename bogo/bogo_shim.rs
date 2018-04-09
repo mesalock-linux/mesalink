@@ -37,13 +37,13 @@ extern crate env_logger;
 extern crate libc;
 extern crate mesalink_internals;
 
-use std::env;
-use std::process;
-use std::net;
-use std::io::Write;
-use std::ffi::CString;
-use mesalink_internals::ssl::{err, ssl};
 use mesalink_internals::ssl::err::ErrorCode;
+use mesalink_internals::ssl::{err, ssl};
+use std::env;
+use std::ffi::CString;
+use std::io::Write;
+use std::net;
+use std::process;
 
 static BOGO_NACK: i32 = 89;
 
@@ -99,7 +99,9 @@ impl Options {
     }
 
     fn tls13_supported(&self) -> bool {
-        self.support_tls13 && (self.version_allowed(0x0304) || self.version_allowed(0x7f12))
+        self.support_tls13
+            && (self.version_allowed(0x0304) || self.version_allowed(0x7f16)
+                || self.version_allowed(0x7f17))
     }
 
     fn tls12_supported(&self) -> bool {
@@ -445,6 +447,7 @@ fn main() {
             "-no-tls11" |
             "-no-tls1" |
             "-no-ssl3" |
+            "-handoff" |
             "-decline-alpn" |
             "-expect-no-session" |
             "-expect-session-miss" |

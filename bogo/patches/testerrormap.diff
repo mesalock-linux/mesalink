@@ -1,10 +1,10 @@
 # ISC License (ISC)
 # Copyright (c) 2016, Joseph Birr-Pixton <jpixton@gmail.com>
-# 
+#
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
 # above copyright notice and this permission notice appear in all copies.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
 # WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
 # WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
@@ -20,7 +20,7 @@ diff -ru original/runner.go bogo/runner.go
 @@ -83,6 +83,14 @@
  	// like “SSL_ERROR_NO_CYPHER_OVERLAP”.
  	ErrorMap map[string]string
- 
+
 +	// TestErrorMap maps from full test names to the correct error
 +	// string for the shim in question.
 +	TestErrorMap map[string]string
@@ -35,7 +35,7 @@ diff -ru original/runner.go bogo/runner.go
 @@ -939,7 +947,11 @@
  	}
  }
- 
+
 -func translateExpectedError(errorStr string) string {
 +func translateExpectedError(testName string, errorStr string) string {
 +	if translated, ok := shimConfig.TestErrorMap[testName]; ok {
@@ -48,7 +48,7 @@ diff -ru original/runner.go bogo/runner.go
 @@ -951,6 +963,14 @@
  	return errorStr
  }
- 
+
 +func translateExpectedLocalError(testName string, localError string) string {
 +	if translated, ok := shimConfig.TestLocalErrorMap[testName]; ok {
 +		return translated
@@ -62,12 +62,12 @@ diff -ru original/runner.go bogo/runner.go
  	defer func() {
 @@ -1215,15 +1235,16 @@
  	}
- 
+
  	failed := err != nil || childErr != nil
 -	expectedError := translateExpectedError(test.expectedError)
 +	expectedError := translateExpectedError(test.name, test.expectedError)
  	correctFailure := len(expectedError) == 0 || strings.Contains(stderr, expectedError)
- 
+
 +	var expectedLocalError = translateExpectedLocalError(test.name, test.expectedLocalError)
  	localError := "none"
  	if err != nil {
@@ -78,5 +78,5 @@ diff -ru original/runner.go bogo/runner.go
 +	if len(expectedLocalError) != 0 {
 +		correctFailure = correctFailure && strings.Contains(localError, expectedLocalError)
  	}
- 
+
  	if failed != test.shouldFail || failed && !correctFailure || mustFail {
