@@ -32,15 +32,18 @@ ecdsa = ["rustls/ecdsa"]
 verifier = ["rustls/dangerous_configuration"]
 nightly = []
 
-
 [dependencies]
-rustls = { git = "https://github.com/mesalock-linux/rustls", branch = "mesalink", default-features = false }
+rustls = "0.12"
 ring = { version = "0.13.0-alpha", features = ["rsa_signing", ] }
 webpki = "0.18.0-alpha"
 webpki-roots = "0.14.0"
 libc = "0.2"
 lazy_static = "1.0.0"
 enum_to_str_derive = { git = "https://github.com/kevinis/enum_to_str_derive.git" }
+
+[patch.crates-io]
+rustls = { git = "https://github.com/mesalock-linux/rustls", branch = "mesalink", default-features = false }
+sct = { git = "https://github.com/mesalock-linux/sct.rs", branch = "mesalink", default-features = false }
 
 [dev-dependencies]
 log = "0.4"
