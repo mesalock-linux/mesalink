@@ -99,7 +99,9 @@ int main(int argc, char *argv[]) {
 
         X509 *cert = SSL_get_peer_certificate(ssl);
         X509_NAME *subject = X509_get_alt_subject_names(cert);
-        printf("[+] Alterantive subject names: %s\n", X509_NAME_oneline(subject));
+        char *subject_alt_name_buf = malloc(128 * sizeof(char));
+        printf("[+] Alterantive subject names: %s\n",
+               X509_NAME_oneline(subject, subject_alt_name_buf, 128));
 
         snprintf(sendbuf, sizeof(sendbuf), REQUEST, hostname);
         sendlen = SSL_write(ssl, sendbuf, (int)strlen(sendbuf));

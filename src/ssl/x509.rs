@@ -46,20 +46,20 @@ impl MESALINK_X509 {
 
 /// An OpenSSL X509_NAME object
 #[allow(non_camel_case_types)]
-pub struct MESALINK_X509_NAME {
+pub struct MESALINK_X509_NAME<'a> {
     magic: [u8; MAGIC_SIZE],
-    name: String,
+    name: &'a str,
 }
 
-impl MesalinkOpaquePointerType for MESALINK_X509_NAME {
+impl<'a> MesalinkOpaquePointerType for MESALINK_X509_NAME<'a> {
     fn check_magic(&self) -> bool {
         self.magic == *MAGIC
     }
 }
 
 // TODO: make X509_NAME a reference into X509
-impl MESALINK_X509_NAME {
-    pub fn new(name: String) -> MESALINK_X509_NAME {
+impl<'a> MESALINK_X509_NAME<'a> {
+    pub fn new(name: &'a str) -> MESALINK_X509_NAME {
         MESALINK_X509_NAME {
             magic: *MAGIC,
             name: name,
@@ -68,49 +68,42 @@ impl MESALINK_X509_NAME {
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_X509_get_alt_subject_names(
+pub extern "C" fn mesalink_X509_get_alt_subject_names<'a>(
     x509_ptr: *mut MESALINK_X509,
-) -> *mut MESALINK_X509_NAME {
+) -> *mut MESALINK_X509_NAME<'a> {
     check_inner_result!(
         inner_mesalink_x509_get_alt_subject_names(x509_ptr),
         ptr::null_mut()
     )
 }
 
-fn inner_mesalink_x509_get_alt_subject_names(
+fn inner_mesalink_x509_get_alt_subject_names<'a>(
     x509_ptr: *mut MESALINK_X509,
-) -> MesalinkInnerResult<*mut MESALINK_X509_NAME> {
-    use webpki::Error;
+) -> MesalinkInnerResult<*mut MESALINK_X509_NAME<'a>> {
     use ring::der;
     let cert = sanitize_ptr_for_ref(x509_ptr)?;
     let cert_der = untrusted::Input::from(&cert.cert_data.0);
     let x509 =
         webpki::EndEntityCert::from(cert_der).map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
-    let subject_der = x509.inner.subject;
-    let (tag, subject_name) = subject_der.read_all(Error::BadDER, |reader| {
-        let f1 = der::read_tag_and_get_value(reader).map_err(|e| {
-            println!("First {:?}", e);
-            Error::BadDER
-        });
-        let _ = der::read_tag_and_get_value(reader);
-        f1
-    }).map_err(|e| {
-        println!("Latter {:?}", e);
-        error!(ErrorCode::TLSErrorWebpkiBadDER)
-    })?;
-    println!("Tag value: {}", tag);
-    let subject_name = subject_name.as_slice_less_safe().to_vec();
-    println!("Subject name: {:?}", subject_name);
-    let subject_name =
-        String::from_utf8(subject_name).map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
-    let x509_name = MESALINK_X509_NAME::new(subject_name);
+    let subject_alt_name = x509.inner
+        .subject_alt_name
+        .ok_or(error!(ErrorCode::TLSErrorWebpkiExtensionValueInvalid))?;
+    let mut reader = untrusted::Reader::new(subject_alt_name);
+
+    //while !reader.at_end() {
+    let (_tag, value) = der::read_tag_and_get_value(&mut reader)
+        .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+    let dns_name_ref = webpki::DNSNameRef::try_from_ascii(value)
+        .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+    //}
+    let dns_name_str: &str = dns_name_ref.into();
+    let x509_name = MESALINK_X509_NAME::new(dns_name_str);
     Ok(Box::into_raw(Box::new(x509_name)) as *mut MESALINK_X509_NAME)
 }
 
-
 #[no_mangle]
-pub extern "C" fn mesalink_X509_NAME_oneline(
-    x509_name_ptr: *mut MESALINK_X509_NAME,
+pub extern "C" fn mesalink_X509_NAME_oneline<'a>(
+    x509_name_ptr: *mut MESALINK_X509_NAME<'a>,
     buf_ptr: *mut c_char,
     size: c_int,
 ) -> *mut c_char {
@@ -120,8 +113,8 @@ pub extern "C" fn mesalink_X509_NAME_oneline(
     )
 }
 
-fn inner_mesalink_x509_name_oneline(
-    x509_name_ptr: *mut MESALINK_X509_NAME,
+fn inner_mesalink_x509_name_oneline<'a>(
+    x509_name_ptr: *mut MESALINK_X509_NAME<'a>,
     buf_ptr: *mut c_char,
     buf_len: c_int,
 ) -> MesalinkInnerResult<*mut c_char> {
