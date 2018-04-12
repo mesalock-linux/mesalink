@@ -24,6 +24,7 @@ use webpki;
 
 /// An OpenSSL X509 object
 #[allow(non_camel_case_types)]
+#[derive(Clone)]
 pub struct MESALINK_X509 {
     magic: [u8; MAGIC_SIZE],
     cert_data: rustls::Certificate,
@@ -46,6 +47,7 @@ impl MESALINK_X509 {
 
 /// An OpenSSL X509_NAME object
 #[allow(non_camel_case_types)]
+#[derive(Clone)]
 pub struct MESALINK_X509_NAME<'a> {
     magic: [u8; MAGIC_SIZE],
     name: &'a str,
@@ -69,7 +71,7 @@ impl<'a> MESALINK_X509_NAME<'a> {
 #[no_mangle]
 pub extern "C" fn mesalink_X509_get_alt_subject_names<'a>(
     x509_ptr: *mut MESALINK_X509,
-) -> *mut MESALINK_X509_NAME<'a> {
+) -> *mut MESALINK_STACK_MESALINK_X509_NAME<'a> {
     check_inner_result!(
         inner_mesalink_x509_get_alt_subject_names(x509_ptr),
         ptr::null_mut()
@@ -78,7 +80,7 @@ pub extern "C" fn mesalink_X509_get_alt_subject_names<'a>(
 
 fn inner_mesalink_x509_get_alt_subject_names<'a>(
     x509_ptr: *mut MESALINK_X509,
-) -> MesalinkInnerResult<*mut MESALINK_X509_NAME<'a>> {
+) -> MesalinkInnerResult<*mut MESALINK_STACK_MESALINK_X509_NAME<'a>> {
     use ring::der;
     let cert = sanitize_ptr_for_ref(x509_ptr)?;
     let cert_der = untrusted::Input::from(&cert.cert_data.0);
@@ -89,15 +91,17 @@ fn inner_mesalink_x509_get_alt_subject_names<'a>(
         .ok_or(error!(ErrorCode::TLSErrorWebpkiExtensionValueInvalid))?;
     let mut reader = untrusted::Reader::new(subject_alt_name);
 
-    //while !reader.at_end() {
-    let (_tag, value) = der::read_tag_and_get_value(&mut reader)
-        .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
-    let dns_name_ref = webpki::DNSNameRef::try_from_ascii(value)
-        .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
-    //}
-    let dns_name_str: &str = dns_name_ref.into();
-    let x509_name = MESALINK_X509_NAME::new(dns_name_str);
-    Ok(Box::into_raw(Box::new(x509_name)) as *mut MESALINK_X509_NAME)
+    let mut stack = MESALINK_STACK_MESALINK_X509_NAME::new(Vec::new());
+    while !reader.at_end() {
+        let (_tag, value) = der::read_tag_and_get_value(&mut reader)
+            .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+        let dns_name_ref = webpki::DNSNameRef::try_from_ascii(value)
+            .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+        let dns_name_str: &str = dns_name_ref.into();
+        let x509_name = MESALINK_X509_NAME::new(dns_name_str);
+        stack.stack.push(x509_name);
+    }
+    Ok(Box::into_raw(Box::new(stack)) as *mut MESALINK_STACK_MESALINK_X509_NAME)
 }
 
 #[no_mangle]
@@ -127,11 +131,12 @@ fn inner_mesalink_x509_name_oneline<'a>(
             return Err(error!(ErrorCode::MesalinkErrorNullPointer));
         }
         let buf = slice::from_raw_parts_mut(buf_ptr, buf_len);
-        if name.len() > buf_len {
+        if name_len + 1 > buf_len {
             buf.copy_from_slice(&name[0..buf_len]);
             buf[buf_len - 1] = 0;
         } else {
             buf[0..name_len].copy_from_slice(name);
+            buf[name_len] = 0;
         }
         Ok(buf_ptr)
     }
@@ -162,7 +167,9 @@ impl<'a> MESALINK_STACK_MESALINK_X509_NAME<'a> {
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_sk_X509_NAME_num(stack_ptr: *const MESALINK_STACK_MESALINK_X509_NAME) -> c_int {
+pub extern "C" fn mesalink_sk_X509_NAME_num(
+    stack_ptr: *const MESALINK_STACK_MESALINK_X509_NAME,
+) -> c_int {
     check_inner_result!(inner_mesalink_sk_X509_NAME_num(stack_ptr), -1)
 }
 
@@ -175,16 +182,44 @@ fn inner_mesalink_sk_X509_NAME_num(
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_sk_X509_NAME_value(stack_ptr: *const MESALINK_STACK_MESALINK_X509_NAME, index: c_int) -> *const MESALINK_X509_NAME {
-    check_inner_result!(inner_mesalink_sk_X509_NAME_value(stack_ptr, index), ptr::null())
+pub extern "C" fn mesalink_sk_X509_NAME_value(
+    stack_ptr: *const MESALINK_STACK_MESALINK_X509_NAME,
+    index: c_int,
+) -> *const MESALINK_X509_NAME {
+    check_inner_result!(
+        inner_mesalink_sk_X509_NAME_value(stack_ptr, index),
+        ptr::null()
+    )
 }
 
 #[allow(non_snake_case)]
 fn inner_mesalink_sk_X509_NAME_value(
     stack_ptr: *const MESALINK_STACK_MESALINK_X509_NAME,
-    index: c_int
+    index: c_int,
 ) -> MesalinkInnerResult<*const MESALINK_X509_NAME> {
     let stack = sanitize_const_ptr_for_ref(stack_ptr)?;
-    let item = stack.stack.get(index as usize).ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+    let item = stack
+        .stack
+        .get(index as usize)
+        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     Ok(item as *const MESALINK_X509_NAME)
 }
+
+/*#[no_mangle]
+pub extern "C" fn mesalink_sk_X509_NAME_push(
+    stack_ptr: *mut MESALINK_STACK_MESALINK_X509_NAME,
+    item_ptr: *const MESALINK_X509_NAME,
+) -> c_int {
+    check_inner_result!(inner_mesalink_sk_X509_NAME_push(stack_ptr, item_ptr), -1)
+}
+
+#[allow(non_snake_case)]
+fn inner_mesalink_sk_X509_NAME_push(
+    stack_ptr: *mut MESALINK_STACK_MESALINK_X509_NAME,
+    item_ptr: *const MESALINK_X509_NAME,
+) -> MesalinkInnerResult<c_int> {
+    let stack = sanitize_ptr_for_mut_ref(stack_ptr)?;
+    let item = sanitize_const_ptr_for_ref(item_ptr)?;
+    stack.stack.push(*item);
+    Ok(0)
+}*/
