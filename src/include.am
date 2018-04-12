@@ -2,7 +2,7 @@ lib_LTLIBRARIES+= libmesalink.la
 
 RUST_LIB=@abs_top_builddir@/target/@CARGO_TARGET_SUBDIR@/libmesalink_internals.la
 
-$(RUST_LIB): Cargo.toml src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/err.rs
+$(RUST_LIB): Cargo.toml src/lib.rs src/ssl/mod.rs src/ssl/ssl.rs src/ssl/x509.rs src/ssl/err.rs src/crypto/mod.rs
 	cd $(top_srcdir) && \
 	$(CARGO_TARGET_SUBDIR_ENV_VAR) cargo rustc \
 		$(CARGO_RELEASE_ARGS) --no-default-features $(CARGO_FEATURES) $(CARGO_TARGET_ARGS) $(CARGO_RUSTC_ARGS)

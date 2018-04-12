@@ -43,9 +43,9 @@ lazy_static = "1.0.0"
 enum_to_u8_slice_derive = "0.1"
 
 [patch.crates-io]
-rustls = { git = "https://github.com/mesalock-linux/rustls", branch = "mesalink", default-features = false }
+rustls = { git = "https://github.com/mesalock-linux/rustls", branch = "develop", default-features = false }
 sct = { git = "https://github.com/mesalock-linux/sct.rs", branch = "mesalink", default-features = false }
-webpki = { git = "https://github.com/mesalock-linux/webpki", branch = "x509", default-features = false }
+webpki = { git = "https://github.com/mesalock-linux/webpki", branch = "develop", default-features = false }
 
 [dev-dependencies]
 log = "0.4"
