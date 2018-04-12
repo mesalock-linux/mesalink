@@ -98,10 +98,8 @@ int main(int argc, char *argv[]) {
                SSL_get_cipher_version(ssl));
 
         X509 *cert = SSL_get_peer_certificate(ssl);
-        X509_NAME *subject = X509_get_subject_name(cert);
-        //X509_NAME *issuer  = X509_get_issuer_name(cert);
-        printf("Certificate subject: %s\n", X509_NAME_oneline(subject));
-        //printf("Certificate issuer: %s\n", X509_NAME_oneline(issuer));
+        X509_NAME *subject = X509_get_alt_subject_names(cert);
+        printf("[+] Alterantive subject names: %s\n", X509_NAME_oneline(subject));
 
         snprintf(sendbuf, sizeof(sendbuf), REQUEST, hostname);
         sendlen = SSL_write(ssl, sendbuf, (int)strlen(sendbuf));

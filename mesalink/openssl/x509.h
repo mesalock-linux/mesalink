@@ -27,8 +27,7 @@ extern "C" {
 #define X509 MESALINK_X509
 #define X509_NAME MESALINK_X509_NAME
 
-#define X509_get_subject_name mesalink_X509_get_subject_name
-#define X509_get_issuer_name mesalink_X509_get_issuer_name
+#define X509_get_alt_subject_names mesalink_X509_get_alt_subject_names
 #define X509_NAME_oneline mesalink_X509_NAME_oneline
 
 #ifdef __cplusplus
