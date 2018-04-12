@@ -18,7 +18,7 @@ use rustls;
 use ssl::err::{ErrorCode, MesalinkInnerResult};
 use ssl::error_san::*;
 use ssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
-use std::{ptr, slice};
+use std::{ptr, slice, str};
 use untrusted;
 use webpki;
 
@@ -90,16 +90,15 @@ fn inner_mesalink_x509_get_alt_subject_names<'a>(
         .subject_alt_name
         .ok_or(error!(ErrorCode::TLSErrorWebpkiExtensionValueInvalid))?;
     let mut reader = untrusted::Reader::new(subject_alt_name);
-
     let mut stack = MESALINK_STACK_MESALINK_X509_NAME::new(Vec::new());
     while !reader.at_end() {
-        let (_tag, value) = der::read_tag_and_get_value(&mut reader)
+        let (tag, value) = der::read_tag_and_get_value(&mut reader)
             .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
-        let dns_name_ref = webpki::DNSNameRef::try_from_ascii(value)
-            .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
-        let dns_name_str: &str = dns_name_ref.into();
-        let x509_name = MESALINK_X509_NAME::new(dns_name_str);
-        stack.stack.push(x509_name);
+        if tag == 0x82 {
+            let dns_name_str = str::from_utf8(value.as_slice_less_safe()).unwrap();
+            let x509_name = MESALINK_X509_NAME::new(dns_name_str);
+            stack.stack.push(x509_name);
+        }
     }
     Ok(Box::into_raw(Box::new(stack)) as *mut MESALINK_STACK_MESALINK_X509_NAME)
 }
