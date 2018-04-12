@@ -27,8 +27,13 @@ extern "C" {
 #define X509 MESALINK_X509
 #define X509_NAME MESALINK_X509_NAME
 
+#define STACK_OF(NAME) MESALINK_STACK_OF(MESALINK_##NAME)
+
 #define X509_get_alt_subject_names mesalink_X509_get_alt_subject_names
 #define X509_NAME_oneline mesalink_X509_NAME_oneline
+
+#define sk_X509_NAME_num mesalink_sk_X509_NAME_num
+#define sk_X509_NAME_value mesalink_sk_X509_NAME_value
 
 #ifdef __cplusplus
 } /* extern C */

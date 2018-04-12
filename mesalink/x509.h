@@ -27,9 +27,19 @@ extern "C" {
 typedef struct MESALINK_X509 MESALINK_X509;
 typedef struct MESALINK_X509_NAME MESALINK_X509_NAME;
 
+#define MESALINK_STACK_OF(NAME) MESALINK_STACK_##NAME
+typedef struct MESALINK_STACK_OF(MESALINK_X509_NAME)
+    MESALINK_STACK_OF(MESALINK_X509_NAME);
+
+MESALINK_API MESALINK_STACK_OF(MESALINK_X509_NAME) *
+    mesalink_X509_get_alt_subject_names(const MESALINK_X509 *);
+MESALINK_API char *mesalink_X509_NAME_oneline(const MESALINK_X509_NAME *,
+                                              char *buf, int size);
+MESALINK_API int
+mesalink_sk_X509_NAME_num(const MESALINK_STACK_MESALINK_X509_NAME *);
+
 MESALINK_API MESALINK_X509_NAME *
-mesalink_X509_get_alt_subject_names(const MESALINK_X509 *);
-MESALINK_API char *mesalink_X509_NAME_oneline(const MESALINK_X509_NAME *, char *buf, int size);
+mesalink_sk_X509_NAME_value(const MESALINK_STACK_MESALINK_X509_NAME *, int);
 
 #ifdef __cplusplus
 } /* extern C */

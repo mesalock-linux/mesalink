@@ -57,7 +57,6 @@ impl<'a> MesalinkOpaquePointerType for MESALINK_X509_NAME<'a> {
     }
 }
 
-// TODO: make X509_NAME a reference into X509
 impl<'a> MESALINK_X509_NAME<'a> {
     pub fn new(name: &'a str) -> MESALINK_X509_NAME {
         MESALINK_X509_NAME {
@@ -136,4 +135,56 @@ fn inner_mesalink_x509_name_oneline<'a>(
         }
         Ok(buf_ptr)
     }
+}
+
+// TODO use macros to generate the following code:
+
+#[repr(C)]
+#[allow(non_camel_case_types)]
+pub struct MESALINK_STACK_MESALINK_X509_NAME<'a> {
+    magic: [u8; MAGIC_SIZE],
+    stack: Vec<MESALINK_X509_NAME<'a>>,
+}
+
+impl<'a> MesalinkOpaquePointerType for MESALINK_STACK_MESALINK_X509_NAME<'a> {
+    fn check_magic(&self) -> bool {
+        self.magic == *MAGIC
+    }
+}
+
+impl<'a> MESALINK_STACK_MESALINK_X509_NAME<'a> {
+    pub fn new(names: Vec<MESALINK_X509_NAME<'a>>) -> MESALINK_STACK_MESALINK_X509_NAME<'a> {
+        MESALINK_STACK_MESALINK_X509_NAME {
+            magic: *MAGIC,
+            stack: names,
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_sk_X509_NAME_num(stack_ptr: *const MESALINK_STACK_MESALINK_X509_NAME) -> c_int {
+    check_inner_result!(inner_mesalink_sk_X509_NAME_num(stack_ptr), -1)
+}
+
+#[allow(non_snake_case)]
+fn inner_mesalink_sk_X509_NAME_num(
+    stack_ptr: *const MESALINK_STACK_MESALINK_X509_NAME,
+) -> MesalinkInnerResult<c_int> {
+    let stack = sanitize_const_ptr_for_ref(stack_ptr)?;
+    Ok(stack.stack.len() as c_int)
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_sk_X509_NAME_value(stack_ptr: *const MESALINK_STACK_MESALINK_X509_NAME, index: c_int) -> *const MESALINK_X509_NAME {
+    check_inner_result!(inner_mesalink_sk_X509_NAME_value(stack_ptr, index), ptr::null())
+}
+
+#[allow(non_snake_case)]
+fn inner_mesalink_sk_X509_NAME_value(
+    stack_ptr: *const MESALINK_STACK_MESALINK_X509_NAME,
+    index: c_int
+) -> MesalinkInnerResult<*const MESALINK_X509_NAME> {
+    let stack = sanitize_const_ptr_for_ref(stack_ptr)?;
+    let item = stack.stack.get(index as usize).ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+    Ok(item as *const MESALINK_X509_NAME)
 }

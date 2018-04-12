@@ -98,10 +98,14 @@ int main(int argc, char *argv[]) {
                SSL_get_cipher_version(ssl));
 
         X509 *cert = SSL_get_peer_certificate(ssl);
-        X509_NAME *subject = X509_get_alt_subject_names(cert);
-        char *subject_alt_name_buf = malloc(128 * sizeof(char));
-        printf("[+] Alterantive subject names: %s\n",
-               X509_NAME_oneline(subject, subject_alt_name_buf, 128));
+        STACK_OF(X509_NAME) *names = X509_get_alt_subject_names(cert);
+        int length = sk_X509_NAME_num(names);
+        char *name_buf = malloc(128 * sizeof(char));
+        for (int i = 0; i < length; i++) {
+            X509_NAME *name = sk_X509_NAME_value(names, i);
+            printf("[+] Alterantive subject name: %s\n",
+                   X509_NAME_oneline(name, name_buf, 128));
+        }
 
         snprintf(sendbuf, sizeof(sendbuf), REQUEST, hostname);
         sendlen = SSL_write(ssl, sendbuf, (int)strlen(sendbuf));
