@@ -106,6 +106,7 @@ int main(int argc, char *argv[]) {
             printf("[+] Alterantive subject name: %s\n",
                    X509_NAME_oneline(name, name_buf, 128));
         }
+        sk_X509_NAME_free(names);
 
         snprintf(sendbuf, sizeof(sendbuf), REQUEST, hostname);
         sendlen = SSL_write(ssl, sendbuf, (int)strlen(sendbuf));

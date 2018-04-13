@@ -18,6 +18,7 @@ use rustls;
 use ssl::err::{ErrorCode, MesalinkInnerResult};
 use ssl::error_san::*;
 use ssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
+use ssl::{SSL_FAILURE, SSL_SUCCESS};
 use std::{ptr, slice, str};
 use untrusted;
 use webpki;
@@ -222,3 +223,17 @@ fn inner_mesalink_sk_X509_NAME_push(
     stack.stack.push(*item);
     Ok(0)
 }*/
+
+#[no_mangle]
+pub extern "C" fn mesalink_sk_X509_NAME_free(stack_ptr: *mut MESALINK_STACK_MESALINK_X509_NAME) {
+    let _ = check_inner_result!(inner_mesalink_sk_X509_NAME_free(stack_ptr), SSL_FAILURE);
+}
+
+#[allow(non_snake_case)]
+fn inner_mesalink_sk_X509_NAME_free(
+    stack_ptr: *mut MESALINK_STACK_MESALINK_X509_NAME,
+) -> MesalinkInnerResult<c_int> {
+    let _ = sanitize_ptr_for_mut_ref(stack_ptr)?;
+    let _ = unsafe { Box::from_raw(stack_ptr) };
+    Ok(SSL_SUCCESS)
+}

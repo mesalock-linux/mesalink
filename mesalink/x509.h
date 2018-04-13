@@ -37,9 +37,10 @@ MESALINK_API char *mesalink_X509_NAME_oneline(const MESALINK_X509_NAME *,
                                               char *buf, int size);
 MESALINK_API int
 mesalink_sk_X509_NAME_num(const MESALINK_STACK_MESALINK_X509_NAME *);
-
 MESALINK_API MESALINK_X509_NAME *
 mesalink_sk_X509_NAME_value(const MESALINK_STACK_MESALINK_X509_NAME *, int);
+MESALINK_API void
+mesalink_sk_X509_NAME_free(const MESALINK_STACK_MESALINK_X509_NAME *);
 
 #ifdef __cplusplus
 } /* extern C */

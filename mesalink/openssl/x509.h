@@ -34,6 +34,7 @@ extern "C" {
 
 #define sk_X509_NAME_num mesalink_sk_X509_NAME_num
 #define sk_X509_NAME_value mesalink_sk_X509_NAME_value
+#define sk_X509_NAME_free mesalink_sk_X509_NAME_free
 
 #ifdef __cplusplus
 } /* extern C */
