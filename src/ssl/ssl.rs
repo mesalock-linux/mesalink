@@ -1191,10 +1191,49 @@ fn inner_mesalink_ssl_get_peer_certificate(
     ssl_ptr: *mut MESALINK_SSL,
 ) -> MesalinkInnerResult<*mut MESALINK_X509> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
+    let certs = get_peer_certificates(ssl)?;
+    let x509 = MESALINK_X509::new(certs[0].clone());
+    Ok(Box::into_raw(Box::new(x509)) as *mut MESALINK_X509)
+}
+
+use ssl::safestack::MESALINK_STACK_MESALINK_X509;
+
+/// `SSL_get_peer_certificates` - get the X509 certificate chain of the peer
+///
+/// ```c
+///  #include <openssl/ssl.h>
+///
+/// STACK_OF(X509) *SSL_get_peer_certificates(const SSL *ssl);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_get_peer_certificates(
+    ssl_ptr: *mut MESALINK_SSL,
+) -> *mut MESALINK_STACK_MESALINK_X509 {
+    check_inner_result!(
+        inner_mesalink_ssl_get_peer_certificates(ssl_ptr),
+        ptr::null_mut()
+    )
+}
+
+fn inner_mesalink_ssl_get_peer_certificates(
+    ssl_ptr: *mut MESALINK_SSL,
+) -> MesalinkInnerResult<*mut MESALINK_STACK_MESALINK_X509> {
+    let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
+    let certs = get_peer_certificates(ssl)?;
+    let mut vec: Vec<MESALINK_X509> = Vec::new();
+    for cert in certs {
+        let x509 = MESALINK_X509::new(cert.clone());
+        vec.push(x509);
+    }
+    let x509_stack = MESALINK_STACK_MESALINK_X509::new(vec);
+    Ok(Box::into_raw(Box::new(x509_stack)) as *mut MESALINK_STACK_MESALINK_X509)
+}
+
+fn get_peer_certificates(ssl: &mut MESALINK_SSL) -> MesalinkInnerResult<Vec<rustls::Certificate>> {
     let session = ssl.session
         .as_mut()
         .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
-    let certs = session
+    session
         .get_peer_certificates()
         .ok_or(error!(ErrorCode::TLSErrorHandshakeNotComplete))
         .and_then(|certs| {
@@ -1203,9 +1242,7 @@ fn inner_mesalink_ssl_get_peer_certificate(
             } else {
                 Ok(certs)
             }
-        })?;
-    let x509 = MESALINK_X509::new(certs[0].clone()); // FIXME: use the whole cert chain!
-    Ok(Box::into_raw(Box::new(x509)) as *mut MESALINK_X509)
+        })
 }
 
 /// `SSL_set_tlsext_host_name` - set the server name indication ClientHello
