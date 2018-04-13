@@ -34,9 +34,16 @@ extern "C" {
 #define X509_get_alt_subject_names mesalink_X509_get_alt_subject_names
 #define X509_NAME_oneline mesalink_X509_NAME_oneline
 
+#define sk_X509_new_null mesalink_sk_X509_new_null
+#define sk_X509_num mesalink_sk_X509_num
+#define sk_X509_value mesalink_sk_X509_value
+#define sk_X509_push mesalink_sk_X509_push
+#define sk_X509_free mesalink_sk_X509_free
+
 #define sk_X509_NAME_new_null mesalink_sk_X509_NAME_new_null
 #define sk_X509_NAME_num mesalink_sk_X509_NAME_num
 #define sk_X509_NAME_value mesalink_sk_X509_NAME_value
+#define sk_X509_NAME_push mesalink_sk_X509_NAME_push
 #define sk_X509_NAME_free mesalink_sk_X509_NAME_free
 
 #ifdef __cplusplus
