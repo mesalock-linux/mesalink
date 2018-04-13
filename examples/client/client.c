@@ -107,6 +107,7 @@ int main(int argc, char *argv[]) {
                    X509_NAME_oneline(name, name_buf, 128));
         }
         sk_X509_NAME_free(names);
+        X509_free(cert);
 
         snprintf(sendbuf, sizeof(sendbuf), REQUEST, hostname);
         sendlen = SSL_write(ssl, sendbuf, (int)strlen(sendbuf));
