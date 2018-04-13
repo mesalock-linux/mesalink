@@ -32,7 +32,7 @@ typedef struct MESALINK_STACK_OF(MESALINK_X509_NAME)
     MESALINK_STACK_OF(MESALINK_X509_NAME);
 
 MESALINK_API MESALINK_STACK_OF(MESALINK_X509_NAME) *
-    mesalink_sk_X509_NAME_new_null();
+    mesalink_sk_X509_NAME_new_null(void);
 MESALINK_API void mesalink_X509_free(const MESALINK_X509 *);
 MESALINK_API void mesalink_X509_NAME_free(const MESALINK_X509_NAME *);
 

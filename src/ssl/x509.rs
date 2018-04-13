@@ -60,19 +60,19 @@ fn inner_mesalink_x509_free(x509_ptr: *mut MESALINK_X509) -> MesalinkInnerResult
 /// An OpenSSL X509_NAME object
 #[allow(non_camel_case_types)]
 #[derive(Clone)]
-pub struct MESALINK_X509_NAME<'a> {
+pub struct MESALINK_X509_NAME {
     magic: [u8; MAGIC_SIZE],
-    name: &'a str,
+    name: String,
 }
 
-impl<'a> MesalinkOpaquePointerType for MESALINK_X509_NAME<'a> {
+impl<'a> MesalinkOpaquePointerType for MESALINK_X509_NAME {
     fn check_magic(&self) -> bool {
         self.magic == *MAGIC
     }
 }
 
-impl<'a> MESALINK_X509_NAME<'a> {
-    pub fn new(name: &'a str) -> MESALINK_X509_NAME {
+impl<'a> MESALINK_X509_NAME {
+    pub fn new(name: String) -> MESALINK_X509_NAME {
         MESALINK_X509_NAME {
             magic: *MAGIC,
             name: name,
@@ -92,18 +92,18 @@ fn inner_mesalink_x509_name_free(x509_name_ptr: *mut MESALINK_X509_NAME) -> Mesa
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_X509_get_alt_subject_names<'a>(
+pub extern "C" fn mesalink_X509_get_alt_subject_names(
     x509_ptr: *mut MESALINK_X509,
-) -> *mut MESALINK_STACK_MESALINK_X509_NAME<'a> {
+) -> *mut MESALINK_STACK_MESALINK_X509_NAME {
     check_inner_result!(
         inner_mesalink_x509_get_alt_subject_names(x509_ptr),
         ptr::null_mut()
     )
 }
 
-fn inner_mesalink_x509_get_alt_subject_names<'a>(
+fn inner_mesalink_x509_get_alt_subject_names(
     x509_ptr: *mut MESALINK_X509,
-) -> MesalinkInnerResult<*mut MESALINK_STACK_MESALINK_X509_NAME<'a>> {
+) -> MesalinkInnerResult<*mut MESALINK_STACK_MESALINK_X509_NAME> {
     use ring::der;
     let cert = sanitize_ptr_for_ref(x509_ptr)?;
     let cert_der = untrusted::Input::from(&cert.cert_data.0);
@@ -119,7 +119,7 @@ fn inner_mesalink_x509_get_alt_subject_names<'a>(
             .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
         if tag == 0x82 {
             let dns_name_str = str::from_utf8(value.as_slice_less_safe()).unwrap();
-            let x509_name = MESALINK_X509_NAME::new(dns_name_str);
+            let x509_name = MESALINK_X509_NAME::new(String::from(dns_name_str));
             stack.stack.push(x509_name);
         }
     }
@@ -127,8 +127,8 @@ fn inner_mesalink_x509_get_alt_subject_names<'a>(
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_X509_NAME_oneline<'a>(
-    x509_name_ptr: *mut MESALINK_X509_NAME<'a>,
+pub extern "C" fn mesalink_X509_NAME_oneline(
+    x509_name_ptr: *mut MESALINK_X509_NAME,
     buf_ptr: *mut c_char,
     size: c_int,
 ) -> *mut c_char {
@@ -138,8 +138,8 @@ pub extern "C" fn mesalink_X509_NAME_oneline<'a>(
     )
 }
 
-fn inner_mesalink_x509_name_oneline<'a>(
-    x509_name_ptr: *mut MESALINK_X509_NAME<'a>,
+fn inner_mesalink_x509_name_oneline(
+    x509_name_ptr: *mut MESALINK_X509_NAME,
     buf_ptr: *mut c_char,
     buf_len: c_int,
 ) -> MesalinkInnerResult<*mut c_char> {
@@ -168,19 +168,19 @@ fn inner_mesalink_x509_name_oneline<'a>(
 
 #[repr(C)]
 #[allow(non_camel_case_types)]
-pub struct MESALINK_STACK_MESALINK_X509_NAME<'a> {
+pub struct MESALINK_STACK_MESALINK_X509_NAME {
     magic: [u8; MAGIC_SIZE],
-    stack: Vec<MESALINK_X509_NAME<'a>>,
+    stack: Vec<MESALINK_X509_NAME>,
 }
 
-impl<'a> MesalinkOpaquePointerType for MESALINK_STACK_MESALINK_X509_NAME<'a> {
+impl MesalinkOpaquePointerType for MESALINK_STACK_MESALINK_X509_NAME {
     fn check_magic(&self) -> bool {
         self.magic == *MAGIC
     }
 }
 
-impl<'a> MESALINK_STACK_MESALINK_X509_NAME<'a> {
-    pub fn new(names: Vec<MESALINK_X509_NAME<'a>>) -> MESALINK_STACK_MESALINK_X509_NAME<'a> {
+impl MESALINK_STACK_MESALINK_X509_NAME {
+    pub fn new(names: Vec<MESALINK_X509_NAME>) -> MESALINK_STACK_MESALINK_X509_NAME {
         MESALINK_STACK_MESALINK_X509_NAME {
             magic: *MAGIC,
             stack: names,
@@ -189,7 +189,7 @@ impl<'a> MESALINK_STACK_MESALINK_X509_NAME<'a> {
 }
 
 #[no_mangle]
-pub extern "C" fn mesalink_sk_X509_NAME_new_null<'a>() -> *mut MESALINK_STACK_MESALINK_X509_NAME<'a> {
+pub extern "C" fn mesalink_sk_X509_NAME_new_null() -> *mut MESALINK_STACK_MESALINK_X509_NAME {
     let stack = MESALINK_STACK_MESALINK_X509_NAME::new(vec![]);
     Box::into_raw(Box::new(stack)) as *mut MESALINK_STACK_MESALINK_X509_NAME
 }
