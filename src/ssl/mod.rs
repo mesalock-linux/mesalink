@@ -78,6 +78,10 @@ pub mod ssl;
 /// Please also refer to the header file at mesalink/openssl/x509.h
 pub mod x509;
 
+/// Implementations of OpenSSL STACK APIs.
+/// Please also refer to the header file at mesalink/openssl/safestack.h
+pub mod safestack;
+
 #[doc(hidden)]
 #[repr(C)]
 enum SslConstants {
