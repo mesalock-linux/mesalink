@@ -829,6 +829,13 @@ mod tests {
     use std::ptr;
     use std::thread;
 
+    macro_rules! error {
+        ($code:expr) => {{
+            use ssl::err::MesalinkError;
+            MesalinkError::new($code, call_site!())
+        }};
+    }
+
     #[test]
     fn empty() {
         assert_eq!(0, mesalink_ERR_get_error());
