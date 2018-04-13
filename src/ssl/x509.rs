@@ -227,7 +227,7 @@ fn inner_mesalink_sk_X509_NAME_value(
     Ok(item as *const MESALINK_X509_NAME)
 }
 
-/*#[no_mangle]
+#[no_mangle]
 pub extern "C" fn mesalink_sk_X509_NAME_push(
     stack_ptr: *mut MESALINK_STACK_MESALINK_X509_NAME,
     item_ptr: *const MESALINK_X509_NAME,
@@ -244,7 +244,7 @@ fn inner_mesalink_sk_X509_NAME_push(
     let item = sanitize_const_ptr_for_ref(item_ptr)?;
     stack.stack.push(*item);
     Ok(0)
-}*/
+}
 
 #[no_mangle]
 pub extern "C" fn mesalink_sk_X509_NAME_free(stack_ptr: *mut MESALINK_STACK_MESALINK_X509_NAME) {

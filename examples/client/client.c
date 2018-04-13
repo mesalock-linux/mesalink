@@ -72,16 +72,13 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    char *hostname_buf = malloc(256 * sizeof(char));
+    char hostname_buf[256] = {0};
     strncpy(hostname_buf, hostname, strlen(hostname));
-
     if (SSL_set_tlsext_host_name(ssl, hostname_buf) != SSL_SUCCESS) {
         fprintf(stderr, "[-] SSL set hostname failed\n");
         ERR_print_errors_fp(stderr);
         return -1;
     }
-
-    free(hostname_buf);
 
     if (SSL_set_fd(ssl, sockfd) != SSL_SUCCESS) {
         fprintf(stderr, "[-] SSL set fd failed\n");
@@ -100,7 +97,7 @@ int main(int argc, char *argv[]) {
         X509 *cert = SSL_get_peer_certificate(ssl);
         STACK_OF(X509_NAME) *names = X509_get_alt_subject_names(cert);
         int length = sk_X509_NAME_num(names);
-        char *name_buf = malloc(128 * sizeof(char));
+        char name_buf[128] = {0};
         for (int i = 0; i < length; i++) {
             X509_NAME *name = sk_X509_NAME_value(names, i);
             printf("[+] Alterantive subject name: %s\n",
