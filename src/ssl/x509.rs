@@ -46,6 +46,17 @@ impl MESALINK_X509 {
     }
 }
 
+#[no_mangle]
+pub extern "C" fn mesalink_X509_free(x509_ptr: *mut MESALINK_X509) {
+    let _ = check_inner_result!(inner_mesalink_x509_free(x509_ptr), SSL_FAILURE);
+}
+
+fn inner_mesalink_x509_free(x509_ptr: *mut MESALINK_X509) -> MesalinkInnerResult<c_int> {
+    let _ = sanitize_ptr_for_mut_ref(x509_ptr)?;
+    let _ = unsafe { Box::from_raw(x509_ptr) };
+    Ok(SSL_SUCCESS)
+}
+
 /// An OpenSSL X509_NAME object
 #[allow(non_camel_case_types)]
 #[derive(Clone)]
@@ -67,6 +78,17 @@ impl<'a> MESALINK_X509_NAME<'a> {
             name: name,
         }
     }
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_X509_NAME_free(x509_name_ptr: *mut MESALINK_X509_NAME) {
+    let _ = check_inner_result!(inner_mesalink_x509_name_free(x509_name_ptr), SSL_FAILURE);
+}
+
+fn inner_mesalink_x509_name_free(x509_name_ptr: *mut MESALINK_X509_NAME) -> MesalinkInnerResult<c_int> {
+    let _ = sanitize_ptr_for_mut_ref(x509_name_ptr)?;
+    let _ = unsafe { Box::from_raw(x509_name_ptr) };
+    Ok(SSL_SUCCESS)
 }
 
 #[no_mangle]

@@ -29,6 +29,8 @@ extern "C" {
 
 #define STACK_OF(NAME) MESALINK_STACK_OF(MESALINK_##NAME)
 
+#define X509_free mesalink_X509_free
+#define X509_NAME_free mesalink_X509_NAME_free
 #define X509_get_alt_subject_names mesalink_X509_get_alt_subject_names
 #define X509_NAME_oneline mesalink_X509_NAME_oneline
 
