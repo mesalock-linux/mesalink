@@ -35,6 +35,7 @@ pub trait MesalinkOpaquePointerType {
 
 /// Implementations of OpenSSL ERR APIs.
 /// Please also refer to the header file at mesalink/openssl/err.h
+#[macro_use]
 pub mod err;
 
 #[macro_use]
@@ -76,6 +77,19 @@ pub mod ssl;
 /// Implementations of OpenSSL X509 APIs.
 /// Please also refer to the header file at mesalink/openssl/x509.h
 pub mod x509;
+
+#[doc(hidden)]
+#[repr(C)]
+enum SslConstants {
+    SslError = -1,
+    SslFailure = 0,
+    SslSuccess = 1,
+}
+
+use libc::c_int;
+pub const SSL_ERROR: c_int = SslConstants::SslError as c_int;
+pub const SSL_FAILURE: c_int = SslConstants::SslFailure as c_int;
+pub const SSL_SUCCESS: c_int = SslConstants::SslSuccess as c_int;
 
 #[macro_use]
 pub mod error_san {

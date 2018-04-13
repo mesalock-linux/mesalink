@@ -145,8 +145,8 @@
 //! ```
 
 use libc::{self, c_char, c_ulong, size_t};
-use std::{io, slice};
 use rustls;
+use std::{io, slice};
 use webpki;
 
 use std::cell::RefCell;
@@ -798,9 +798,9 @@ pub extern "C" fn mesalink_ERR_clear_error() {
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
-    use std::{fs, str};
-    use std::os::unix::io::FromRawFd;
     use std::io::Write;
+    use std::os::unix::io::FromRawFd;
+    use std::{fs, str};
     if fp.is_null() {
         return;
     }
@@ -826,8 +826,8 @@ pub extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::thread;
     use std::ptr;
+    use std::thread;
 
     #[test]
     fn empty() {

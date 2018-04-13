@@ -41,6 +41,7 @@ use ssl::err::{ErrorCode, ErrorQueue, MesalinkInnerResult};
 use ssl::error_san::*;
 use ssl::x509::MESALINK_X509;
 use ssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
+use ssl::{SSL_ERROR, SSL_FAILURE, SSL_SUCCESS};
 use std::sync::Arc;
 use std::{ffi, io, net, ptr, slice};
 use webpki;
@@ -49,10 +50,6 @@ use webpki;
 use rustls::Session;
 use std::io::{Read, Write};
 use std::os::unix::io::{AsRawFd, FromRawFd};
-
-const SSL_ERROR: c_int = SslConstants::SslError as c_int;
-const SSL_FAILURE: c_int = SslConstants::SslFailure as c_int;
-const SSL_SUCCESS: c_int = SslConstants::SslSuccess as c_int;
 
 const CLIENT_CACHE_SIZE: usize = 32;
 const SERVER_CACHE_SIZE: usize = 128;
@@ -366,15 +363,6 @@ impl Write for MESALINK_SSL {
             }
         }
     }
-}
-
-#[doc(hidden)]
-#[repr(C)]
-pub enum SslConstants {
-    SslError = -1,
-    SslFailure = 0,
-    SslSuccess = 1,
-    SslShutdownNotDone = 2,
 }
 
 #[doc(hidden)]
