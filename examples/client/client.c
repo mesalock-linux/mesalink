@@ -97,11 +97,11 @@ int main(int argc, char *argv[]) {
         X509 *cert = SSL_get_peer_certificate(ssl);
         STACK_OF(X509_NAME) *names = X509_get_alt_subject_names(cert);
         int length = sk_X509_NAME_num(names);
-        char name_buf[128] = {0};
+        char name_buf[253] = {0};
         for (int i = 0; i < length; i++) {
             X509_NAME *name = sk_X509_NAME_value(names, i);
             printf("[+] Alterantive subject name: %s\n",
-                   X509_NAME_oneline(name, name_buf, 128));
+                   X509_NAME_oneline(name, name_buf, 253));
         }
         sk_X509_NAME_free(names);
         X509_free(cert);
