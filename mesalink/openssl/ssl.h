@@ -81,6 +81,7 @@ typedef MESALINK_SSL SSL;
 #endif
 #define SSL_CTX_set_verify mesalink_SSL_CTX_set_verify
 #define SSL_CTX_set_session_cache_mode mesalink_SSL_CTX_set_session_cache_mode
+#define SSL_CTX_get_session_cache_mode mesalink_SSL_CTX_get_session_cache_mode
 #define SSL_CTX_free mesalink_SSL_CTX_free
 
 #define SSL_new mesalink_SSL_new

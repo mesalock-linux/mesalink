@@ -165,6 +165,7 @@ fn setup_ctx(opts: &Options) -> *mut ssl::MESALINK_CTX_ARC {
         _ => return std::ptr::null_mut(),
     };
     let ctx = ssl::mesalink_SSL_CTX_new(method as *mut ssl::MESALINK_METHOD);
+    ssl::mesalink_SSL_CTX_set_session_cache_mode(ctx, 0x3); // enable both client and server session cache
     if opts.server {
         if ssl::mesalink_SSL_CTX_use_certificate_chain_file(
             ctx,

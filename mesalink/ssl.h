@@ -96,6 +96,7 @@ MESALINK_API int mesalink_SSL_CTX_check_private_key(const MESALINK_CTX *);
 MESALINK_API int mesalink_SSL_CTX_set_verify(MESALINK_CTX *, int,
                                              int (*cb)(int, MESALINK_CTX *));
 MESALINK_API long mesalink_SSL_CTX_set_session_cache_mode(MESALINK_CTX *, long);
+MESALINK_API long mesalink_SSL_CTX_get_session_cache_mode(MESALINK_CTX *);
 MESALINK_API void mesalink_SSL_CTX_free(MESALINK_CTX *);
 
 MESALINK_API MESALINK_SSL *mesalink_SSL_new(MESALINK_CTX *);

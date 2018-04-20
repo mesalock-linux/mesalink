@@ -923,6 +923,7 @@ fn inner_mesalink_ssl_ctx_set_session_cache_mode(
         ctx_mut
             .server_config
             .set_persistence(Arc::new(rustls::NoServerSessionStorage {}));
+        ctx_mut.session_cache_mode = SslSessionCacheModes::SslSessCacheOff;
     } else if mode == SslSessionCacheModes::SslSessCacheClient as c_long {
         ctx_mut
             .client_config
@@ -930,6 +931,7 @@ fn inner_mesalink_ssl_ctx_set_session_cache_mode(
         ctx_mut
             .server_config
             .set_persistence(Arc::new(rustls::NoServerSessionStorage {}));
+        ctx_mut.session_cache_mode = SslSessionCacheModes::SslSessCacheClient;
     } else if mode == SslSessionCacheModes::SslSessCacheServer as c_long {
         ctx_mut
             .client_config
@@ -937,6 +939,7 @@ fn inner_mesalink_ssl_ctx_set_session_cache_mode(
         ctx_mut
             .server_config
             .set_persistence(rustls::ServerSessionMemoryCache::new(SERVER_CACHE_SIZE));
+        ctx_mut.session_cache_mode = SslSessionCacheModes::SslSessCacheServer;
     } else if mode == SslSessionCacheModes::SslSessCacheBoth as c_long {
         ctx_mut
             .client_config
@@ -944,7 +947,33 @@ fn inner_mesalink_ssl_ctx_set_session_cache_mode(
         ctx_mut
             .server_config
             .set_persistence(rustls::ServerSessionMemoryCache::new(SERVER_CACHE_SIZE));
+        ctx_mut.session_cache_mode = SslSessionCacheModes::SslSessCacheBoth;
     }
+    Ok(prev_mode)
+}
+
+/// `SSL_CTX_get_session_cache_mode` -  return the currently used cache mode
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// long SSL_CTX_get_session_cache_mode(SSL_CTX ctx);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_CTX_get_session_cache_mode(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+) -> c_long {
+    check_inner_result!(
+        inner_mesalink_ssl_ctx_get_session_cache_mode(ctx_ptr),
+        SSL_ERROR as c_long
+    )
+}
+
+fn inner_mesalink_ssl_ctx_get_session_cache_mode(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+) -> MesalinkInnerResult<c_long> {
+    let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
+    let prev_mode = ctx.session_cache_mode.clone() as c_long;
     Ok(prev_mode)
 }
 
