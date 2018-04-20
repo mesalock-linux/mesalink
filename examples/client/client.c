@@ -47,6 +47,7 @@ int main(int argc, char *argv[]) {
     ERR_load_crypto_strings();
     SSL_load_error_strings();
     ctx = SSL_CTX_new(TLSv1_2_client_method());
+    SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_CLIENT);
     if (ctx == NULL) {
         fprintf(stderr, "[-] Context failed to create\n");
         ERR_print_errors_fp(stderr);

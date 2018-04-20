@@ -84,10 +84,18 @@ pub mod safestack;
 
 #[doc(hidden)]
 #[repr(C)]
-enum SslConstants {
+pub enum SslConstants {
     SslError = -1,
     SslFailure = 0,
     SslSuccess = 1,
+}
+
+#[doc(hidden)]
+#[repr(C)]
+pub enum SslSessionCacheModes {
+    SslSessCacheOff = 0x1,
+    SslSessCacheClient = 0x2,
+    SslSessCacheServer = 0x4,
 }
 
 use libc::c_int;

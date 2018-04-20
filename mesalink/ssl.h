@@ -34,7 +34,22 @@ typedef enum {
     SSL_VERIFY_NONE = 0,
     SSL_VERIFY_PEER = 1,
     SSL_VERIFY_FAIL_IF_NO_PEER_CERT = 2,
-} SSL_VERIFY_MODES;
+} mesalink_verify_mode_t;
+
+typedef enum {
+    MESALINK_FAILURE = 0,
+    MESALINK_ERROR = -1,
+    MESALINK_SUCCESS = 1,
+
+    MESALINK_FILETYPE_PEM = 1,
+    MESALINK_FILETYPE_ASN1 = 2,
+    MESALINK_FILETYPE_DEFAULT = 2,
+    MESALINK_FILETYPE_RAW = 3,
+
+    MESALINK_SSL_SESS_CACHE_OFF = 0x1,
+    MESALINK_SSL_SESS_CACHE_CLIENT = 0x2,
+    MESALINK_SSL_SESS_CACHE_SERVER = 0x4,
+} mesalink_constant_t;
 
 MESALINK_API int mesalink_library_init(void);
 MESALINK_API int mesalink_add_ssl_algorithms(void);
@@ -79,6 +94,7 @@ MESALINK_API int mesalink_SSL_CTX_check_private_key(const MESALINK_CTX *);
 
 MESALINK_API int mesalink_SSL_CTX_set_verify(MESALINK_CTX *, int,
                                              int (*cb)(int, MESALINK_CTX *));
+MESALINK_API long mesalink_SSL_CTX_set_session_cache_mode(MESALINK_CTX *, long);
 MESALINK_API void mesalink_SSL_CTX_free(MESALINK_CTX *);
 
 MESALINK_API MESALINK_SSL *mesalink_SSL_new(MESALINK_CTX *);

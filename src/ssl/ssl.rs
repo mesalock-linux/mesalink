@@ -35,13 +35,13 @@
 
 // Module imports
 
-use libc::{c_char, c_int, c_uchar};
+use libc::{c_char, c_int, c_long, c_uchar};
 use rustls;
 use ssl::err::{ErrorCode, ErrorQueue, MesalinkInnerResult};
 use ssl::error_san::*;
 use ssl::x509::MESALINK_X509;
 use ssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
-use ssl::{SSL_ERROR, SSL_FAILURE, SSL_SUCCESS};
+use ssl::{SslSessionCacheModes, SSL_ERROR, SSL_FAILURE, SSL_SUCCESS};
 use std::sync::Arc;
 use std::{ffi, io, net, ptr, slice};
 use webpki;
@@ -886,6 +886,50 @@ fn inner_mesalink_ssl_ctx_set_verify(
             .set_certificate_verifier(Arc::new(NoServerAuth {}));
     }
     Ok(SSL_SUCCESS)
+}
+
+/// `SSL_CTX_set_session_cache_mode` - enable/disable session caching by setting
+/// the operational mode for ctx to <mode>
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// long SSL_CTX_set_session_cache_mode(SSL_CTX ctx, long mode);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_CTX_set_session_cache_mode(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    mode: c_long,
+) -> c_long {
+    check_inner_result!(
+        inner_mesalink_ssl_ctx_set_session_cache_mode(ctx_ptr, mode),
+        SSL_ERROR as c_long
+    )
+}
+
+fn inner_mesalink_ssl_ctx_set_session_cache_mode(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    mode: c_long,
+) -> MesalinkInnerResult<c_long> {
+    let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
+    let ctx_mut = util::get_context_mut(ctx);
+    if mode == SslSessionCacheModes::SslSessCacheOff as c_long {
+        ctx_mut
+            .client_config
+            .set_persistence(Arc::new(rustls::NoClientSessionStorage {}));
+        ctx_mut
+            .server_config
+            .set_persistence(Arc::new(rustls::NoServerSessionStorage {}));
+    } else if mode == SslSessionCacheModes::SslSessCacheClient as c_long {
+        ctx_mut
+            .client_config
+            .set_persistence(MesalinkClientSessionCache::new(CLIENT_CACHE_SIZE));
+    } else if mode == SslSessionCacheModes::SslSessCacheServer as c_long {
+        ctx_mut
+            .server_config
+            .set_persistence(rustls::ServerSessionMemoryCache::new(SERVER_CACHE_SIZE));
+    }
+    Ok(mode)
 }
 
 /// `SSL_new` - create a new SSL structure which is needed to hold the data for a

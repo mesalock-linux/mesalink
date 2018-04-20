@@ -29,6 +29,20 @@ typedef MESALINK_CTX SSL_CTX;
 typedef MESALINK_CIPHER CIPHER;
 typedef MESALINK_SSL SSL;
 
+#define SSL_ERROR_NONE MESALINK_ERROR_NONE
+#define SSL_FAILURE MESALINK_FAILURE
+#define SSL_FATAL_ERROR MESALINK_FATAL_ERROR
+#define SSL_SUCCESS MESALINK_SUCCESS
+
+#define SSL_FILETYPE_PEM MESALINK_FILETYPE_PEM
+#define SSL_FILETYPE_ASN1 MESALINK_FILETYPE_ASN1
+#define SSL_FILETYPE_DEFAULT MESALINK_FILETYPE_DEFAULT
+#define SSL_FILETYPE_RAW MESALINK_FILETYPE_RAW
+
+#define SSL_SESS_CACHE_OFF MESALINK_SSL_SESS_CACHE_OFF
+#define SSL_SESS_CACHE_CLIENT MESALINK_SSL_SESS_CACHE_CLIENT
+#define SSL_SESS_CACHE_SERVER MESALINK_SSL_SESS_CACHE_CLIENT
+
 #define SSL_library_init mesalink_library_init
 #define OpenSSL_add_ssl_algorithms mesalink_add_ssl_algorithms
 #define SSL_load_error_strings mesalink_SSL_load_error_strings
@@ -65,6 +79,7 @@ typedef MESALINK_SSL SSL;
 #define SSL_CTX_check_private_key mesalink_SSL_CTX_check_private_key
 #endif
 #define SSL_CTX_set_verify mesalink_SSL_CTX_set_verify
+#define SSL_CTX_set_session_cache_mode mesalink_SSL_CTX_set_session_cache_mode
 #define SSL_CTX_free mesalink_SSL_CTX_free
 
 #define SSL_new mesalink_SSL_new
