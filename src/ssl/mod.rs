@@ -92,10 +92,12 @@ pub enum SslConstants {
 
 #[doc(hidden)]
 #[repr(C)]
+#[derive(Clone)]
 pub enum SslSessionCacheModes {
-    SslSessCacheOff = 0x1,
-    SslSessCacheClient = 0x2,
-    SslSessCacheServer = 0x4,
+    SslSessCacheOff = 0x0,
+    SslSessCacheClient = 0x1,
+    SslSessCacheServer = 0x2,
+    SslSessCacheBoth = 0x3,
 }
 
 use libc::c_int;

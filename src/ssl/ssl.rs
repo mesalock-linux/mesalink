@@ -170,6 +170,7 @@ pub struct MESALINK_CTX {
     server_config: rustls::ServerConfig,
     certificates: Option<Vec<rustls::Certificate>>,
     private_key: Option<rustls::PrivateKey>,
+    session_cache_mode: SslSessionCacheModes,
 }
 
 #[allow(non_camel_case_types)]
@@ -194,7 +195,7 @@ impl MESALINK_CTX {
             server_config.versions.push(*v);
         }
 
-        client_config.set_persistence(MesalinkClientSessionCache::new(CLIENT_CACHE_SIZE));
+        client_config.set_persistence(Arc::new(rustls::NoClientSessionStorage {}));
         server_config.set_persistence(rustls::ServerSessionMemoryCache::new(SERVER_CACHE_SIZE));
 
         use webpki_roots;
@@ -209,6 +210,7 @@ impl MESALINK_CTX {
             server_config: server_config,
             certificates: None,
             private_key: None,
+            session_cache_mode: SslSessionCacheModes::SslSessCacheServer,
         }
     }
 }
@@ -912,6 +914,7 @@ fn inner_mesalink_ssl_ctx_set_session_cache_mode(
     mode: c_long,
 ) -> MesalinkInnerResult<c_long> {
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
+    let prev_mode = ctx.session_cache_mode.clone() as c_long;
     let ctx_mut = util::get_context_mut(ctx);
     if mode == SslSessionCacheModes::SslSessCacheOff as c_long {
         ctx_mut
@@ -924,12 +927,25 @@ fn inner_mesalink_ssl_ctx_set_session_cache_mode(
         ctx_mut
             .client_config
             .set_persistence(MesalinkClientSessionCache::new(CLIENT_CACHE_SIZE));
+        ctx_mut
+            .server_config
+            .set_persistence(Arc::new(rustls::NoServerSessionStorage {}));
     } else if mode == SslSessionCacheModes::SslSessCacheServer as c_long {
+        ctx_mut
+            .client_config
+            .set_persistence(Arc::new(rustls::NoClientSessionStorage {}));
+        ctx_mut
+            .server_config
+            .set_persistence(rustls::ServerSessionMemoryCache::new(SERVER_CACHE_SIZE));
+    } else if mode == SslSessionCacheModes::SslSessCacheBoth as c_long {
+        ctx_mut
+            .client_config
+            .set_persistence(MesalinkClientSessionCache::new(CLIENT_CACHE_SIZE));
         ctx_mut
             .server_config
             .set_persistence(rustls::ServerSessionMemoryCache::new(SERVER_CACHE_SIZE));
     }
-    Ok(mode)
+    Ok(prev_mode)
 }
 
 /// `SSL_new` - create a new SSL structure which is needed to hold the data for a
