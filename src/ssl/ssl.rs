@@ -903,9 +903,10 @@ pub extern "C" fn mesalink_SSL_CTX_set_session_cache_mode(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     mode: c_long,
 ) -> c_long {
+    let error_ret: c_long = SSL_ERROR.into();
     check_inner_result!(
         inner_mesalink_ssl_ctx_set_session_cache_mode(ctx_ptr, mode),
-        SSL_ERROR as c_long
+        error_ret
     )
 }
 
@@ -963,9 +964,10 @@ fn inner_mesalink_ssl_ctx_set_session_cache_mode(
 pub extern "C" fn mesalink_SSL_CTX_get_session_cache_mode(
     ctx_ptr: *mut MESALINK_CTX_ARC,
 ) -> c_long {
+    let error_ret: c_long = SSL_ERROR.into();
     check_inner_result!(
         inner_mesalink_ssl_ctx_get_session_cache_mode(ctx_ptr),
-        SSL_ERROR as c_long
+        error_ret
     )
 }
 
