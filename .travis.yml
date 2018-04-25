@@ -87,17 +87,4 @@ deploy:
   skip_cleanup: true
   on:
     repo: mesalock-linux/mesalink
-    branch: master
     tags: true
-deploy:
-  provider: releases
-  prerelease: true
-  api_key:
-    secure: ERxVWsaRloWCC+g1E7DRUkLa3fi8gNbHwbAWGJY27VQreuYLl8q7AYTqlHsSvbfUJKG31/6d8csllZMvLAnutxSJ08gNstedwVCvJLBab71ceb1Ap4hhHHSO5nnyGMQLcaQjv2G9mpnjwEuLnUDHuedc0XRJjBsgf9rZ0Qnhbu8Op0Sc9+mai3ArLEzvp1WxcNtNuUkSzeaedPOhk/LTPsySB6Ty1ClG2Tg7ClWwGk3x+W7Y+G7UKSJIvPzxNsD2/MZRy5x8JMr8VkMowTGoASBvxdRVkza5hqEuFOyllk+zNjZ4YNXP8dgsillgajlKzYplSCZevpyr9jySLxorxQV+hIWAhUVG/+3AVzsk/rk8zNVk1vZ3Zpz/P7qhh8rY0WIKWxjIwutlw0SvuLQ4sqDHk9THLNln40/gpSoP46ARVvocrIuMDBIlhs2RBxASIyyMAEu+58cnj0VTOZG3vFJZGgeacYtC2706G+GFmaTU5Z/GU2MlI5Ag5b09rPUAEnzn+2HJ2eDiqjOCtoRCPlGj6zNCEGJMXhMoXQmsDlFxCdrlp96ErZz5OQ21zpKCTpiewNst0gTrNOGGZz1vqMIxa/UcmDtYhDgwD6VZUrLaXsGFbfm7jyjdBRIrPhTgl1F9JhRIWQIaoAy72ixxk/roRWpIFDE0AvcbQs5iZ1I=
-  name: dev-$TRAVIS_COMMIT
-  file: releases/*
-  file_glob: true
-  skip_cleanup: true
-  on:
-    repo: mesalock-linux/mesalink
-    branch: develop
