@@ -24,4 +24,3 @@ libmesalink_la_LIBADD = \
 
 clean-local:
 	-cargo clean
-	-rm -rf Cargo.lock
