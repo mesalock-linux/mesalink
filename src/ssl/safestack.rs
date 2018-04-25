@@ -233,10 +233,36 @@ fn inner_mesalink_sk_X509_NAME_free(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rustls::internal::pemfile;
+    use ssl::SSL_SUCCESS;
+    use ssl::x509::MESALINK_X509;
+    use std::fs::File;
+    use std::io::BufReader;
 
     #[test]
-    fn x509_create_empty_stack() {
+    fn x509_sk_create_empty_stack() {
         let stack_ptr: *mut MESALINK_STACK_MESALINK_X509 = mesalink_sk_X509_new_null();
+        mesalink_sk_X509_free(stack_ptr);
+    }
+
+    #[test]
+    fn x509_sk_push_num_value_apis() {
+        let stack_ptr: *mut MESALINK_STACK_MESALINK_X509 = mesalink_sk_X509_new_null();
+        let mut certs_io = BufReader::new(File::open("tests/test.certs").unwrap());
+        let certs = pemfile::certs(&mut certs_io).unwrap();
+        let certs_count = certs.len();
+        assert_eq!(true, certs_count > 0);
+        for cert in certs.into_iter() {
+            let x509 = MESALINK_X509::new(cert);
+            let x509_ptr = Box::into_raw(Box::new(x509)) as *mut MESALINK_X509;
+            assert_eq!(SSL_SUCCESS, mesalink_sk_X509_push(stack_ptr, x509_ptr));
+            let _ = unsafe { Box::from_raw(x509_ptr) }; // push() clones the X509 object
+        }
+        assert_eq!(certs_count as c_int, mesalink_sk_X509_num(stack_ptr));
+        for index in 0..certs_count {
+            let x509_ptr = mesalink_sk_X509_value(stack_ptr, index as c_int);
+            assert_ne!(x509_ptr, ptr::null_mut());
+        }
         mesalink_sk_X509_free(stack_ptr);
     }
 }
