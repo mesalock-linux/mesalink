@@ -1782,6 +1782,8 @@ mod tests {
     use super::*;
     use libc::c_ulong;
     use ssl::err::{mesalink_ERR_clear_error, mesalink_ERR_get_error};
+    use ssl::x509::mesalink_X509_free;
+    use ssl::safestack::mesalink_sk_X509_free;
     use std::{str, thread};
 
     const CONST_CHAIN_FILE: &'static [u8] = b"tests/test.certs\0";
@@ -1819,6 +1821,14 @@ mod tests {
                 "Failed to set fd"
             );
             assert_eq!(SSL_SUCCESS, mesalink_SSL_connect(ssl), "Failed to connect");
+
+            let certs = mesalink_SSL_get_peer_certificates(ssl);
+            let cert = mesalink_SSL_get_peer_certificate(ssl);
+            assert_ne!(certs, ptr::null_mut(), "Failed to get peer certificates");
+            assert_ne!(cert, ptr::null_mut(), "Failed to get peer certificate");
+            mesalink_sk_X509_free(certs);
+            mesalink_X509_free(cert);
+
             MesalinkTestSession { ctx: ctx, ssl: ssl }
         }
 

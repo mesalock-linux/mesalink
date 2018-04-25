@@ -229,3 +229,14 @@ fn inner_mesalink_sk_X509_NAME_free(
     let _ = unsafe { Box::from_raw(stack_ptr) };
     Ok(SSL_SUCCESS)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn x509_create_empty_stack() {
+        let stack_ptr: *mut MESALINK_STACK_MESALINK_X509 = mesalink_sk_X509_new_null();
+        mesalink_sk_X509_free(stack_ptr);
+    }
+}
