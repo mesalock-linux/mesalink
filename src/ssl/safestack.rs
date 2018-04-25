@@ -235,18 +235,12 @@ mod tests {
     use super::*;
     use rustls::internal::pemfile;
     use ssl::SSL_SUCCESS;
-    use ssl::x509::MESALINK_X509;
+    use ssl::x509::{MESALINK_X509, MESALINK_X509_NAME};
     use std::fs::File;
     use std::io::BufReader;
 
     #[test]
-    fn x509_sk_create_empty_stack() {
-        let stack_ptr: *mut MESALINK_STACK_MESALINK_X509 = mesalink_sk_X509_new_null();
-        mesalink_sk_X509_free(stack_ptr);
-    }
-
-    #[test]
-    fn x509_sk_push_num_value_apis() {
+    fn x509_sk() {
         let stack_ptr: *mut MESALINK_STACK_MESALINK_X509 = mesalink_sk_X509_new_null();
         let mut certs_io = BufReader::new(File::open("tests/test.certs").unwrap());
         let certs = pemfile::certs(&mut certs_io).unwrap();
@@ -264,5 +258,23 @@ mod tests {
             assert_ne!(x509_ptr, ptr::null_mut());
         }
         mesalink_sk_X509_free(stack_ptr);
+    }
+
+    #[test]
+    fn x509_name_sk() {
+        let stack_ptr: *mut MESALINK_STACK_MESALINK_X509_NAME = mesalink_sk_X509_NAME_new_null();
+        let names = ["*.google.com", "youtube.com", "map.google.com"];
+        for name in names.into_iter() {
+            let x509_name = MESALINK_X509_NAME::new(name.to_string());
+            let x509_name_ptr = Box::into_raw(Box::new(x509_name)) as *mut MESALINK_X509_NAME;
+            assert_eq!(SSL_SUCCESS, mesalink_sk_X509_NAME_push(stack_ptr, x509_name_ptr));
+            let _ = unsafe { Box::from_raw(x509_name_ptr) }; // push() clones the X509_NAME object
+        }
+        assert_eq!(names.len() as c_int, mesalink_sk_X509_NAME_num(stack_ptr));
+        for index in 0..names.len() {
+            let x509_name_ptr = mesalink_sk_X509_NAME_value(stack_ptr, index as c_int);
+            assert_ne!(x509_name_ptr, ptr::null_mut());
+        }
+        mesalink_sk_X509_NAME_free(stack_ptr);
     }
 }
