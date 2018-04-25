@@ -2249,40 +2249,60 @@ mod tests {
 
     #[test]
     fn mesalink_ssl_ctx_session_cache_mode() {
-        let client_ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLSv1_2_client_method());
-        let server_ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLSv1_2_server_method());
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLSv1_2_client_method());
 
         assert_eq!(
-            mesalink_SSL_CTX_get_session_cache_mode(client_ctx_ptr),
+            mesalink_SSL_CTX_get_session_cache_mode(ctx_ptr),
             SslSessionCacheModes::SslSessCacheServer as c_long
         );
-        assert_eq!(
-            mesalink_SSL_CTX_get_session_cache_mode(server_ctx_ptr),
-            SslSessionCacheModes::SslSessCacheServer as c_long
-        );
+
         assert_eq!(
             mesalink_SSL_CTX_set_session_cache_mode(
-                client_ctx_ptr,
-                SslSessionCacheModes::SslSessCacheClient as c_long
+                ctx_ptr,
+                SslSessionCacheModes::SslSessCacheOff as c_long
             ),
             SslSessionCacheModes::SslSessCacheServer as c_long
         );
         assert_eq!(
+            mesalink_SSL_CTX_get_session_cache_mode(ctx_ptr),
+            SslSessionCacheModes::SslSessCacheOff as c_long
+        );
+
+        assert_eq!(
             mesalink_SSL_CTX_set_session_cache_mode(
-                server_ctx_ptr,
+                ctx_ptr,
+                SslSessionCacheModes::SslSessCacheClient as c_long
+            ),
+            SslSessionCacheModes::SslSessCacheOff as c_long
+        );
+        assert_eq!(
+            mesalink_SSL_CTX_get_session_cache_mode(ctx_ptr),
+            SslSessionCacheModes::SslSessCacheClient as c_long
+        );
+
+        assert_eq!(
+            mesalink_SSL_CTX_set_session_cache_mode(
+                ctx_ptr,
+                SslSessionCacheModes::SslSessCacheServer as c_long
+            ),
+            SslSessionCacheModes::SslSessCacheClient as c_long
+        );
+        assert_eq!(
+            mesalink_SSL_CTX_get_session_cache_mode(ctx_ptr),
+            SslSessionCacheModes::SslSessCacheServer as c_long
+        );
+
+        assert_eq!(
+            mesalink_SSL_CTX_set_session_cache_mode(
+                ctx_ptr,
                 SslSessionCacheModes::SslSessCacheBoth as c_long
             ),
             SslSessionCacheModes::SslSessCacheServer as c_long
         );
         assert_eq!(
-            mesalink_SSL_CTX_get_session_cache_mode(client_ctx_ptr),
-            SslSessionCacheModes::SslSessCacheClient as c_long
-        );
-        assert_eq!(
-            mesalink_SSL_CTX_get_session_cache_mode(server_ctx_ptr),
+            mesalink_SSL_CTX_get_session_cache_mode(ctx_ptr),
             SslSessionCacheModes::SslSessCacheBoth as c_long
         );
-        mesalink_SSL_CTX_free(client_ctx_ptr);
-        mesalink_SSL_CTX_free(server_ctx_ptr);
+        mesalink_SSL_CTX_free(ctx_ptr);
     }
 }
