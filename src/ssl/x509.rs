@@ -166,3 +166,39 @@ fn inner_mesalink_x509_name_oneline(
         Ok(buf_ptr)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rustls::internal::pemfile;
+    use ssl::safestack::*;
+    use std::fs::File;
+    use std::io::BufReader;
+    use std::str;
+
+    #[test]
+    fn x509_get_subject_alt_names() {
+        let mut certs_io = BufReader::new(File::open("tests/test.certs").unwrap());
+        let certs = pemfile::certs(&mut certs_io).unwrap();
+        assert_eq!(true, certs.len() > 0);
+        let x509 = MESALINK_X509::new(certs[0].clone());
+        let x509_ptr = Box::into_raw(Box::new(x509)) as *mut MESALINK_X509;
+        let name_stack_ptr = mesalink_X509_get_alt_subject_names(x509_ptr);
+
+        let name_count = mesalink_sk_X509_NAME_num(name_stack_ptr) as usize;
+        assert_eq!(true, name_count > 0);
+        for index in 0..name_count {
+            let mut name_ptr = mesalink_sk_X509_NAME_value(name_stack_ptr, index as c_int);
+            assert_ne!(name_ptr, ptr::null_mut());
+            let buf = [0u8; 253];
+            let _ = mesalink_X509_NAME_oneline(
+                name_ptr as *mut MESALINK_X509_NAME,
+                buf.as_ptr() as *mut c_char,
+                253,
+            );
+            println!("DNSName: {}", str::from_utf8(&buf).unwrap());
+        }
+        mesalink_sk_X509_NAME_free(name_stack_ptr);
+        mesalink_X509_free(x509_ptr);
+    }
+}

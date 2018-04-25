@@ -1257,7 +1257,7 @@ mod tests {
     fn err_print_errors_fp() {
         use std::io;
         use std::os::unix::io::AsRawFd;
-        ErrorQueue::push_error(error!(ErrorCode::MesalinkErrorSsl));
+        ErrorQueue::push_error(error!(ErrorCode::MesalinkErrorNone));
         let fd = io::stderr().as_raw_fd();
         let mode = b"wb\0".as_ptr() as *const c_char;
         let file = unsafe { libc::fdopen(fd, mode) };
