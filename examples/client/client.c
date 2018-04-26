@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
         char name_buf[253] = {0};
         for (int i = 0; i < length; i++) {
             X509_NAME *name = sk_X509_NAME_value(names, i);
-            printf("[+] Alterantive subject name: %s\n",
+            printf("[+] Alternative subject name: %s\n",
                    X509_NAME_oneline(name, name_buf, 253));
         }
         sk_X509_NAME_free(names);
@@ -113,8 +113,7 @@ int main(int argc, char *argv[]) {
         sendlen = SSL_write(ssl, sendbuf, (int)strlen(sendbuf));
         printf("[+] Sent %d bytes\n\n%s\n", sendlen, sendbuf);
 
-        while ((recvlen = SSL_read(ssl, recvbuf, sizeof(recvbuf) - 1)) !=
-               SSL_FAILURE) {
+        while ((recvlen = SSL_read(ssl, recvbuf, sizeof(recvbuf) - 1)) > 0) {
             recvbuf[recvlen] = 0;
             total_recvlen += strlen(recvbuf);
             printf("%s", recvbuf);
