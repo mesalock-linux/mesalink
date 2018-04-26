@@ -201,4 +201,10 @@ mod tests {
         mesalink_sk_X509_NAME_free(name_stack_ptr);
         mesalink_X509_free(x509_ptr);
     }
+
+    #[test]
+    fn x509_name_free_null_pointer() {
+        mesalink_X509_free(ptr::null_mut());
+        mesalink_X509_NAME_free(ptr::null_mut());
+    }
 }

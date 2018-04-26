@@ -277,4 +277,10 @@ mod tests {
         }
         mesalink_sk_X509_NAME_free(stack_ptr);
     }
+
+    #[test]
+    fn sk_free_null_pointer() {
+        mesalink_sk_X509_free(ptr::null_mut());
+        mesalink_sk_X509_NAME_free(ptr::null_mut());
+    }
 }
