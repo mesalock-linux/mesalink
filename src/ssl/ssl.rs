@@ -1807,6 +1807,10 @@ mod tests {
                 mesalink_SSL_CTX_set_verify(ctx, 0, None),
                 "Failed to set verify mode"
             );
+            let _ = mesalink_SSL_CTX_set_session_cache_mode(
+                ctx,
+                SslSessionCacheModes::SslSessCacheBoth as c_long,
+            );
 
             let ssl = mesalink_SSL_new(ctx);
             assert_ne!(ssl, ptr::null_mut(), "SSL is null");
