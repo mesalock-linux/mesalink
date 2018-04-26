@@ -459,7 +459,7 @@ pub extern "C" fn mesalink_SSLv3_client_method() -> *const MESALINK_METHOD {
 #[no_mangle]
 #[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_SSLv23_client_method() -> *const MESALINK_METHOD {
-    mesalink_not_available_method()
+    mesalink_TLS_client_method()
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -593,7 +593,7 @@ pub extern "C" fn mesalink_SSLv3_server_method() -> *const MESALINK_METHOD {
 #[no_mangle]
 #[cfg(feature = "server_apis")]
 pub extern "C" fn mesalink_SSLv23_server_method() -> *const MESALINK_METHOD {
-    mesalink_not_available_method()
+    mesalink_TLS_server_method()
 }
 
 /// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
@@ -2052,13 +2052,23 @@ mod tests {
     }
 
     #[test]
+    fn supported_tls_versions() {
+        assert_ne!(mesalink_SSLv23_client_method(), ptr::null());
+        assert_ne!(mesalink_SSLv23_server_method(), ptr::null());
+        assert_ne!(mesalink_TLSv1_2_client_method(), ptr::null());
+        assert_ne!(mesalink_TLSv1_2_server_method(), ptr::null());
+        assert_ne!(mesalink_TLSv1_3_client_method(), ptr::null());
+        assert_ne!(mesalink_TLSv1_3_server_method(), ptr::null());
+        assert_ne!(mesalink_TLS_client_method(), ptr::null());
+        assert_ne!(mesalink_TLS_server_method(), ptr::null());
+    }
+
+    #[test]
     fn legacy_tls_versions_not_supported() {
         assert_eq!(mesalink_SSLv3_client_method(), ptr::null());
-        assert_eq!(mesalink_SSLv23_client_method(), ptr::null());
         assert_eq!(mesalink_TLSv1_client_method(), ptr::null());
         assert_eq!(mesalink_TLSv1_1_client_method(), ptr::null());
         assert_eq!(mesalink_SSLv3_server_method(), ptr::null());
-        assert_eq!(mesalink_SSLv23_server_method(), ptr::null());
         assert_eq!(mesalink_TLSv1_server_method(), ptr::null());
         assert_eq!(mesalink_TLSv1_1_server_method(), ptr::null());
     }
