@@ -55,10 +55,20 @@ matrix:
     sudo: false
     rust: nightly
     env: ARCH=aarch64_android TARGET=aarch64-linux-android RUST_TARGET=aarch64-linux-android
+  - os: linux
+    dist: trusty
+    sudo: false
+    rust: nightly
+    env: ARCH=x86_android TARGET=i686-linux-android RUST_TARGET=i686-linux-android
+  - os: linux
+    dist: trusty
+    sudo: false
+    rust: nightly
+    env: ARCH=x86_64_android TARGET=x86_64-linux-android RUST_TARGET=x86_64-linux-android
 before_install:
 - |-
-  if [ x"$TARGET" = "xarm-linux-androideabi" ] || [ x"$TARGET" = "xaarch64-linux-android" ]; then wget -nv https://dl.google.com/android/repository/android-ndk-r16b-linux-x86_64.zip; unzip android-ndk-r16b-linux-x86_64.zip  2>&1 >/dev/null;
-  if [[ x"$TARGET" = "xarm-linux-androideabi" ]]; then ./android-ndk-r16b/build/tools/make_standalone_toolchain.py --arch arm --api 19 --install-dir $PWD/cross; else ./android-ndk-r16b/build/tools/make_standalone_toolchain.py --arch arm64 --api 21 --install-dir $PWD/cross; fi
+  if [[ "$TARGET" = *"android"* ]] ; then wget -nv https://dl.google.com/android/repository/android-ndk-r16b-linux-x86_64.zip; unzip android-ndk-r16b-linux-x86_64.zip  2>&1 >/dev/null;
+  if [[ x"$TARGET" = "xarm-linux-androideabi" ]]; then ./android-ndk-r16b/build/tools/make_standalone_toolchain.py --arch arm --api 19 --install-dir $PWD/cross; elif [[ x"$TARGET" = "xaarch64-linux-android" ]]; then ./android-ndk-r16b/build/tools/make_standalone_toolchain.py --arch arm64 --api 21 --install-dir $PWD/cross; elif [[ x"$TARGET" = "xi686-linux-android" ]]; then ./android-ndk-r16b/build/tools/make_standalone_toolchain.py --arch x86 --api 19 --install-dir $PWD/cross; elif [[ x"$TARGET" = "xx86_64-linux-android" ]]; then ./android-ndk-r16b/build/tools/make_standalone_toolchain.py --arch x86_64 --api 21 --install-dir $PWD/cross; fi
   export PATH="$PATH:$PWD/cross/bin"; fi
 script:
 - |-
