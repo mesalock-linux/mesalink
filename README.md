@@ -35,11 +35,11 @@ project:
 
  * **Memory safety**. MesaLink and its dependencies are written in
    [Rust](https://www.rust-lang.org), a programming language that guarantees
-   memory safety. This extremely reduces the attack surfaces of an exposed TLS stack, 
+   memory safety. This extremely reduces the attack surfaces of an exposed TLS stack,
    leaving the remaining attack surfaces auditable and restricted.
  * **Flexibility**. MesaLink offers flexible configurations tailored to various
    needs, such as IoT, connected home, automobiles, the cloud and more.
- * **Simplicity**. MesaLink does not support obsolete or legacy TLS features to 
+ * **Simplicity**. MesaLink does not support obsolete or legacy TLS features to
  prevent misconfigurations that can introduce vulnerabilities.
  * **Compatibility**. MesaLink provides OpenSSL-compatible APIs. This makes it a
    breeze to port an existing OpenSSL project.
@@ -131,7 +131,7 @@ either of these scripts are shown as follows:
 At the end of the configuration, a configuration summary is shown. For example,
 
 ```
-Configuration summary for mesalink version 0.1.0
+Configuration summary for mesalink version 0.6.0
 
    * Installation prefix:        /usr/local
    * Host:                       x86_64-apple-darwin17.4.0

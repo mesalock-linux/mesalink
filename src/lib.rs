@@ -100,10 +100,10 @@
 //!
 //! On Ubuntu, you can install them with:
 //!
-//! ```text
+//! ```shell
 //! $ sudo apt-get install m4 autoconf automake libtool make gcc curl
 //! $ curl https://sh.rustup.rs -sSf | sh
-//! ```text
+//! ```
 //!
 //! On other platforms, please use the corresponding package managing tool to
 //! install them before proceeding. Note that MesaLink always targets the
@@ -112,21 +112,21 @@
 //!
 //! The source code can be downloaded from Github:
 //!
-//! ```text
+//! ```shell
 //! $ git clone https://github.com/mesalock-linux/mesalink.git
-//! ```text
+//! ```
 //!
 //! To configure MesaLink, execute the following:
 //!
-//! ```text
+//! ```shell
 //! $ ./autogen.sh [OPTIONS]
-//! ```text
+//! ```
 //!
 //! By default, `autogen.sh` generates the `configure` script and runs it with the
 //! default configuration. A non-exhaustive list of options that can be passed to
 //! either of these scripts are shown as follows:
 //!
-//! ```text
+//! ```shell
 //!   --prefix=PREFIX         install architecture-independent files in PREFIX
 //!                           [/usr/local]
 //!   --includedir=DIR        C header files [PREFIX/include]
@@ -149,12 +149,12 @@
 //!                           exchange (default: enabled)
 //!   --enable-ecdsa          Enable curve secp256r1 and secp384r1 for signature
 //!                           verification (default: enabled)
-//! ```text
+//! ```
 //!
 //! At the end of the configuration, a configuration summary is shown. For example,
 //!
 //! ```text
-//! Configuration summary for mesalink version 0.1.0
+//! Configuration summary for mesalink version 0.6.0
 //!
 //!    * Installation prefix:        /usr/local
 //!    * Host:                       x86_64-apple-darwin17.4.0
@@ -180,13 +180,13 @@
 //!    * EC key exchange:            yes
 //!    * RSA signature verification: yes
 //!    * EC signature verification:  yes
-//! ```text
+//! ```
 //!
 //! Finally, simple run `make` to compile the MesaLink library.
 //!
-//! ```text
+//! ```shell
 //! $ make
-//! ```text
+//! ```
 //!
 //! ## Examples
 //! MesaLink comes with two examples that demonstrate a TLS client and a TLS
@@ -195,7 +195,7 @@
 //! The client example connects to a remote HTTPS server and prints the server's
 //! response.
 //!
-//! ```text
+//! ```shell
 //! $ ./examples/client/client api.ipify.org
 //! [+] Negotiated ciphersuite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, enc_length=16,
 //! version=TLS1.2
@@ -218,7 +218,7 @@
 //! 1.2.3.4
 //! [+] TLS protocol version: TLS1.2
 //! [+] Received 177 bytes
-//! ```text
+//! ```
 //!
 //! The server example comes with a pair of certificate and private key. The
 //! certificate file is in the PEM format and contains a chain of certificates from
@@ -227,7 +227,7 @@
 //! and running, open [https://127.0.0.1:8443](https://127.0.0.1:8443) and expect to
 //! see the hello message.
 //!
-//! ```text
+//! ```shell
 //! $ ./examples/server/server
 //! Usage: ./examples/server/server <portnum> <cert_file> <private_key_file>
 //! $ cd examples/server/server
@@ -245,7 +245,7 @@
 //! Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng
 //! Accept-Encoding: gzip, deflate, br
 //! Accept-Language: en-US,en;q=0.9
-//! ```text
+//! ```
 //!
 //! ## Unit tests
 //! MesaLink uses cargo for unit tests. The test cases are designed for the the
@@ -253,21 +253,21 @@
 //! enabled. So before running the test cases, please rebuild MesaLink with the
 //! default configuration:
 //!
-//! ```text
+//! ```shell
 //! $ ./configure
 //! $ make
 //! $ cargo test
-//! ```text
+//! ```
 //!
 //! ## BoringSSL SSL tests
 //! [BoGo](https://github.com/google/boringssl/tree/master/ssl/test) is BoringSSL's
 //! protocol level test suite. We have ported BoGo for testing the functionality and
 //! compatibility of MesaLink. To run BoGo test cases, run the following:
 //!
-//! ```text
+//! ```shell
 //! $ cargo build --release --examples
 //! $ (cd bogo && ./fetch-and-build && ./runme)
-//! ```text
+//! ```
 //!
 //! ## Crypto benchmarks
 //! MesaLink's underlying crypto library is
@@ -289,10 +289,10 @@
 //! must have OpenSSL/LibreSSL or wolfSSL installed to run the corresponding
 //! benchmarks.
 //!
-//! ```text
+//! ```shell
 //! $ rustup default nightly
 //! $ cd crypto-bench && ./cargo_all update && ./cargo_all bench
-//! ```text
+//! ```
 //!
 //! ## Maintainer
 //!
