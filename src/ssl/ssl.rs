@@ -174,6 +174,7 @@ pub struct MESALINK_CTX {
 }
 
 #[allow(non_camel_case_types)]
+#[doc(hidden)]
 pub type MESALINK_CTX_ARC = Arc<MESALINK_CTX>;
 
 impl MesalinkOpaquePointerType for MESALINK_CTX_ARC {

@@ -16,8 +16,12 @@
 use ring::rand;
 use ring::rand::SecureRandom;
 
+#[doc(hidden)]
 pub const MAGIC_SIZE: usize = 4;
+
+
 lazy_static! {
+    #[doc(hidden)]
     pub static ref MAGIC: [u8; MAGIC_SIZE] = {
         let mut number = [0u8; MAGIC_SIZE];
         if rand::SystemRandom::new().fill(&mut number).is_ok() {
@@ -29,6 +33,7 @@ lazy_static! {
     };
 }
 
+#[doc(hidden)]
 pub trait MesalinkOpaquePointerType {
     fn check_magic(&self) -> bool;
 }
@@ -106,6 +111,7 @@ pub const SSL_FAILURE: c_int = SslConstants::SslFailure as c_int;
 pub const SSL_SUCCESS: c_int = SslConstants::SslSuccess as c_int;
 
 #[macro_use]
+#[doc(hidden)]
 pub mod error_san {
     use ssl::MesalinkOpaquePointerType;
     use ssl::err::{ErrorCode, MesalinkInnerResult};
