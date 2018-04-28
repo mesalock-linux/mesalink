@@ -1445,13 +1445,19 @@ fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult
     let io = ssl.io
         .as_mut()
         .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
-    let ret = complete_handshake_io(&mut session as &mut Session, io);
-    if let Err(e) = ret {
-        ssl.error = e.code;
-        return Err(e);
+    match complete_handshake_io(&mut session as &mut Session, io) {
+        Ok(_) => {
+            ssl.session = Some(Box::new(session));
+            Ok(SSL_SUCCESS)
+        }
+        Err(e) => match e.kind() {
+            io::ErrorKind::WouldBlock | io::ErrorKind::NotConnected => {
+                ssl.error = ErrorCode::MesalinkErrorWantConnect;
+                Ok(SSL_ERROR)
+            }
+            _ => Err(error!(ErrorCode::from(&e))),
+        },
     }
-    ssl.session = Some(Box::new(session));
-    Ok(SSL_SUCCESS)
 }
 
 /// `SSL_accept` - wait for a TLS client to initiate the TLS handshake. The
@@ -1476,60 +1482,59 @@ fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
     let io = ssl.io
         .as_mut()
         .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
-    let ret = complete_handshake_io(&mut session as &mut Session, io);
-    if let Err(e) = ret {
-        ssl.error = e.code;
-        return Err(e);
+    match complete_handshake_io(&mut session as &mut Session, io) {
+        Ok(_) => {
+            ssl.session = Some(Box::new(session));
+            Ok(SSL_SUCCESS)
+        }
+        Err(e) => match e.kind() {
+            io::ErrorKind::WouldBlock | io::ErrorKind::NotConnected => {
+                ssl.error = ErrorCode::MesalinkErrorWantAccept;
+                Ok(SSL_ERROR)
+            }
+            _ => Err(error!(ErrorCode::from(&e))),
+        },
     }
-    ssl.session = Some(Box::new(session));
-    Ok(SSL_SUCCESS)
 }
 
 #[cfg(any(feature = "server_apis", feature = "client_apis"))]
 fn complete_handshake_io(
     session: &mut Session,
     io: &mut net::TcpStream,
-) -> MesalinkInnerResult<(usize, usize)> {
+) -> io::Result<(usize, usize)> {
     let until_handshaked = session.is_handshaking();
     let mut eof = false;
     let mut wrlen = 0;
     let mut rdlen = 0;
     loop {
         while session.wants_write() {
-            wrlen += session
-                .write_tls(io)
-                .map_err(|e| error!(ErrorCode::from(&e)))?;
+            wrlen += session.write_tls(io)?;
         }
         if !until_handshaked && wrlen > 0 {
             return Ok((rdlen, wrlen));
         }
         if !eof && session.wants_read() {
-            match session
-                .read_tls(io)
-                .map_err(|e| error!(ErrorCode::from(&e)))?
-            {
+            match session.read_tls(io)? {
                 0 => eof = true,
                 n => rdlen += n,
             }
         }
         match session.process_new_packets() {
             Ok(_) => {}
-            Err(e) => {
+            Err(tls_err) => {
                 // flush io to send any unsent alerts
                 while session.wants_write() {
-                    let _ = session
-                        .write_tls(io)
-                        .map_err(|e| error!(ErrorCode::from(&e)))?;
+                    let _ = session.write_tls(io)?;
                 }
-                let _ = io.flush().map_err(|e| error!(ErrorCode::from(&e)))?;
-                return Err(error!(ErrorCode::from(&e)));
+                let _ = io.flush()?;
+                return Err(io::Error::new(io::ErrorKind::InvalidData, tls_err));
             }
         };
 
         match (eof, until_handshaked, session.is_handshaking()) {
             (_, true, false) => return Ok((rdlen, wrlen)),
             (_, false, _) => return Ok((rdlen, wrlen)),
-            (true, true, true) => return Err(error!(ErrorCode::IoErrorUnexpectedEof)),
+            (true, true, true) => return Err(io::Error::from(io::ErrorKind::UnexpectedEof)),
             (..) => (),
         }
     }
