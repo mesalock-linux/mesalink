@@ -1448,7 +1448,9 @@ fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult
     match ssl.error {
         ErrorCode::MesalinkErrorNone
         | ErrorCode::MesalinkErrorWantRead
-        | ErrorCode::MesalinkErrorWantWrite => ssl.error = ErrorCode::default(),
+        | ErrorCode::MesalinkErrorWantWrite
+        | ErrorCode::MesalinkErrorWantConnect
+        | ErrorCode::MesalinkErrorWantAccept => ssl.error = ErrorCode::default(),
         _ => (),
     };
     match complete_handshake_io(&mut session as &mut Session, io) {
@@ -1491,7 +1493,9 @@ fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
     match ssl.error {
         ErrorCode::MesalinkErrorNone
         | ErrorCode::MesalinkErrorWantRead
-        | ErrorCode::MesalinkErrorWantWrite => ssl.error = ErrorCode::default(),
+        | ErrorCode::MesalinkErrorWantWrite
+        | ErrorCode::MesalinkErrorWantConnect
+        | ErrorCode::MesalinkErrorWantAccept => ssl.error = ErrorCode::default(),
         _ => (),
     };
     match complete_handshake_io(&mut session as &mut Session, io) {
