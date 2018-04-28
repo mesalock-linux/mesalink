@@ -1445,6 +1445,12 @@ fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult
     let io = ssl.io
         .as_mut()
         .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+    match ssl.error {
+        ErrorCode::MesalinkErrorNone
+        | ErrorCode::MesalinkErrorWantRead
+        | ErrorCode::MesalinkErrorWantWrite => ssl.error = ErrorCode::default(),
+        _ => (),
+    };
     match complete_handshake_io(&mut session as &mut Session, io) {
         Ok(_) => {
             ssl.session = Some(Box::new(session));
@@ -1482,6 +1488,12 @@ fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
     let io = ssl.io
         .as_mut()
         .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+    match ssl.error {
+        ErrorCode::MesalinkErrorNone
+        | ErrorCode::MesalinkErrorWantRead
+        | ErrorCode::MesalinkErrorWantWrite => ssl.error = ErrorCode::default(),
+        _ => (),
+    };
     match complete_handshake_io(&mut session as &mut Session, io) {
         Ok(_) => {
             ssl.session = Some(Box::new(session));
