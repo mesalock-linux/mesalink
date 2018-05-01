@@ -1473,7 +1473,6 @@ fn inner_mesalink_ssl_do_handshake(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerR
         (Some(session), Some(io)) => match complete_io(session, io) {
             Err(e) => {
                 ssl.error = e;
-                ErrorQueue::push_error(error!(e));
                 return Err(error!(e));
             }
             Ok(_) => Ok(SSL_SUCCESS),
@@ -1520,7 +1519,6 @@ fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult
     match complete_io(session.as_mut().unwrap(), &mut io) {
         Err(e) => {
             ssl.error = e;
-            ErrorQueue::push_error(error!(e));
             return Err(error!(e));
         }
         Ok(_) => {
