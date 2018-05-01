@@ -1536,7 +1536,7 @@ pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 #[cfg(feature = "server_apis")]
 fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
-    let session = rustls::ServerSession::new(&ssl.server_config);
+    let server_session = rustls::ServerSession::new(&ssl.server_config);
     match ssl.error {
         ErrorCode::MesalinkErrorNone
         | ErrorCode::MesalinkErrorWantRead
@@ -1545,8 +1545,21 @@ fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
         | ErrorCode::MesalinkErrorWantAccept => ssl.error = ErrorCode::default(),
         _ => (),
     };
-    ssl.session = Some(Box::new(session));
-    Ok(SSL_SUCCESS)
+    let mut session: Option<Box<Session>> = Some(Box::new(server_session));
+    let mut io = ssl.io
+        .as_mut()
+        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+    match complete_io(session.as_mut().unwrap(), &mut io) {
+        Err(e) => {
+            ssl.error = e;
+            ErrorQueue::push_error(error!(e));
+            return Err(error!(e));
+        }
+        Ok(_) => {
+            ssl.session = session;
+            Ok(SSL_SUCCESS)
+        }
+    }
 }
 
 /// `SSL_get_error` - obtain result code for TLS/SSL I/O operation
