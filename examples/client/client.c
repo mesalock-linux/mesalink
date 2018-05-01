@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
         ERR_print_errors_fp(stderr);
         return -1;
     }
-    if (SSL_connect(ssl) == SSL_SUCCESS) {
+    if (SSL_connect(ssl) == SSL_SUCCESS && SSL_do_handshake(ssl) == SSL_SUCCESS) {
         int sendlen = -1, recvlen = -1, total_recvlen = 0;
 
         int cipher_bits = 0;
