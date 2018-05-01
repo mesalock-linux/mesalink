@@ -1511,7 +1511,7 @@ fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult
             ErrorQueue::push_error(error!(e));
             return Err(error!(e));
         }
-        Ok((rdlen, wrlen)) => {
+        Ok(_) => {
             ssl.session = session;
             Ok(SSL_SUCCESS)
         }
