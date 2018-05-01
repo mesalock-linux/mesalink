@@ -324,6 +324,9 @@ extern crate untrusted;
 // webpki_roots for Mozilla's CA certificates
 extern crate webpki_roots;
 
+// env_logger for logging rustls internal logs
+extern crate env_logger;
+
 // lazy_static for defining static variables
 #[macro_use]
 extern crate lazy_static;

@@ -419,8 +419,20 @@ pub enum VerifyModes {
 #[no_mangle]
 pub extern "C" fn mesalink_library_init() -> c_int {
     /* compatibility only */
+    init_logger();
     SSL_SUCCESS
 }
+
+#[cfg(feature = "error_strings")]
+fn init_logger() {
+    use env_logger;
+    let mut logger = env_logger::LogBuilder::new();
+    let _ = logger.parse("trace");
+    let _ = logger.init().unwrap();
+}
+
+#[cfg(not(feature = "error_strings"))]
+fn init_logger() {}
 
 /// For OpenSSL compatibility only. Always returns 1.
 ///
@@ -1441,33 +1453,6 @@ fn inner_measlink_ssl_get_fd(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
         .as_ref()
         .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     Ok(socket.as_raw_fd())
-}
-
-/// `SSL_complete_io` - perform a TLS/SSL handshake
-///
-/// ```c
-/// #include <mesalink/openssl/ssl.h>
-///
-/// int SSL_complete_io(SSL *ssl);
-/// ```
-#[no_mangle]
-pub extern "C" fn mesalink_SSL_complete_io(ssl_ptr: *mut MESALINK_SSL) -> c_int {
-    check_inner_result!(inner_mesalink_ssl_complete_io(ssl_ptr), SSL_FAILURE)
-}
-
-fn inner_mesalink_ssl_complete_io(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
-    let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
-    match (ssl.session.as_mut(), ssl.io.as_mut()) {
-        (Some(session), Some(io)) => match complete_io(session, io) {
-            Err(e) => {
-                ssl.error = e;
-                ErrorQueue::push_error(error!(e));
-                return Err(error!(e));
-            }
-            Ok(_) => Ok(SSL_SUCCESS),
-        },
-        _ => Err(error!(ErrorCode::MesalinkErrorBadFuncArg)),
-    }
 }
 
 /// `SSL_connect` - initiate the TLS handshake with a server. The communication
