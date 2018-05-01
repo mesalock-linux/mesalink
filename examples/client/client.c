@@ -45,13 +45,13 @@ int main(int argc, char *argv[]) {
     hostname = argv[1];
     SSL_library_init();
     ERR_load_crypto_strings();
-    SSL_load_error_strings();
+    // SSL_load_error_strings(); // Uncomment this line to see SSL logs
+
     ctx = SSL_CTX_new(TLSv1_2_client_method());
     SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_CLIENT);
-    long mode = SSL_CTX_get_session_cache_mode(ctx);
-    printf("Session cache mode is: 0x%lx\n", mode);
+
     if (ctx == NULL) {
-        fprintf(stderr, "[-] Context failed to create\n");
+        fprintf(stderr, "[-] Failed to create SSL_CTX\n");
         ERR_print_errors_fp(stderr);
         return -1;
     }
@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
     }
     ssl = SSL_new(ctx);
     if (ssl == NULL) {
-        fprintf(stderr, "[-] SSL creation failed\n");
+        fprintf(stderr, "[-] Failed to create SSL\n");
         ERR_print_errors_fp(stderr);
         return -1;
     }
@@ -78,13 +78,13 @@ int main(int argc, char *argv[]) {
     char hostname_buf[256] = {0};
     strncpy(hostname_buf, hostname, strlen(hostname));
     if (SSL_set_tlsext_host_name(ssl, hostname_buf) != SSL_SUCCESS) {
-        fprintf(stderr, "[-] SSL set hostname failed\n");
+        fprintf(stderr, "[-] Failed to set hostname\n");
         ERR_print_errors_fp(stderr);
         return -1;
     }
 
     if (SSL_set_fd(ssl, sockfd) != SSL_SUCCESS) {
-        fprintf(stderr, "[-] SSL set fd failed\n");
+        fprintf(stderr, "[-] Faield to set fd\n");
         ERR_print_errors_fp(stderr);
         return -1;
     }
@@ -101,11 +101,12 @@ int main(int argc, char *argv[]) {
         STACK_OF(X509_NAME) *names = X509_get_alt_subject_names(cert);
         int length = sk_X509_NAME_num(names);
         char name_buf[253] = {0};
+        printf("[+] Subject alternative names:");
         for (int i = 0; i < length; i++) {
             X509_NAME *name = sk_X509_NAME_value(names, i);
-            printf("[+] Alternative subject name: %s\n",
-                   X509_NAME_oneline(name, name_buf, 253));
+            printf("%s, ", X509_NAME_oneline(name, name_buf, 253));
         }
+        printf("\n");
         sk_X509_NAME_free(names);
         X509_free(cert);
 
