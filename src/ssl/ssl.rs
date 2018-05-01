@@ -333,7 +333,6 @@ impl Read for MESALINK_SSL {
                     Ok(0) => match complete_io(session, io) {
                         Err(e) => {
                             self.error = e;
-                            ErrorQueue::push_error(error!(self.error));
                             return Err(io::Error::from(io::ErrorKind::InvalidData));
                         }
                         Ok((rdlen, wrlen)) => {
@@ -349,7 +348,6 @@ impl Read for MESALINK_SSL {
                     }
                     Err(e) => {
                         self.error = ErrorCode::from(&e);
-                        ErrorQueue::push_error(error!(self.error));
                         return Err(e);
                     }
                 }
@@ -368,8 +366,13 @@ impl Write for MESALINK_SSL {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => {
                 let len = session.write(buf)?;
-                let _ = session.write_tls(io)?;
-                Ok(len)
+                match session.write_tls(io) {
+                    Ok(_) => return Ok(len),
+                    Err(io_err) => {
+                        self.error = ErrorCode::from(&io_err);
+                        return Err(io_err);
+                    }
+                }
             }
             _ => {
                 ErrorQueue::push_error(error!(ErrorCode::MesalinkErrorNullPointer));
@@ -382,8 +385,13 @@ impl Write for MESALINK_SSL {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => {
                 let ret = session.flush();
-                let _ = session.write_tls(io)?;
-                ret
+                match session.write_tls(io) {
+                    Ok(_) => return ret,
+                    Err(io_err) => {
+                        self.error = ErrorCode::from(&io_err);
+                        return Err(io_err);
+                    }
+                }
             }
             _ => {
                 ErrorQueue::push_error(error!(ErrorCode::MesalinkErrorNullPointer));
@@ -1566,9 +1574,7 @@ fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
             ssl.error = e;
             return Err(error!(e));
         }
-        Ok(_) => {
-            Ok(SSL_SUCCESS)
-        }
+        Ok(_) => Ok(SSL_SUCCESS),
     }
 }
 
