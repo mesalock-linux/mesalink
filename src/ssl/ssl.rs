@@ -420,7 +420,6 @@ pub enum VerifyModes {
 #[no_mangle]
 pub extern "C" fn mesalink_library_init() -> c_int {
     /* compatibility only */
-    init_logger();
     SSL_SUCCESS
 }
 
@@ -459,6 +458,7 @@ pub extern "C" fn mesalink_add_ssl_algorithms() -> c_int {
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_load_error_strings() {
     /* compatibility only */
+    init_logger();
 }
 
 #[inline(always)]
