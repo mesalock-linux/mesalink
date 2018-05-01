@@ -337,17 +337,13 @@ impl Read for MESALINK_SSL {
                         }
                         Ok((rdlen, wrlen)) => {
                             if rdlen == 0 && wrlen == 0 {
-                                println!("EOF reached: {}, {}", rdlen, wrlen);
                                 self.eof = true;
                                 return Ok(0);
-                            } else {
-                                println!("Handshake done: {}, {}", rdlen, wrlen);
                             }
                         }
                     },
                     Ok(n) => {
                         self.error = ErrorCode::default();
-                        println!("Read {} bytes", n);
                         return Ok(n);
                     }
                     Err(e) => {
@@ -1516,7 +1512,6 @@ fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult
             return Err(error!(e));
         }
         Ok((rdlen, wrlen)) => {
-            println!("Handshake done: {}, {}", rdlen, wrlen);
             ssl.session = session;
             Ok(SSL_SUCCESS)
         }
