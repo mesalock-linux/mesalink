@@ -98,14 +98,13 @@ typedef MESALINK_SSL SSL;
 #define SSL_set_SSL_CTX mesalink_SSL_set_SSL_CTX
 #define SSL_set_fd mesalink_SSL_set_fd
 #define SSL_get_fd mesalink_SSL_get_fd
+#define SSL_do_handshake mesalink_SSL_do_handshake
 
 #ifdef HAVE_CLIENT
 #define SSL_connect mesalink_SSL_connect
-#define SSL_connect0 mesalink_SSL_connect0
 #endif
 #ifdef HAVE_SERVER
 #define SSL_accept mesalink_SSL_accept
-#define SSL_accept0 mesalink_SSL_accept0
 #endif
 
 #define SSL_write mesalink_SSL_write

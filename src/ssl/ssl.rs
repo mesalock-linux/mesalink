@@ -1419,6 +1419,78 @@ fn inner_measlink_ssl_get_fd(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
     Ok(socket.as_raw_fd())
 }
 
+/// `SSL_do_handshake` - perform a TLS/SSL handshake
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_do_handshake(SSL *ssl);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_do_handshake(ssl_ptr: *mut MESALINK_SSL) -> c_int {
+    check_inner_result!(inner_mesalink_ssl_do_handshake(ssl_ptr), SSL_FAILURE)
+}
+
+fn inner_mesalink_ssl_do_handshake(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
+    let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
+    let mut ssl_error: Option<ErrorCode> = None;
+    match (ssl.session.as_mut(), ssl.io.as_mut()) {
+        (Some(session), Some(io)) => {
+            if session.wants_write() {
+                match session.write_tls(io) {
+                    Ok(_) => (), // ignore the result
+                    Err(e) => {
+                        if e.kind() == io::ErrorKind::WouldBlock {
+                            ssl_error = Some(ErrorCode::MesalinkErrorWantWrite);
+                        } else {
+                            ssl_error = Some(ErrorCode::from(&e));
+                        }
+                    }
+                }
+            } else if session.wants_read() {
+                match session.read_tls(io) {
+                    Ok(0) => {
+                        if !session.is_handshaking() {
+                            return Ok(0);
+                        } else {
+                            ssl_error = Some(ErrorCode::IoErrorUnexpectedEof);
+                        }
+                    }
+                    Err(e) => {
+                        if e.kind() == io::ErrorKind::WouldBlock {
+                            ssl_error = Some(ErrorCode::MesalinkErrorWantRead);
+                        } else {
+                            ssl_error = Some(ErrorCode::from(&e));
+                        }
+                    }
+                    Ok(_) => if let Err(tls_err) = session.process_new_packets() {
+                        // flush io to send any unsent alerts
+                        while session.wants_write() {
+                            let _ = session
+                                .write_tls(io)
+                                .map_err(|e| error!(ErrorCode::from(&e)))?;
+                        }
+                        let _ = io.flush().map_err(|e| error!(ErrorCode::from(&e)))?;
+                        ssl_error = Some(ErrorCode::from(&tls_err));
+                    },
+                }
+            } else {
+                ssl_error = Some(ErrorCode::MesalinkErrorZeroReturn);
+            }
+        }
+        _ => {
+            ssl_error = Some(ErrorCode::MesalinkErrorBadFuncArg);
+        }
+    }
+    match ssl_error {
+        Some(mesalink_err) => {
+            ssl.error = mesalink_err;
+            Err(error!(mesalink_err))
+        }
+        None => Ok(0),
+    }
+}
+
 /// `SSL_connect` - initiate the TLS handshake with a server. The communication
 /// channel must already have been set and assigned to the ssl with SSL_set_fd.
 ///
@@ -1430,29 +1502,12 @@ fn inner_measlink_ssl_get_fd(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
 #[no_mangle]
 #[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
-    check_inner_result!(inner_mesalink_ssl_connect(ssl_ptr, false), SSL_FAILURE)
-}
-
-/// `SSL_connect0` - initiate the TLS handshake with a server lazily. The
-/// handshake only starts once `SSL_read()` or `SSL_write()` is called. The
-/// communication channel must already have been set and assigned to the ssl
-/// with SSL_set_fd.
-///
-/// ```c
-/// #include <mesalink/openssl/ssl.h>
-///
-/// int SSL_connect0(SSL *ssl);
-/// ```
-#[no_mangle]
-#[cfg(feature = "client_apis")]
-pub extern "C" fn mesalink_SSL_connect0(ssl_ptr: *mut MESALINK_SSL) -> c_int {
-    check_inner_result!(inner_mesalink_ssl_connect(ssl_ptr, true), SSL_FAILURE)
+    check_inner_result!(inner_mesalink_ssl_connect(ssl_ptr), SSL_FAILURE)
 }
 
 #[cfg(feature = "client_apis")]
 fn inner_mesalink_ssl_connect(
     ssl_ptr: *mut MESALINK_SSL,
-    is_lazy: bool,
 ) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     let hostname = ssl.hostname
@@ -1460,7 +1515,7 @@ fn inner_mesalink_ssl_connect(
         .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     let dnsname = webpki::DNSNameRef::try_from_ascii_str(hostname)
         .map_err(|_| error!(ErrorCode::MesalinkErrorBadFuncArg))?;
-    let mut session = rustls::ClientSession::new(&ssl.client_config, dnsname);
+    let session = rustls::ClientSession::new(&ssl.client_config, dnsname);
     match ssl.error {
         ErrorCode::MesalinkErrorNone
         | ErrorCode::MesalinkErrorWantRead
@@ -1469,27 +1524,8 @@ fn inner_mesalink_ssl_connect(
         | ErrorCode::MesalinkErrorWantAccept => ssl.error = ErrorCode::default(),
         _ => (),
     };
-    if is_lazy {
-        ssl.session = Some(Box::new(session));
-        Ok(SSL_SUCCESS)
-    } else {
-        let io = ssl.io
-            .as_mut()
-            .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
-        match complete_handshake_io(&mut session as &mut Session, io) {
-            Ok(_) => {
-                ssl.session = Some(Box::new(session));
-                Ok(SSL_SUCCESS)
-            }
-            Err(e) => match e.kind() {
-                io::ErrorKind::WouldBlock | io::ErrorKind::NotConnected => {
-                    ssl.error = ErrorCode::MesalinkErrorWantConnect;
-                    Ok(SSL_ERROR)
-                }
-                _ => Err(error!(ErrorCode::from(&e))),
-            },
-        }
-    }
+    ssl.session = Some(Box::new(session));
+    Ok(SSL_SUCCESS)
 }
 
 /// `SSL_accept` - wait for a TLS client to initiate the TLS handshake. The
@@ -1504,33 +1540,15 @@ fn inner_mesalink_ssl_connect(
 #[no_mangle]
 #[cfg(feature = "server_apis")]
 pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
-    check_inner_result!(inner_mesalink_ssl_accept(ssl_ptr, false), SSL_FAILURE)
-}
-
-/// `SSL_accept0` - wait for a TLS client to initiate the TLS handshake lazily.
-/// The handshake only starts once `SSL_read()` or `SSL_write()` is called. The
-/// communication channel must already have been set and assigned to the ssl by
-/// setting SSL_set_fd.
-///
-/// ```c
-/// #include <mesalink/openssl/ssl.h>
-///
-/// int SSL_accept0(SSL *ssl);
-/// ```
-#[no_mangle]
-#[cfg(feature = "server_apis")]
-pub extern "C" fn mesalink_SSL_accept0(ssl_ptr: *mut MESALINK_SSL) -> c_int {
-    check_inner_result!(inner_mesalink_ssl_accept(ssl_ptr, true), SSL_FAILURE)
+    check_inner_result!(inner_mesalink_ssl_accept(ssl_ptr), SSL_FAILURE)
 }
 
 #[cfg(feature = "server_apis")]
 fn inner_mesalink_ssl_accept(
     ssl_ptr: *mut MESALINK_SSL,
-    is_lazy: bool,
 ) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
-    let mut session = rustls::ServerSession::new(&ssl.server_config);
-
+    let session = rustls::ServerSession::new(&ssl.server_config);
     match ssl.error {
         ErrorCode::MesalinkErrorNone
         | ErrorCode::MesalinkErrorWantRead
@@ -1539,70 +1557,8 @@ fn inner_mesalink_ssl_accept(
         | ErrorCode::MesalinkErrorWantAccept => ssl.error = ErrorCode::default(),
         _ => (),
     };
-    if is_lazy {
-        ssl.session = Some(Box::new(session));
-        Ok(SSL_SUCCESS)
-    } else {
-        let io = ssl.io
-            .as_mut()
-            .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
-        match complete_handshake_io(&mut session as &mut Session, io) {
-            Ok(_) => {
-                ssl.session = Some(Box::new(session));
-                Ok(SSL_SUCCESS)
-            }
-            Err(e) => match e.kind() {
-                io::ErrorKind::WouldBlock | io::ErrorKind::NotConnected => {
-                    ssl.error = ErrorCode::MesalinkErrorWantAccept;
-                    Ok(SSL_ERROR)
-                }
-                _ => Err(error!(ErrorCode::from(&e))),
-            },
-        }
-    }
-}
-
-#[cfg(any(feature = "server_apis", feature = "client_apis"))]
-fn complete_handshake_io(
-    session: &mut Session,
-    io: &mut net::TcpStream,
-) -> io::Result<(usize, usize)> {
-    let until_handshaked = session.is_handshaking();
-    let mut eof = false;
-    let mut wrlen = 0;
-    let mut rdlen = 0;
-    loop {
-        while session.wants_write() {
-            wrlen += session.write_tls(io)?;
-        }
-        if !until_handshaked && wrlen > 0 {
-            return Ok((rdlen, wrlen));
-        }
-        if !eof && session.wants_read() {
-            match session.read_tls(io)? {
-                0 => eof = true,
-                n => rdlen += n,
-            }
-        }
-        match session.process_new_packets() {
-            Ok(_) => {}
-            Err(tls_err) => {
-                // flush io to send any unsent alerts
-                while session.wants_write() {
-                    let _ = session.write_tls(io)?;
-                }
-                let _ = io.flush()?;
-                return Err(io::Error::new(io::ErrorKind::InvalidData, tls_err));
-            }
-        };
-
-        match (eof, until_handshaked, session.is_handshaking()) {
-            (_, true, false) => return Ok((rdlen, wrlen)),
-            (_, false, _) => return Ok((rdlen, wrlen)),
-            (true, true, true) => return Err(io::Error::from(io::ErrorKind::UnexpectedEof)),
-            (..) => (),
-        }
-    }
+    ssl.session = Some(Box::new(session));
+    Ok(SSL_SUCCESS)
 }
 
 /// `SSL_get_error` - obtain result code for TLS/SSL I/O operation

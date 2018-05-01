@@ -114,15 +114,14 @@ MESALINK_API int mesalink_SSL_set_tlsext_host_name(MESALINK_SSL *,
                                                    const char *);
 MESALINK_API int mesalink_SSL_set_fd(MESALINK_SSL *, int);
 MESALINK_API int mesalink_SSL_get_fd(const MESALINK_SSL *);
+MESALINK_API int mesalink_SSL_do_handshake(MESALINK_SSL *);
 
 #ifdef HAVE_CLIENT
 MESALINK_API int mesalink_SSL_connect(MESALINK_SSL *);
-MESALINK_API int mesalink_SSL_connect0(MESALINK_SSL *);
 #endif
 
 #ifdef HAVE_SERVER
 MESALINK_API int mesalink_SSL_accept(MESALINK_SSL *);
-MESALINK_API int mesalink_SSL_accept0(MESALINK_SSL *);
 #endif
 
 MESALINK_API int mesalink_SSL_write(MESALINK_SSL *, const void *, int);
