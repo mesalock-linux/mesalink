@@ -267,7 +267,7 @@ fn complete_io(
     loop {
         while session.wants_write() {
             match session.write_tls(io) {
-                Ok(n) => wrlen += n;
+                Ok(n) => wrlen += n,
                 Err(e) => {
                     if e.kind() == io::ErrorKind::WouldBlock {
                         return Err(ErrorCode::MesalinkErrorWantWrite);
