@@ -329,21 +329,19 @@ impl Read for MESALINK_SSL {
                     _ => (),
                 };
                 match session.read(buf) {
-                    Ok(0) => {
-                        match complete_io(session, io) {
-                            Err(e) => {
-                                self.error = e;
-                                ErrorQueue::push_error(error!(self.error));
-                                return Err(io::Error::from(io::ErrorKind::InvalidData));
-                            }
-                            Ok((rdlen, wrlen)) => {
-                                if rdlen == 0 && wrlen == 0 {
-                                    println!("EOF reached: {}, {}", rdlen, wrlen);
-                                    self.eof = true;
-                                    return Ok(0);
-                                } else {
-                                     println!("Handshake done: {}, {}", rdlen, wrlen);
-                                }
+                    Ok(0) => match complete_io(session, io) {
+                        Err(e) => {
+                            self.error = e;
+                            ErrorQueue::push_error(error!(self.error));
+                            return Err(io::Error::from(io::ErrorKind::InvalidData));
+                        }
+                        Ok((rdlen, wrlen)) => {
+                            if rdlen == 0 && wrlen == 0 {
+                                println!("EOF reached: {}, {}", rdlen, wrlen);
+                                self.eof = true;
+                                return Ok(0);
+                            } else {
+                                println!("Handshake done: {}, {}", rdlen, wrlen);
                             }
                         }
                     },
@@ -1469,7 +1467,7 @@ fn inner_mesalink_ssl_complete_io(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerRe
                 ssl.error = e;
                 ErrorQueue::push_error(error!(e));
                 return Err(error!(e));
-            },
+            }
             Ok(_) => Ok(SSL_SUCCESS),
         },
         _ => Err(error!(ErrorCode::MesalinkErrorBadFuncArg)),
@@ -1498,7 +1496,10 @@ fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult
         .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     let dnsname = webpki::DNSNameRef::try_from_ascii_str(hostname)
         .map_err(|_| error!(ErrorCode::MesalinkErrorBadFuncArg))?;
-    let session = rustls::ClientSession::new(&ssl.client_config, dnsname);
+    let client_session = rustls::ClientSession::new(&ssl.client_config, dnsname);
+    let mut io = ssl.io
+        .as_mut()
+        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     match ssl.error {
         ErrorCode::MesalinkErrorNone
         | ErrorCode::MesalinkErrorWantRead
@@ -1507,8 +1508,19 @@ fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult
         | ErrorCode::MesalinkErrorWantAccept => ssl.error = ErrorCode::default(),
         _ => (),
     };
-    ssl.session = Some(Box::new(session));
-    Ok(SSL_SUCCESS)
+    let mut session: Option<Box<Session>> = Some(Box::new(client_session));
+    match complete_io(session.as_mut().unwrap(), &mut io) {
+        Err(e) => {
+            ssl.error = e;
+            ErrorQueue::push_error(error!(e));
+            return Err(error!(e));
+        }
+        Ok((rdlen, wrlen)) => {
+            println!("Handshake done: {}, {}", rdlen, wrlen);
+            ssl.session = session;
+            Ok(SSL_SUCCESS)
+        }
+    }
 }
 
 /// `SSL_accept` - wait for a TLS client to initiate the TLS handshake. The
