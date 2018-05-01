@@ -1455,6 +1455,33 @@ fn inner_measlink_ssl_get_fd(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
     Ok(socket.as_raw_fd())
 }
 
+/// `SSL_do_handshake` - perform a TLS/SSL handshake
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_do_handshake(SSL *ssl);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_do_handshake(ssl_ptr: *mut MESALINK_SSL) -> c_int {
+    check_inner_result!(inner_mesalink_ssl_do_handshake(ssl_ptr), SSL_FAILURE)
+}
+
+fn inner_mesalink_ssl_do_handshake(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
+    let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
+    match (ssl.session.as_mut(), ssl.io.as_mut()) {
+        (Some(session), Some(io)) => match complete_io(session, io) {
+            Err(e) => {
+                ssl.error = e;
+                ErrorQueue::push_error(error!(e));
+                return Err(error!(e));
+            }
+            Ok(_) => Ok(SSL_SUCCESS),
+        },
+        _ => Err(error!(ErrorCode::MesalinkErrorBadFuncArg)),
+    }
+}
+
 /// `SSL_connect` - initiate the TLS handshake with a server. The communication
 /// channel must already have been set and assigned to the ssl with SSL_set_fd.
 ///
