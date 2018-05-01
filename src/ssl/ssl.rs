@@ -267,7 +267,7 @@ fn complete_io(
     loop {
         while session.wants_write() {
             match session.write_tls(io) {
-                Ok(n) => wrlen += n,
+                Ok(n) => wrlen += n;
                 Err(e) => {
                     if e.kind() == io::ErrorKind::WouldBlock {
                         return Err(ErrorCode::MesalinkErrorWantWrite);
@@ -277,15 +277,17 @@ fn complete_io(
                 }
             }
         }
-
         if !until_handshaked && wrlen > 0 {
             return Ok((wrlen, rdlen));
         }
-
         if !eof && session.wants_read() {
             match session.read_tls(io) {
-                Ok(0) => {
-                    eof = true;
+                Ok(n) => {
+                    if n == 0 {
+                        eof = true;
+                    } else {
+                        rdlen += n;
+                    }
                 }
                 Err(e) => {
                     if e.kind() == io::ErrorKind::WouldBlock {
@@ -294,25 +296,24 @@ fn complete_io(
                         return Err(ErrorCode::from(&e));
                     }
                 }
-                Ok(n) => {
-                    rdlen += n;
-                    if let Err(tls_err) = session.process_new_packets() {
-                        // flush io to send any unsent alerts
-                        while session.wants_write() {
-                            let _ = session.write_tls(io).map_err(|e| ErrorCode::from(&e))?;
-                        }
-                        let _ = io.flush().map_err(|e| ErrorCode::from(&e))?;
-                        return Err(ErrorCode::from(&tls_err));
-                    }
+            }
+        }
+        match session.process_new_packets() {
+            // flush io to send any unsent alerts
+            Err(tls_err) => {
+                while session.wants_write() {
+                    let _ = session.write_tls(io).map_err(|e| ErrorCode::from(&e))?;
                 }
+                let _ = io.flush().map_err(|e| ErrorCode::from(&e))?;
+                return Err(ErrorCode::from(&tls_err));
             }
-
-            match (eof, until_handshaked, session.is_handshaking()) {
-                (_, true, false) => return Ok((rdlen, wrlen)),
-                (_, false, _) => return Ok((rdlen, wrlen)),
-                (true, true, true) => return Err(ErrorCode::IoErrorUnexpectedEof),
-                (..) => (),
-            }
+            Ok(_) => {}
+        }
+        match (eof, until_handshaked, session.is_handshaking()) {
+            (_, true, false) => return Ok((rdlen, wrlen)),
+            (_, false, _) => return Ok((rdlen, wrlen)),
+            (true, true, true) => return Err(ErrorCode::IoErrorUnexpectedEof),
+            (..) => (),
         }
     }
 }
@@ -1498,15 +1499,6 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 #[cfg(feature = "client_apis")]
 fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
-    let hostname = ssl.hostname
-        .as_ref()
-        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
-    let dnsname = webpki::DNSNameRef::try_from_ascii_str(hostname)
-        .map_err(|_| error!(ErrorCode::MesalinkErrorBadFuncArg))?;
-    let client_session = rustls::ClientSession::new(&ssl.client_config, dnsname);
-    let mut io = ssl.io
-        .as_mut()
-        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     match ssl.error {
         ErrorCode::MesalinkErrorNone
         | ErrorCode::MesalinkErrorWantRead
@@ -1515,16 +1507,24 @@ fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult
         | ErrorCode::MesalinkErrorWantAccept => ssl.error = ErrorCode::default(),
         _ => (),
     };
-    let mut session: Option<Box<Session>> = Some(Box::new(client_session));
-    match complete_io(session.as_mut().unwrap(), &mut io) {
+    let mut io = ssl.io
+        .as_mut()
+        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+    if ssl.session.is_none() {
+        let hostname = ssl.hostname
+            .as_ref()
+            .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+        let dnsname = webpki::DNSNameRef::try_from_ascii_str(hostname)
+            .map_err(|_| error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+        let client_session = rustls::ClientSession::new(&ssl.client_config, dnsname);
+        ssl.session = Some(Box::new(client_session));
+    }
+    match complete_io(ssl.session.as_mut().unwrap(), &mut io) {
         Err(e) => {
             ssl.error = e;
             return Err(error!(e));
         }
-        Ok(_) => {
-            ssl.session = session;
-            Ok(SSL_SUCCESS)
-        }
+        Ok(_) => Ok(SSL_SUCCESS),
     }
 }
 
@@ -1546,7 +1546,6 @@ pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 #[cfg(feature = "server_apis")]
 fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
-    let server_session = rustls::ServerSession::new(&ssl.server_config);
     match ssl.error {
         ErrorCode::MesalinkErrorNone
         | ErrorCode::MesalinkErrorWantRead
@@ -1555,18 +1554,19 @@ fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
         | ErrorCode::MesalinkErrorWantAccept => ssl.error = ErrorCode::default(),
         _ => (),
     };
-    let mut session: Option<Box<Session>> = Some(Box::new(server_session));
     let mut io = ssl.io
         .as_mut()
         .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
-    match complete_io(session.as_mut().unwrap(), &mut io) {
+    if ssl.session.is_none() {
+        let server_session = rustls::ServerSession::new(&ssl.server_config);
+        ssl.session = Some(Box::new(server_session));
+    }
+    match complete_io(ssl.session.as_mut().unwrap(), &mut io) {
         Err(e) => {
             ssl.error = e;
-            ErrorQueue::push_error(error!(e));
             return Err(error!(e));
         }
         Ok(_) => {
-            ssl.session = session;
             Ok(SSL_SUCCESS)
         }
     }
