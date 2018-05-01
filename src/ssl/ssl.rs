@@ -1430,11 +1430,30 @@ fn inner_measlink_ssl_get_fd(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
 #[no_mangle]
 #[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
-    check_inner_result!(inner_mesalink_ssl_connect(ssl_ptr), SSL_FAILURE)
+    check_inner_result!(inner_mesalink_ssl_connect(ssl_ptr, false), SSL_FAILURE)
+}
+
+/// `SSL_connect0` - initiate the TLS handshake with a server lazily. The
+/// handshake only starts once `SSL_read()` or `SSL_write()` is called. The
+/// communication channel must already have been set and assigned to the ssl
+/// with SSL_set_fd.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_connect0(SSL *ssl);
+/// ```
+#[no_mangle]
+#[cfg(feature = "client_apis")]
+pub extern "C" fn mesalink_SSL_connect0(ssl_ptr: *mut MESALINK_SSL) -> c_int {
+    check_inner_result!(inner_mesalink_ssl_connect(ssl_ptr, true), SSL_FAILURE)
 }
 
 #[cfg(feature = "client_apis")]
-fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
+fn inner_mesalink_ssl_connect(
+    ssl_ptr: *mut MESALINK_SSL,
+    is_lazy: bool,
+) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     let hostname = ssl.hostname
         .as_ref()
@@ -1442,9 +1461,6 @@ fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult
     let dnsname = webpki::DNSNameRef::try_from_ascii_str(hostname)
         .map_err(|_| error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     let mut session = rustls::ClientSession::new(&ssl.client_config, dnsname);
-    let io = ssl.io
-        .as_mut()
-        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
     match ssl.error {
         ErrorCode::MesalinkErrorNone
         | ErrorCode::MesalinkErrorWantRead
@@ -1453,18 +1469,26 @@ fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult
         | ErrorCode::MesalinkErrorWantAccept => ssl.error = ErrorCode::default(),
         _ => (),
     };
-    match complete_handshake_io(&mut session as &mut Session, io) {
-        Ok(_) => {
-            ssl.session = Some(Box::new(session));
-            Ok(SSL_SUCCESS)
-        }
-        Err(e) => match e.kind() {
-            io::ErrorKind::WouldBlock | io::ErrorKind::NotConnected => {
-                ssl.error = ErrorCode::MesalinkErrorWantConnect;
-                Ok(SSL_ERROR)
+    if is_lazy {
+        ssl.session = Some(Box::new(session));
+        Ok(SSL_SUCCESS)
+    } else {
+        let io = ssl.io
+            .as_mut()
+            .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+        match complete_handshake_io(&mut session as &mut Session, io) {
+            Ok(_) => {
+                ssl.session = Some(Box::new(session));
+                Ok(SSL_SUCCESS)
             }
-            _ => Err(error!(ErrorCode::from(&e))),
-        },
+            Err(e) => match e.kind() {
+                io::ErrorKind::WouldBlock | io::ErrorKind::NotConnected => {
+                    ssl.error = ErrorCode::MesalinkErrorWantConnect;
+                    Ok(SSL_ERROR)
+                }
+                _ => Err(error!(ErrorCode::from(&e))),
+            },
+        }
     }
 }
 
@@ -1480,16 +1504,33 @@ fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult
 #[no_mangle]
 #[cfg(feature = "server_apis")]
 pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
-    check_inner_result!(inner_mesalink_ssl_accept(ssl_ptr), SSL_FAILURE)
+    check_inner_result!(inner_mesalink_ssl_accept(ssl_ptr, false), SSL_FAILURE)
+}
+
+/// `SSL_accept0` - wait for a TLS client to initiate the TLS handshake lazily.
+/// The handshake only starts once `SSL_read()` or `SSL_write()` is called. The
+/// communication channel must already have been set and assigned to the ssl by
+/// setting SSL_set_fd.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_accept0(SSL *ssl);
+/// ```
+#[no_mangle]
+#[cfg(feature = "server_apis")]
+pub extern "C" fn mesalink_SSL_accept0(ssl_ptr: *mut MESALINK_SSL) -> c_int {
+    check_inner_result!(inner_mesalink_ssl_accept(ssl_ptr, true), SSL_FAILURE)
 }
 
 #[cfg(feature = "server_apis")]
-fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
+fn inner_mesalink_ssl_accept(
+    ssl_ptr: *mut MESALINK_SSL,
+    is_lazy: bool,
+) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     let mut session = rustls::ServerSession::new(&ssl.server_config);
-    let io = ssl.io
-        .as_mut()
-        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+
     match ssl.error {
         ErrorCode::MesalinkErrorNone
         | ErrorCode::MesalinkErrorWantRead
@@ -1498,18 +1539,26 @@ fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
         | ErrorCode::MesalinkErrorWantAccept => ssl.error = ErrorCode::default(),
         _ => (),
     };
-    match complete_handshake_io(&mut session as &mut Session, io) {
-        Ok(_) => {
-            ssl.session = Some(Box::new(session));
-            Ok(SSL_SUCCESS)
-        }
-        Err(e) => match e.kind() {
-            io::ErrorKind::WouldBlock | io::ErrorKind::NotConnected => {
-                ssl.error = ErrorCode::MesalinkErrorWantAccept;
-                Ok(SSL_ERROR)
+    if is_lazy {
+        ssl.session = Some(Box::new(session));
+        Ok(SSL_SUCCESS)
+    } else {
+        let io = ssl.io
+            .as_mut()
+            .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+        match complete_handshake_io(&mut session as &mut Session, io) {
+            Ok(_) => {
+                ssl.session = Some(Box::new(session));
+                Ok(SSL_SUCCESS)
             }
-            _ => Err(error!(ErrorCode::from(&e))),
-        },
+            Err(e) => match e.kind() {
+                io::ErrorKind::WouldBlock | io::ErrorKind::NotConnected => {
+                    ssl.error = ErrorCode::MesalinkErrorWantAccept;
+                    Ok(SSL_ERROR)
+                }
+                _ => Err(error!(ErrorCode::from(&e))),
+            },
+        }
     }
 }
 

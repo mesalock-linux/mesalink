@@ -101,9 +101,11 @@ typedef MESALINK_SSL SSL;
 
 #ifdef HAVE_CLIENT
 #define SSL_connect mesalink_SSL_connect
+#define SSL_connect0 mesalink_SSL_connect0
 #endif
 #ifdef HAVE_SERVER
 #define SSL_accept mesalink_SSL_accept
+#define SSL_accept0 mesalink_SSL_accept0
 #endif
 
 #define SSL_write mesalink_SSL_write
