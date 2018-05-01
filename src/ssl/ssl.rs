@@ -231,6 +231,7 @@ pub struct MESALINK_SSL {
     io: Option<net::TcpStream>,
     session: Option<Box<Session>>,
     error: ErrorCode,
+    eof: bool,
 }
 
 impl MesalinkOpaquePointerType for MESALINK_SSL {
@@ -250,11 +251,12 @@ impl MESALINK_SSL {
             io: None,
             session: None,
             error: ErrorCode::default(),
+            eof: false,
         }
     }
 }
 
-fn do_handshake(
+fn complete_io(
     session: &mut Box<Session>,
     io: &mut net::TcpStream,
 ) -> Result<(usize, usize), ErrorCode> {
@@ -327,16 +329,27 @@ impl Read for MESALINK_SSL {
                     _ => (),
                 };
                 match session.read(buf) {
-                    Ok(0) => match do_handshake(session, io) {
-                        Err(e) => {
-                            self.error = e;
-                            ErrorQueue::push_error(error!(self.error));
-                            return Err(io::Error::from(io::ErrorKind::InvalidData));
+                    Ok(0) => {
+                        match complete_io(session, io) {
+                            Err(e) => {
+                                self.error = e;
+                                ErrorQueue::push_error(error!(self.error));
+                                return Err(io::Error::from(io::ErrorKind::InvalidData));
+                            }
+                            Ok((rdlen, wrlen)) => {
+                                if rdlen == 0 && wrlen == 0 {
+                                    println!("EOF reached: {}, {}", rdlen, wrlen);
+                                    self.eof = true;
+                                    return Ok(0);
+                                } else {
+                                     println!("Handshake done: {}, {}", rdlen, wrlen);
+                                }
+                            }
                         }
-                        Ok(_) => (),
                     },
                     Ok(n) => {
                         self.error = ErrorCode::default();
+                        println!("Read {} bytes", n);
                         return Ok(n);
                     }
                     Err(e) => {
@@ -1436,22 +1449,22 @@ fn inner_measlink_ssl_get_fd(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
     Ok(socket.as_raw_fd())
 }
 
-/// `SSL_do_handshake` - perform a TLS/SSL handshake
+/// `SSL_complete_io` - perform a TLS/SSL handshake
 ///
 /// ```c
 /// #include <mesalink/openssl/ssl.h>
 ///
-/// int SSL_do_handshake(SSL *ssl);
+/// int SSL_complete_io(SSL *ssl);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_do_handshake(ssl_ptr: *mut MESALINK_SSL) -> c_int {
-    check_inner_result!(inner_mesalink_ssl_do_handshake(ssl_ptr), SSL_FAILURE)
+pub extern "C" fn mesalink_SSL_complete_io(ssl_ptr: *mut MESALINK_SSL) -> c_int {
+    check_inner_result!(inner_mesalink_ssl_complete_io(ssl_ptr), SSL_FAILURE)
 }
 
-fn inner_mesalink_ssl_do_handshake(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
+fn inner_mesalink_ssl_complete_io(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     match (ssl.session.as_mut(), ssl.io.as_mut()) {
-        (Some(session), Some(io)) => match do_handshake(session, io) {
+        (Some(session), Some(io)) => match complete_io(session, io) {
             Err(e) => {
                 ssl.error = e;
                 ErrorQueue::push_error(error!(e));
