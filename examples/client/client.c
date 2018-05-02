@@ -29,37 +29,21 @@
   "GET / HTTP/1.0\r\nHost: %s\r\nConnection: close\r\nAccept-Encoding: "      \
   "identity\r\n\r\n"
 
+int tls_client(SSL_CTX *, const char *);
+
 int
-main(int argc, char *argv[])
+tls_client(SSL_CTX *ctx, const char *hostname)
 {
-  int sockfd;
+  SSL *ssl = NULL;
+  int sockfd = -1;
   struct hostent *hp;
   struct sockaddr_in addr;
   char sendbuf[8192] = { 0 };
   char recvbuf[8192] = { 0 };
-  const char *hostname;
-  SSL_CTX *ctx;
-  SSL *ssl;
-  if(argc != 2) {
-    printf("Usage: %s <hostname>\n", argv[0]);
-    exit(0);
-  }
-  hostname = argv[1];
-  SSL_library_init();
-  ERR_load_crypto_strings();
-  // SSL_load_error_strings(); // Uncomment this line to see SSL logs
 
-  ctx = SSL_CTX_new(TLSv1_2_client_method());
-  SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_CLIENT);
-
-  if(ctx == NULL) {
-    fprintf(stderr, "[-] Failed to create SSL_CTX\n");
-    ERR_print_errors_fp(stderr);
-    return -1;
-  }
   if((hp = gethostbyname(hostname)) == NULL) {
     fprintf(stderr, "[-] Gethostname error\n");
-    return -1;
+    goto fail;
   }
   memset(&addr, 0, sizeof(addr));
   memmove(&addr.sin_addr, hp->h_addr, hp->h_length);
@@ -68,31 +52,26 @@ main(int argc, char *argv[])
   sockfd = socket(AF_INET, SOCK_STREAM, 0);
   if(connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
     fprintf(stderr, "[-] Connect error\n");
-    return -1;
+    goto fail;
   }
   ssl = SSL_new(ctx);
   if(ssl == NULL) {
     fprintf(stderr, "[-] Failed to create SSL\n");
     ERR_print_errors_fp(stderr);
-    return -1;
+    goto fail;
   }
-
   char hostname_buf[256] = { 0 };
   strncpy(hostname_buf, hostname, strlen(hostname));
   if(SSL_set_tlsext_host_name(ssl, hostname_buf) != SSL_SUCCESS) {
     fprintf(stderr, "[-] Failed to set hostname\n");
-    ERR_print_errors_fp(stderr);
-    return -1;
+    goto fail;
   }
-
   if(SSL_set_fd(ssl, sockfd) != SSL_SUCCESS) {
     fprintf(stderr, "[-] Faield to set fd\n");
-    ERR_print_errors_fp(stderr);
-    return -1;
+    goto fail;
   }
   if(SSL_connect(ssl) == SSL_SUCCESS) {
     int sendlen = -1, recvlen = -1, total_recvlen = 0;
-
     int cipher_bits = 0;
     SSL_get_cipher_bits(ssl, &cipher_bits);
     printf("[+] Negotiated ciphersuite: %s, enc_length=%d, version=%s\n",
@@ -129,7 +108,6 @@ main(int argc, char *argv[])
       }
 
       printf("\n[+] Received %d bytes\n", total_recvlen);
-      SSL_free(ssl);
     }
     else {
       fprintf(stderr, "[-] Got nothing\n");
@@ -137,11 +115,49 @@ main(int argc, char *argv[])
   }
   else {
     fprintf(stderr, "[-] Socket not connected\n");
+    fprintf(stderr, "[-] SSL error code: 0x%x\n", SSL_get_error(ssl, -1));
+    ERR_print_errors_fp(stderr);
+    goto fail;
+  }
+fail:
+
+  if(ssl) {
+    SSL_free(ssl);
+  }
+  if(!sockfd) {
+    close(sockfd);
+  }
+  return -1;
+}
+
+int
+main(int argc, char *argv[])
+{
+
+  const char *hostname;
+  SSL_CTX *ctx;
+
+  if(argc != 2) {
+    printf("Usage: %s <hostname>\n", argv[0]);
+    exit(0);
+  }
+  hostname = argv[1];
+  SSL_library_init();
+  ERR_load_crypto_strings();
+  SSL_load_error_strings(); // Uncomment this line to see SSL logs
+
+  ctx = SSL_CTX_new(TLSv1_2_client_method());
+  SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_CLIENT);
+
+  if(ctx == NULL) {
+    fprintf(stderr, "[-] Failed to create SSL_CTX\n");
     ERR_print_errors_fp(stderr);
     return -1;
   }
-  ERR_print_errors_fp(stderr);
-  close(sockfd);
+  // fresh start
+  tls_client(ctx, hostname);
+  // session resumption
+  tls_client(ctx, hostname);
   SSL_CTX_free(ctx);
   return 0;
 }
