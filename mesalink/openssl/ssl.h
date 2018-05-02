@@ -74,8 +74,8 @@ typedef MESALINK_SSL SSL;
 
 #define SSL_CTX_new mesalink_SSL_CTX_new
 #ifdef HAVE_SERVER
-#define SSL_CTX_use_certificate_chain_file                                     \
-    mesalink_SSL_CTX_use_certificate_chain_file
+#define SSL_CTX_use_certificate_chain_file                                    \
+  mesalink_SSL_CTX_use_certificate_chain_file
 #define SSL_CTX_use_PrivateKey_file mesalink_SSL_CTX_use_PrivateKey_file
 #define SSL_CTX_check_private_key mesalink_SSL_CTX_check_private_key
 #endif
@@ -102,6 +102,7 @@ typedef MESALINK_SSL SSL;
 
 #ifdef HAVE_CLIENT
 #define SSL_connect mesalink_SSL_connect
+#define SSL_connect0 mesalink_SSL_connect0
 #endif
 #ifdef HAVE_SERVER
 #define SSL_accept mesalink_SSL_accept

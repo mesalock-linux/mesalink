@@ -1479,12 +1479,16 @@ pub extern "C" fn mesalink_SSL_do_handshake(ssl_ptr: *mut MESALINK_SSL) -> c_int
 fn inner_mesalink_ssl_do_handshake(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     match (ssl.session.as_mut(), ssl.io.as_mut()) {
-        (Some(session), Some(io)) => match complete_io(session, io) {
-            Err(e) => {
-                ssl.error = e;
-                return Err(error!(e));
+        (Some(session), Some(io)) => if session.is_handshaking() {
+            match complete_io(session, io) {
+                Err(e) => {
+                    ssl.error = e;
+                    return Err(error!(e));
+                }
+                Ok(_) => Ok(SSL_SUCCESS),
             }
-            Ok(_) => Ok(SSL_SUCCESS),
+        } else {
+            Ok(SSL_SUCCESS)
         },
         _ => Err(error!(ErrorCode::MesalinkErrorBadFuncArg)),
     }
@@ -1501,11 +1505,30 @@ fn inner_mesalink_ssl_do_handshake(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerR
 #[no_mangle]
 #[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
-    check_inner_result!(inner_mesalink_ssl_connect(ssl_ptr), SSL_FAILURE)
+    check_inner_result!(inner_mesalink_ssl_connect(ssl_ptr, false), SSL_FAILURE)
+}
+
+/// `SSL_connect0` - initiate the TLS handshake lazily with a server. The
+/// communication channel must already have been set and assigned to the ssl
+/// with SSL_set_fd. You must call `SSL_do_handshake()` to explictly start the
+/// handshake.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_connect0(SSL *ssl);
+/// ```
+#[no_mangle]
+#[cfg(feature = "client_apis")]
+pub extern "C" fn mesalink_SSL_connect0(ssl_ptr: *mut MESALINK_SSL) -> c_int {
+    check_inner_result!(inner_mesalink_ssl_connect(ssl_ptr, true), SSL_FAILURE)
 }
 
 #[cfg(feature = "client_apis")]
-fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
+fn inner_mesalink_ssl_connect(
+    ssl_ptr: *mut MESALINK_SSL,
+    is_lazy: bool,
+) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     match ssl.error {
         ErrorCode::MesalinkErrorNone
@@ -1527,12 +1550,16 @@ fn inner_mesalink_ssl_connect(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult
         let client_session = rustls::ClientSession::new(&ssl.client_config, dnsname);
         ssl.session = Some(Box::new(client_session));
     }
-    match complete_io(ssl.session.as_mut().unwrap(), &mut io) {
-        Err(e) => {
-            ssl.error = e;
-            return Err(error!(e));
+    if !is_lazy {
+        match complete_io(ssl.session.as_mut().unwrap(), &mut io) {
+            Err(e) => {
+                ssl.error = e;
+                Err(error!(e))
+            }
+            Ok(_) => Ok(SSL_SUCCESS),
         }
-        Ok(_) => Ok(SSL_SUCCESS),
+    } else {
+        Ok(SSL_SUCCESS)
     }
 }
 
@@ -1868,8 +1895,12 @@ mod tests {
                 mesalink_SSL_set_fd(ssl, sockfd),
                 "Failed to set fd"
             );
-            assert_eq!(SSL_SUCCESS, mesalink_SSL_connect(ssl), "Failed to connect");
-
+            assert_eq!(SSL_SUCCESS, mesalink_SSL_connect0(ssl), "Failed to connect");
+            assert_eq!(
+                SSL_SUCCESS,
+                mesalink_SSL_do_handshake(ssl),
+                "Failed to start handshake"
+            );
             let certs = mesalink_SSL_get_peer_certificates(ssl);
             let cert = mesalink_SSL_get_peer_certificate(ssl);
             assert_ne!(certs, ptr::null_mut(), "Failed to get peer certificates");

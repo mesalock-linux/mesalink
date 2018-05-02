@@ -16,7 +16,6 @@
 #ifndef MESALINK_VERSION_H
 #define MESALINK_VERSION_H
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -26,6 +25,5 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-
 
 #endif /* MESALINK_VERSION_H */
