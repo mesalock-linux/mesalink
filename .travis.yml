@@ -8,7 +8,7 @@ matrix:
     dist: trusty
     sudo: required
     rust: stable
-    env: ARCH=linux_x86_64 COVERAGE=yes
+    env: ARCH=x86_64_linux COVERAGE=yes
     addons:
       apt:
         packages:
@@ -20,7 +20,7 @@ matrix:
   - os: osx
     rust: stable
     env:
-    - ARCH=macos_x86_64
+    - ARCH=x86_64_macos
   - os: osx
     rust: nightly
   - os: linux
