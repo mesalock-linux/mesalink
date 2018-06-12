@@ -500,8 +500,8 @@ impl<'a> From<&'a io::Error> for ErrorCode {
 #[allow(unused_variables)]
 impl<'a> From<&'a rustls::TLSError> for ErrorCode {
     fn from(e: &'a rustls::TLSError) -> ErrorCode {
-        use rustls::TLSError;
         use rustls::internal::msgs::enums::{AlertDescription, ContentType};
+        use rustls::TLSError;
         match e {
             &TLSError::InappropriateMessage {
                 ref expect_types,

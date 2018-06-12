@@ -234,8 +234,8 @@ fn inner_mesalink_sk_X509_NAME_free(
 mod tests {
     use super::*;
     use rustls::internal::pemfile;
-    use ssl::SSL_SUCCESS;
     use ssl::x509::{MESALINK_X509, MESALINK_X509_NAME};
+    use ssl::SSL_SUCCESS;
     use std::fs::File;
     use std::io::BufReader;
 
@@ -267,7 +267,10 @@ mod tests {
         for name in names.into_iter() {
             let x509_name = MESALINK_X509_NAME::new(name.to_string());
             let x509_name_ptr = Box::into_raw(Box::new(x509_name)) as *mut MESALINK_X509_NAME;
-            assert_eq!(SSL_SUCCESS, mesalink_sk_X509_NAME_push(stack_ptr, x509_name_ptr));
+            assert_eq!(
+                SSL_SUCCESS,
+                mesalink_sk_X509_NAME_push(stack_ptr, x509_name_ptr)
+            );
             let _ = unsafe { Box::from_raw(x509_name_ptr) }; // push() clones the X509_NAME object
         }
         assert_eq!(names.len() as c_int, mesalink_sk_X509_NAME_num(stack_ptr));

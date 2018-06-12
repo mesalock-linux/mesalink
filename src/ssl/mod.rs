@@ -19,7 +19,6 @@ use ring::rand::SecureRandom;
 #[doc(hidden)]
 pub const MAGIC_SIZE: usize = 4;
 
-
 lazy_static! {
     #[doc(hidden)]
     pub static ref MAGIC: [u8; MAGIC_SIZE] = {
@@ -113,8 +112,8 @@ pub const SSL_SUCCESS: c_int = SslConstants::SslSuccess as c_int;
 #[macro_use]
 #[doc(hidden)]
 pub mod error_san {
-    use ssl::MesalinkOpaquePointerType;
     use ssl::err::{ErrorCode, MesalinkInnerResult};
+    use ssl::MesalinkOpaquePointerType;
 
     pub fn sanitize_const_ptr_for_ref<'a, T>(ptr: *const T) -> MesalinkInnerResult<&'a T>
     where
