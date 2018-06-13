@@ -35,7 +35,7 @@ nightly = []
 [dependencies]
 rustls = "0.12.0"
 webpki = "0.18.0-alpha"
-ring = { version = "0.13.0-alpha", features = ["rsa_signing", ] }
+ring = { version = "0.13.0-alpha5", features = ["rsa_signing", ] }
 untrusted = "0.6.1"
 webpki-roots = "0.14.0"
 env_logger = "0.4.2"
@@ -46,7 +46,7 @@ enum_to_u8_slice_derive = "0.1"
 [patch.crates-io]
 rustls = { git = "https://github.com/mesalock-linux/rustls", branch = "develop", default-features = false }
 sct = { git = "https://github.com/mesalock-linux/sct.rs", branch = "mesalink", default-features = false }
-webpki = { git = "https://github.com/mesalock-linux/webpki", branch = "develop", default-features = false }
+webpki = { git = "https://github.com/mesalock-linux/webpki", branch = "develop", default-features = true }
 
 [dev-dependencies]
 log = "0.4"

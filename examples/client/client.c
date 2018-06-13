@@ -144,7 +144,7 @@ main(int argc, char *argv[])
   hostname = argv[1];
   SSL_library_init();
   ERR_load_crypto_strings();
-  SSL_load_error_strings(); // Uncomment this line to see SSL logs
+  // SSL_load_error_strings(); // Uncomment this line to see SSL logs
 
   ctx = SSL_CTX_new(TLSv1_2_client_method());
   SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_CLIENT);
