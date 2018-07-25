@@ -158,6 +158,7 @@ fn inner_mesalink_x509_get_subject_name(
                 let (maybe_asn_set_tag, sequence) = der::read_tag_and_get_value(subject)
                     .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
                 if (maybe_asn_set_tag as usize) != 0x31 {
+                    // Subject should be an ASN.1 SET
                     return Err(error!(ErrorCode::TLSErrorWebpkiBadDER));
                 }
                 let _ = sequence.read_all(error!(ErrorCode::TLSErrorWebpkiBadDER), |seq| {
@@ -181,11 +182,12 @@ fn inner_mesalink_x509_get_subject_name(
                         };
 
                         if keyword.len() > 0 {
-                            subject_name.push_str("/");
-                            subject_name.push_str(keyword);
-                            subject_name.push_str("=");
-                            subject_name
-                                .push_str(str::from_utf8(value.as_slice_less_safe()).unwrap());
+                            if let Ok(s) = str::from_utf8(value.as_slice_less_safe()) {
+                                subject_name.push_str("/");
+                                subject_name.push_str(keyword);
+                                subject_name.push_str("=");
+                                subject_name.push_str(s);
+                            }
                         }
                         Ok(())
                     })
