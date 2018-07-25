@@ -249,12 +249,23 @@ mod tests {
     use std::str;
 
     #[test]
-    fn x509_get_subject_alt_names() {
+    fn x509_get_subject_name_and_alt_names() {
         let mut certs_io = BufReader::new(File::open("tests/test.certs").unwrap());
         let certs = pemfile::certs(&mut certs_io).unwrap();
         assert_eq!(true, certs.len() > 0);
         let x509 = MESALINK_X509::new(certs[0].clone());
         let x509_ptr = Box::into_raw(Box::new(x509)) as *mut MESALINK_X509;
+
+        let subject_name_ptr = mesalink_X509_get_subject_name(x509_ptr);
+        let buf = [0u8; 253];
+        let _ = mesalink_X509_NAME_oneline(
+            subject_name_ptr as *mut MESALINK_X509_NAME,
+            buf.as_ptr() as *mut c_char,
+            253,
+        );
+        println!("Subject name: {}", str::from_utf8(&buf).unwrap());
+        mesalink_X509_NAME_free(subject_name_ptr);
+
         let name_stack_ptr = mesalink_X509_get_alt_subject_names(x509_ptr);
 
         let name_count = mesalink_sk_X509_NAME_num(name_stack_ptr) as usize;
