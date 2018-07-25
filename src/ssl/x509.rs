@@ -131,6 +131,26 @@ fn inner_mesalink_x509_get_alt_subject_names(
 }
 
 #[no_mangle]
+pub extern "C" fn mesalink_X509_get_subject(
+    x509_ptr: *mut MESALINK_X509,
+) -> *const c_char {
+    check_inner_result!(
+        inner_mesalink_x509_get_subject(x509_ptr),
+        ptr::null_mut()
+    )
+}
+
+fn inner_mesalink_x509_get_subject(
+    x509_ptr: *mut MESALINK_X509,
+) -> MesalinkInnerResult<*const c_char> {
+    let cert = sanitize_ptr_for_ref(x509_ptr)?;
+    let cert_der = untrusted::Input::from(&cert.cert_data.0);
+    let x509 =
+        webpki::EndEntityCert::from(cert_der).map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+    Ok(x509.inner.subject.as_slice_less_safe().as_ptr() as *const c_char)
+}
+
+#[no_mangle]
 pub extern "C" fn mesalink_X509_get_subject_name(
     x509_ptr: *mut MESALINK_X509,
 ) -> *mut MESALINK_X509_NAME {
@@ -255,6 +275,9 @@ mod tests {
         assert_eq!(true, certs.len() > 0);
         let x509 = MESALINK_X509::new(certs[0].clone());
         let x509_ptr = Box::into_raw(Box::new(x509)) as *mut MESALINK_X509;
+
+        let subject_der_ptr = mesalink_X509_get_subject_name(x509_ptr);
+        assert_ne!(subject_der_ptr, ptr::null_mut());
 
         let subject_name_ptr = mesalink_X509_get_subject_name(x509_ptr);
         let buf = [0u8; 253];
