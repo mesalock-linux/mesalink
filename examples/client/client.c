@@ -89,7 +89,8 @@ tls_client(SSL_CTX *ctx, const char *hostname)
     STACK_OF(X509_NAME) *names = X509_get_alt_subject_names(cert);
     int length = sk_X509_NAME_num(names);
     printf("[+] Subject alternative names:");
-    for(int i = 0; i < length; i++) {
+    int i;
+    for(i = 0; i < length; i++) {
       X509_NAME *name = sk_X509_NAME_value(names, i);
       printf("%s, ", X509_NAME_oneline(name, name_buf, 253));
     }

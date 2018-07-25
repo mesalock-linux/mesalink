@@ -73,7 +73,7 @@ before_install:
 script:
 - |-
   if [[ x"$TARGET" == "x" ]]; then ./autogen.sh $CONFIGURE_PARAMETERS --enable-examples ; else rustup target add $RUST_TARGET ; ./autogen.sh --host=$TARGET --enable-rusthost=$RUST_TARGET $CONFIGURE_PARAMETERS ; fi
-  make DESTDIR=$TRAVIS_BUILD_DIR/inst install-strip ;
+  make ; make DESTDIR=$TRAVIS_BUILD_DIR/inst install-strip ;
   du -sh $TRAVIS_BUILD_DIR/inst/usr/local/lib/libmesalink.* ;
   if [[ x"$TARGET" == "x" ]]; then ./examples/client/client google.com ; RUST_BACKTRACE=1 cargo test ; ( cd bogo && ./runme ) ; fi
 after_success:
