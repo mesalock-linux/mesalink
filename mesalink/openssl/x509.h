@@ -31,6 +31,7 @@ extern "C" {
 
 #define X509_free mesalink_X509_free
 #define X509_NAME_free mesalink_X509_NAME_free
+#define X509_get_subject_name mesalink_X509_get_subject_name
 #define X509_get_alt_subject_names mesalink_X509_get_alt_subject_names
 #define X509_NAME_oneline mesalink_X509_NAME_oneline
 

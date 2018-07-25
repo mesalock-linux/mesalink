@@ -14,6 +14,7 @@
  */
 
 use libc::{c_char, c_int};
+use ring::der;
 use rustls;
 use ssl::err::{ErrorCode, MesalinkInnerResult};
 use ssl::error_san::*;
@@ -107,12 +108,12 @@ pub extern "C" fn mesalink_X509_get_alt_subject_names(
 fn inner_mesalink_x509_get_alt_subject_names(
     x509_ptr: *mut MESALINK_X509,
 ) -> MesalinkInnerResult<*mut MESALINK_STACK_MESALINK_X509_NAME> {
-    use ring::der;
     let cert = sanitize_ptr_for_ref(x509_ptr)?;
     let cert_der = untrusted::Input::from(&cert.cert_data.0);
     let x509 =
         webpki::EndEntityCert::from(cert_der).map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
-    let subject_alt_name = x509.inner
+    let subject_alt_name = x509
+        .inner
         .subject_alt_name
         .ok_or(error!(ErrorCode::TLSErrorWebpkiExtensionValueInvalid))?;
     let mut reader = untrusted::Reader::new(subject_alt_name);
@@ -127,6 +128,75 @@ fn inner_mesalink_x509_get_alt_subject_names(
         }
     }
     Ok(Box::into_raw(Box::new(stack)) as *mut MESALINK_STACK_MESALINK_X509_NAME)
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_X509_get_subject_name(
+    x509_ptr: *mut MESALINK_X509,
+) -> *mut MESALINK_X509_NAME {
+    check_inner_result!(
+        inner_mesalink_x509_get_subject_name(x509_ptr),
+        ptr::null_mut()
+    )
+}
+
+fn inner_mesalink_x509_get_subject_name(
+    x509_ptr: *mut MESALINK_X509,
+) -> MesalinkInnerResult<*mut MESALINK_X509_NAME> {
+    let cert = sanitize_ptr_for_ref(x509_ptr)?;
+    let cert_der = untrusted::Input::from(&cert.cert_data.0);
+    let x509 =
+        webpki::EndEntityCert::from(cert_der).map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+
+    let mut subject_name = String::new();
+
+    let _ = x509
+        .inner
+        .subject
+        .read_all(error!(ErrorCode::TLSErrorWebpkiBadDER), |subject| {
+            while !subject.at_end() {
+                let (maybe_asn_set_tag, sequence) = der::read_tag_and_get_value(subject)
+                    .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+                if (maybe_asn_set_tag as usize) != 0x31 {
+                    return Err(error!(ErrorCode::TLSErrorWebpkiBadDER));
+                }
+                let _ = sequence.read_all(error!(ErrorCode::TLSErrorWebpkiBadDER), |seq| {
+                    let oid_and_data = der::expect_tag_and_get_value(seq, der::Tag::Sequence)
+                        .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+                    oid_and_data.read_all(error!(ErrorCode::TLSErrorWebpkiBadDER), |oid_and_data| {
+                        let oid = der::expect_tag_and_get_value(oid_and_data, der::Tag::OID)
+                            .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+                        let (_, value) = der::read_tag_and_get_value(oid_and_data)
+                            .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+
+                        let keyword = match oid.as_slice_less_safe().last().unwrap() {
+                            // RFC 1779, X.500 attrinutes, oid 2.5.4
+                            3 => "CN",  // CommonName
+                            7 => "L",   // LocalityName
+                            8 => "ST",  // StateOrProvinceName
+                            10 => "O",  // OrganizationName
+                            11 => "OU", // OrganizationalUnitName
+                            6 => "C",   // CountryName
+                            _ => "",
+                        };
+
+                        if keyword.len() > 0 {
+                            subject_name.push_str("/");
+                            subject_name.push_str(keyword);
+                            subject_name.push_str("=");
+                            subject_name
+                                .push_str(str::from_utf8(value.as_slice_less_safe()).unwrap());
+                        }
+                        Ok(())
+                    })
+                });
+            }
+            Ok(())
+        })
+        .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER));
+
+    let x509_name = MESALINK_X509_NAME::new(subject_name);
+    Ok(Box::into_raw(Box::new(x509_name)) as *mut MESALINK_X509_NAME)
 }
 
 #[no_mangle]
