@@ -13,20 +13,14 @@ matrix:
       apt:
         packages:
         - libssl-dev
-  - os: linux
-    dist: trusty
-    sudo: false
-    rust: nightly
   - os: osx
     rust: stable
     env:
     - ARCH=x86_64_macos
-  - os: osx
-    rust: nightly
   - os: linux
     dist: trusty
     sudo: false
-    rust: nightly
+    rust: stable
     env: ARCH=arm_linux TARGET=arm-linux-gnueabi RUST_TARGET=arm-unknown-linux-gnueabi
     addons:
       apt:
@@ -37,7 +31,7 @@ matrix:
   - os: linux
     dist: trusty
     sudo: false
-    rust: nightly
+    rust: stable
     env: ARCH=aarch64_linux TARGET=aarch64-linux-gnu RUST_TARGET=aarch64-unknown-linux-gnu
     addons:
       apt:
@@ -48,22 +42,22 @@ matrix:
   - os: linux
     dist: trusty
     sudo: false
-    rust: nightly
+    rust: stable
     env: ARCH=arm_android TARGET=arm-linux-androideabi RUST_TARGET=arm-linux-androideabi
   - os: linux
     dist: trusty
     sudo: false
-    rust: nightly
+    rust: stable
     env: ARCH=aarch64_android TARGET=aarch64-linux-android RUST_TARGET=aarch64-linux-android
   - os: linux
     dist: trusty
     sudo: false
-    rust: nightly
+    rust: stable
     env: ARCH=x86_android TARGET=i686-linux-android RUST_TARGET=i686-linux-android
   - os: linux
     dist: trusty
     sudo: false
-    rust: nightly
+    rust: stable
     env: ARCH=x86_64_android TARGET=x86_64-linux-android RUST_TARGET=x86_64-linux-android
 before_install:
 - |-
