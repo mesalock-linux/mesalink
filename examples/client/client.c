@@ -161,8 +161,6 @@ main(int argc, char *argv[])
   }
   // fresh start
   tls_client(ctx, hostname);
-  // session resumption
-  tls_client(ctx, hostname);
   SSL_CTX_free(ctx);
   return 0;
 }
