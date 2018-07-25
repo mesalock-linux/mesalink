@@ -24,7 +24,7 @@ LT_PREREQ([2.2])
 LT_INIT
 LT_LANG([C])
 
-MESALINK_LIBRARY_VERSION=6:0:0
+MESALINK_LIBRARY_VERSION=8:0:0
 #                        | | |
 #                 +------+ | +---+
 #                 |        |     |
