@@ -64,7 +64,7 @@ fn inner_mesalink_x509_free(x509_ptr: *mut MESALINK_X509) -> MesalinkInnerResult
 #[derive(Clone)]
 pub struct MESALINK_X509_NAME {
     magic: [u8; MAGIC_SIZE],
-    name: String,
+    name: Vec<u8>,
 }
 
 impl<'a> MesalinkOpaquePointerType for MESALINK_X509_NAME {
@@ -74,10 +74,10 @@ impl<'a> MesalinkOpaquePointerType for MESALINK_X509_NAME {
 }
 
 impl<'a> MESALINK_X509_NAME {
-    pub fn new(name: String) -> MESALINK_X509_NAME {
+    pub fn new(name: &[u8]) -> MESALINK_X509_NAME {
         MESALINK_X509_NAME {
             magic: *MAGIC,
-            name: name,
+            name: name.to_vec(),
         }
     }
 }
@@ -112,8 +112,7 @@ fn inner_mesalink_x509_get_alt_subject_names(
     let cert_der = untrusted::Input::from(&cert.cert_data.0);
     let x509 =
         webpki::EndEntityCert::from(cert_der).map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
-    let subject_alt_name = x509
-        .inner
+    let subject_alt_name = x509.inner
         .subject_alt_name
         .ok_or(error!(ErrorCode::TLSErrorWebpkiExtensionValueInvalid))?;
     let mut reader = untrusted::Reader::new(subject_alt_name);
@@ -122,8 +121,7 @@ fn inner_mesalink_x509_get_alt_subject_names(
         let (tag, value) = der::read_tag_and_get_value(&mut reader)
             .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
         if tag == 0x82 {
-            let dns_name_str = str::from_utf8(value.as_slice_less_safe()).unwrap();
-            let x509_name = MESALINK_X509_NAME::new(String::from(dns_name_str));
+            let x509_name = MESALINK_X509_NAME::new(value.as_slice_less_safe());
             stack.stack.push(x509_name);
         }
     }
@@ -133,21 +131,24 @@ fn inner_mesalink_x509_get_alt_subject_names(
 #[no_mangle]
 pub extern "C" fn mesalink_X509_get_subject(
     x509_ptr: *mut MESALINK_X509,
-) -> *const c_char {
-    check_inner_result!(
-        inner_mesalink_x509_get_subject(x509_ptr),
-        ptr::null_mut()
-    )
+) -> *mut MESALINK_X509_NAME {
+    check_inner_result!(inner_mesalink_x509_get_subject(x509_ptr), ptr::null_mut())
 }
 
 fn inner_mesalink_x509_get_subject(
     x509_ptr: *mut MESALINK_X509,
-) -> MesalinkInnerResult<*const c_char> {
+) -> MesalinkInnerResult<*mut MESALINK_X509_NAME> {
     let cert = sanitize_ptr_for_ref(x509_ptr)?;
     let cert_der = untrusted::Input::from(&cert.cert_data.0);
     let x509 =
         webpki::EndEntityCert::from(cert_der).map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
-    Ok(x509.inner.subject.as_slice_less_safe().as_ptr() as *const c_char)
+    let subject = x509.inner.subject.as_slice_less_safe();
+    assert_eq!(true, subject.len() <= 253, "Subject in DER too long!");
+    let mut value = Vec::with_capacity(subject.len() + 2);
+    value.extend_from_slice(&[0x30, subject.len() as u8]);
+    value.extend_from_slice(subject);
+    let x509_name = MESALINK_X509_NAME::new(&value);
+    Ok(Box::into_raw(Box::new(x509_name)) as *mut MESALINK_X509_NAME)
 }
 
 #[no_mangle]
@@ -170,8 +171,7 @@ fn inner_mesalink_x509_get_subject_name(
 
     let mut subject_name = String::new();
 
-    let _ = x509
-        .inner
+    let _ = x509.inner
         .subject
         .read_all(error!(ErrorCode::TLSErrorWebpkiBadDER), |subject| {
             while !subject.at_end() {
@@ -217,7 +217,7 @@ fn inner_mesalink_x509_get_subject_name(
         })
         .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER));
 
-    let x509_name = MESALINK_X509_NAME::new(subject_name);
+    let x509_name = MESALINK_X509_NAME::new(subject_name.as_bytes());
     Ok(Box::into_raw(Box::new(x509_name)) as *mut MESALINK_X509_NAME)
 }
 
@@ -242,7 +242,7 @@ fn inner_mesalink_x509_name_oneline(
     let x509_name = sanitize_ptr_for_ref(x509_name_ptr)?;
     let buf_len: usize = buf_len as usize;
     unsafe {
-        let name: &[c_char] = mem::transmute::<&[u8], &[c_char]>(x509_name.name.as_bytes());
+        let name: &[c_char] = mem::transmute::<&[u8], &[c_char]>(&x509_name.name);
         let name_len: usize = name.len();
         if buf_ptr.is_null() {
             return Err(error!(ErrorCode::MesalinkErrorNullPointer));
@@ -276,15 +276,25 @@ mod tests {
         let x509 = MESALINK_X509::new(certs[0].clone());
         let x509_ptr = Box::into_raw(Box::new(x509)) as *mut MESALINK_X509;
 
-        let subject_der_ptr = mesalink_X509_get_subject_name(x509_ptr);
+        let buf = [0u8; 255];
+        let subject_der_ptr = mesalink_X509_get_subject(x509_ptr);
         assert_ne!(subject_der_ptr, ptr::null_mut());
+        let _ = mesalink_X509_NAME_oneline(
+            subject_der_ptr as *mut MESALINK_X509_NAME,
+            buf.as_ptr() as *mut c_char,
+            255,
+        );
+        println!("Subject DER: {:x?}", buf.to_vec());
+        mesalink_X509_NAME_free(subject_der_ptr);
 
         let subject_name_ptr = mesalink_X509_get_subject_name(x509_ptr);
-        let buf = [0u8; 253];
+        assert_ne!(subject_name_ptr, ptr::null_mut());
+
+        let buf = [0u8; 255];
         let _ = mesalink_X509_NAME_oneline(
             subject_name_ptr as *mut MESALINK_X509_NAME,
             buf.as_ptr() as *mut c_char,
-            253,
+            255,
         );
         println!("Subject name: {}", str::from_utf8(&buf).unwrap());
         mesalink_X509_NAME_free(subject_name_ptr);

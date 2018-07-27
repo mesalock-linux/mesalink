@@ -83,7 +83,8 @@ tls_client(SSL_CTX *ctx, const char *hostname)
     X509 *cert = SSL_get_peer_certificate(ssl);
 
     X509_NAME *subject_name = X509_get_subject_name(cert);
-    printf("[+] Subject name: %s\n", X509_NAME_oneline(subject_name, name_buf, 253));
+    printf("[+] Subject name: %s\n",
+           X509_NAME_oneline(subject_name, name_buf, 253));
     memset(name_buf, 0, 253);
 
     STACK_OF(X509_NAME) *names = X509_get_alt_subject_names(cert);
@@ -92,7 +93,7 @@ tls_client(SSL_CTX *ctx, const char *hostname)
     int i;
     for(i = 0; i < length; i++) {
       X509_NAME *name = sk_X509_NAME_value(names, i);
-      printf("%s, ", X509_NAME_oneline(name, name_buf, 253));
+      printf("%s ", X509_NAME_oneline(name, name_buf, 253));
     }
     printf("\n");
     sk_X509_NAME_free(names);
