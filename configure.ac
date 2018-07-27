@@ -50,20 +50,20 @@ AS_IF(test x$RUSTC = xno,
 )
 
 AX_COMPILER_VENDOR
-OPTIMIZE_CFLAGS="-Os -fvisibility=hidden -ffunction-sections -fdata-sections"
 
 if test x"$ax_cv_c_compiler_vendor" = x"gnu"
 then
-    OPTIMIZE_CFLAGS="$OPTIMIZE_CFLAGS -Wl,--gc-sections"
-    CARGO_RUSTC_ARGS="-- -C overflow-checks=yes -C link-args=-Wl,--gc-sections"
+    LT_LINKER_ARGS="-Wl,--gc-sections"
 fi
 
 if test x"$ax_cv_c_compiler_vendor" = x"clang"
 then
-    OPTIMIZE_CFLAGS="$OPTIMIZE_CFLAGS"
-    CARGO_RUSTC_ARGS="-- -C overflow-checks=yes -C link-args=-Wl,-dead_strip"
+    LT_LINKER_ARGS="-Wl,-dead_strip"
 fi
+AC_SUBST([LT_LINKER_ARGS])
 
+CARGO_RUSTC_ARGS="-- -C overflow-checks=yes"
+OPTIMIZE_CFLAGS="-Os -fvisibility=hidden -ffunction-sections -fdata-sections"
 DEBUG_CFLAGS="-g -ggdb -O0 -Wall"
 
 AX_HARDEN_CC_COMPILER_FLAGS

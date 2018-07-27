@@ -18,6 +18,7 @@ libmesalink_la_LDFLAGS = \
 	-no-undefined \
 	-version-info ${MESALINK_LIBRARY_VERSION} \
 	-export-symbols-regex "^mesalink_.*" \
+	$(LT_LINKER_ARGS) \
 	$(AM_LDFLAGS)
 libmesalink_la_LIBADD = \
 	$(RUST_LIB)
