@@ -70,8 +70,7 @@ script:
   du -sh $TRAVIS_BUILD_DIR/inst/usr/local/lib/libmesalink.* ;
   if [[ x"$TARGET" == "x" ]]; then ./examples/client/client google.com ; RUST_BACKTRACE=1 cargo test ; ( cd bogo && ./runme ) ; fi
 after_success:
-- if [[ x"$COVERAGE" == x"yes" ]]; then bash <(curl https://raw.githubusercontent.com/xd009642/tarpaulin/master/travis-install.sh)
-  ; cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID; fi
+- if [[ x"$COVERAGE" == x"yes" ]]; then RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install cargo-tarpaulin; cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID; fi
 notifications:
   slack:
     secure: c0IaJbDfVEfNoRW3jwBDeQK2SCB+eYLOlky3yMSrgw74OORo5hvWbaJrU0CGF6FQSPftxc6kAYmAtQD+NLPWhjvdF4GUflhgi7ZGsgTgq2dH/FnWafBzOuCq0fnUkl2GH08I+Rbl+rNiEM4VwbkKiNJoT6voonjr5WAru2ZDRMGVO3apbFdPnyZXfm49IcXML7JKZqCSfcM3aMXMQlzf1/kXXATTBhfU2gbF98EIki/GsWP9o2uYGp51AFj8jp1JKNFDp1hiNvPmpPA74+VA5G15u3BkdjU1zPAl29J8TZf5HTcWWItCaZMcNJ9mg0ftsF02SFLfevClMZXh4CHo8VEojgyCs9p6WGLPlyUEAeQAu/xzBVTD3qp9+MxTEYBEiHriqVxtZu8gvs/OYA4y0bLyNpeEGQ1nimcvzhKzdBMkdveMg3CMHsQcTLgyHXo8ajdPjY6QBrRCwzPoZt+LrktdIqcNgcDzasaC64+eT7mANdrELCxKQKGl99Ot5Cmd6zQJCTJXEr+Fmw3OepRdzZnjrNCXOp+HFRwueKBN1hnm+tE9EeNSL0tneV0Rx9xRm8xTl4/lgtw/ku0OdMW/lfe1ocmQ2UrgCAM4PrXiqwnKP9fCrZX2VsELOhSOOSjdm90UVLRW4wY/KWVwx4N7hePIIBb1mVVxjPKkqpAPTiU=
