@@ -333,7 +333,7 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC) {
 
 fn main() {
     let mut args: Vec<_> = env::args().collect();
-    env_logger::init().unwrap();
+    env_logger::init();
 
     args.remove(0);
     println!("options: {:?}", args);
