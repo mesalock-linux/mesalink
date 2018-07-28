@@ -434,9 +434,9 @@ pub extern "C" fn mesalink_library_init() -> c_int {
 #[cfg(feature = "error_strings")]
 fn init_logger() {
     use env_logger;
-    let mut logger = env_logger::LogBuilder::new();
-    let _ = logger.parse("trace");
-    let _ = logger.init().unwrap();
+    env_logger::Builder::new()
+        .parse("trace")
+        .init()
 }
 
 #[cfg(not(feature = "error_strings"))]
@@ -808,7 +808,8 @@ fn inner_mesalink_ssl_ctx_use_certificate_chain_file(
     if let Ok((certs, priv_key)) = util::try_get_context_certs_and_key(ctx) {
         util::get_context_mut(ctx)
             .server_config
-            .set_single_cert(certs, priv_key);
+            .set_single_cert(certs, priv_key)
+            .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
     }
     Ok(SSL_SUCCESS)
 }
@@ -868,7 +869,8 @@ fn inner_mesalink_ssl_ctx_use_privatekey_file(
     if let Ok((certs, priv_key)) = util::try_get_context_certs_and_key(ctx) {
         util::get_context_mut(ctx)
             .server_config
-            .set_single_cert(certs, priv_key);
+            .set_single_cert(certs, priv_key)
+            .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
     }
     Ok(SSL_SUCCESS)
 }

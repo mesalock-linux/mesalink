@@ -33,13 +33,13 @@ verifier = ["rustls/dangerous_configuration"]
 nightly = []
 
 [dependencies]
-rustls = "0.12.0"
-webpki = "0.18.0-alpha"
-ring = { version = "0.13.0-alpha5", features = ["rsa_signing", ] }
-untrusted = "0.6.1"
-webpki-roots = "0.14.0"
-env_logger = "0.4.2"
-libc = "0.2"
+rustls = "0.13.0"
+webpki = "0.18.1"
+ring = { version = "0.13.2", features = ["rsa_signing", ] }
+untrusted = "0.6.2"
+webpki-roots = "0.15.0"
+env_logger = "0.5"
+libc = "0.2.42"
 lazy_static = "1.0.0"
 enum_to_u8_slice_derive = "0.1"
 
