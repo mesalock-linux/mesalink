@@ -143,7 +143,7 @@ fn inner_mesalink_x509_get_subject(
     let x509 =
         webpki::EndEntityCert::from(cert_der).map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
     let subject = x509.inner.subject.as_slice_less_safe();
-    let subject_len = subject.len() + 1; // webpki bug
+    let subject_len = subject.len();
     let mut value = Vec::new();
     if subject_len <= 127 {
         value.extend_from_slice(&[0x30, subject.len() as u8]);
