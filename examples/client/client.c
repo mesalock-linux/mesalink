@@ -82,6 +82,9 @@ tls_client(SSL_CTX *ctx, const char *hostname)
     char name_buf[253] = { 0 };
     X509 *cert = SSL_get_peer_certificate(ssl);
 
+    X509_NAME *tmp = X509_get_subject(cert);
+    X509_NAME_free(tmp);
+
     X509_NAME *subject_name = X509_get_subject_name(cert);
     printf("[+] Subject name: %s\n",
            X509_NAME_oneline(subject_name, name_buf, 253));

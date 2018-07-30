@@ -143,10 +143,28 @@ fn inner_mesalink_x509_get_subject(
     let x509 =
         webpki::EndEntityCert::from(cert_der).map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
     let subject = x509.inner.subject.as_slice_less_safe();
-    assert_eq!(true, subject.len() <= 253, "Subject in DER too long!");
-    let mut value = Vec::with_capacity(subject.len() + 2);
-    value.extend_from_slice(&[0x30, subject.len() as u8]);
+    let subject_len = subject.len() + 1; // webpki bug
+    let mut value = Vec::new();
+    if subject_len <= 127 {
+        value.extend_from_slice(&[0x30, subject.len() as u8]);
+    } else {
+        let mut size_of_length: usize = 0;
+        let mut subject_len_tmp = subject_len;
+        while subject_len_tmp != 0 {
+            size_of_length += 1;
+            subject_len_tmp /= 256;
+        }
+        let mut subject_len_tmp = subject_len;
+        value.extend_from_slice(&[0x30, 128 + size_of_length as u8]);
+        let mut length_bytes = vec![0; size_of_length];
+        for i in 0..size_of_length {
+            length_bytes[size_of_length - i - 1] = (subject_len_tmp & 0xff) as u8;
+            subject_len_tmp >>= 8;
+        }
+        value.extend_from_slice(length_bytes.as_slice());
+    }
     value.extend_from_slice(subject);
+    value.shrink_to_fit();
     let x509_name = MESALINK_X509_NAME::new(&value);
     Ok(Box::into_raw(Box::new(x509_name)) as *mut MESALINK_X509_NAME)
 }
