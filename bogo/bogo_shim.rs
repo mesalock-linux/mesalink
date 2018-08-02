@@ -206,7 +206,7 @@ fn cleanup(ssl: *mut ssl::MESALINK_SSL, ctx: *mut ssl::MESALINK_CTX_ARC) {
 fn flush(ssl: *mut ssl::MESALINK_SSL, conn: &mut net::TcpStream) {
     unsafe {
         let ssl_ref = &mut *ssl;
-        let _ = ssl_ref.flush();
+        let _ = ssl_ref.ssl_flush();
     }
     let _ = conn.flush();
 }

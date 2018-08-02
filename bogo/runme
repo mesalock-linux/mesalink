@@ -36,5 +36,5 @@ case $OSTYPE in darwin*) set +e ;; esac
 set -o pipefail
 ( cd bogo && ./bogo.test -shim-path ../../target/release/examples/bogo_shim \
      -shim-config ../config.json \
-     -test.parallel 2 -num-workers 4 \
-     -pipe -allow-unimplemented | grep -v "^UNIMPLEMENTED" )
+     -test.parallel 1 -num-workers 1 \
+     -pipe -allow-unimplemented  )
