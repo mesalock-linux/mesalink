@@ -59,10 +59,10 @@ mod macros {
     #[macro_export]
     macro_rules! check_inner_result {
         ($inner:expr, $err_ret:expr) => {{
-            use ssl::err::{ErrorCode, ErrorQueue};
+            use ssl::err::{MesalinkBuiltinError, ErrorQueue};
             use std::panic;
             match panic::catch_unwind(panic::AssertUnwindSafe(|| $inner))
-                .unwrap_or_else(|_| Err(error!(ErrorCode::MesalinkErrorPanic)))
+                .unwrap_or_else(|_| Err(error!(MesalinkBuiltinError::ErrorPanic.into())))
             {
                 Ok(r) => r,
                 Err(e) => {
@@ -112,7 +112,7 @@ pub const SSL_SUCCESS: c_int = SslConstants::SslSuccess as c_int;
 #[macro_use]
 #[doc(hidden)]
 pub mod error_san {
-    use ssl::err::{ErrorCode, MesalinkInnerResult};
+    use ssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
     use ssl::MesalinkOpaquePointerType;
 
     pub fn sanitize_const_ptr_for_ref<'a, T>(ptr: *const T) -> MesalinkInnerResult<&'a T>
@@ -135,12 +135,12 @@ pub mod error_san {
         T: MesalinkOpaquePointerType,
     {
         if ptr.is_null() {
-            return Err(error!(ErrorCode::MesalinkErrorNullPointer));
+            return Err(error!(MesalinkBuiltinError::ErrorNullPointer.into()));
         }
         let obj_ref: &mut T = unsafe { &mut *ptr };
         match obj_ref.check_magic() {
             true => Ok(obj_ref),
-            false => Err(error!(ErrorCode::MesalinkErrorMalformedObject)),
+            false => Err(error!(MesalinkBuiltinError::ErrorMalformedObject.into())),
         }
     }
 }

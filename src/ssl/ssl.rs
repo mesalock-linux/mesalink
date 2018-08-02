@@ -37,7 +37,9 @@
 
 use libc::{c_char, c_int, c_long, c_uchar};
 use rustls;
-use ssl::err::{ErrorCode, ErrorQueue, MesalinkInnerResult};
+use ssl::err::{
+    ErrorCode, MesalinkBuiltinError, MesalinkError, MesalinkErrorType, MesalinkInnerResult,
+};
 use ssl::error_san::*;
 use ssl::x509::MESALINK_X509;
 use ssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
@@ -240,6 +242,77 @@ impl MesalinkOpaquePointerType for MESALINK_SSL {
     }
 }
 
+fn complete_io(
+    session: &mut Box<Session>,
+    io: &mut net::TcpStream,
+) -> Result<(usize, usize), MesalinkError> {
+    let until_handshaked = session.is_handshaking();
+    let mut wrlen = 0;
+    let mut rdlen = 0;
+    let mut eof = false;
+    loop {
+        while session.wants_write() {
+            match session.write_tls(io) {
+                Ok(n) => wrlen += n,
+                Err(e) => {
+                    if e.kind() == io::ErrorKind::WouldBlock {
+                        return Err(error!(MesalinkBuiltinError::ErrorWantWrite.into()));
+                    } else {
+                        return Err(error!(e.into()));
+                    }
+                }
+            }
+        }
+        if !until_handshaked && wrlen > 0 {
+            return Ok((wrlen, rdlen));
+        }
+        if !eof && session.wants_read() {
+            match session.read_tls(io) {
+                Ok(0) => eof = true,
+                Ok(n) => rdlen += n,
+                Err(e) => {
+                    if e.kind() == io::ErrorKind::WouldBlock {
+                        return Err(error!(MesalinkBuiltinError::ErrorWantRead.into()));
+                    } else {
+                        return Err(error!(e.into()));
+                    }
+                }
+            }
+        }
+        match session.process_new_packets() {
+            // flush io to send any unsent alerts
+            Err(tls_err) => {
+                let _ignored = session.write_tls(io);
+                return Err(error!(tls_err.into()));
+            }
+            Ok(_) => {}
+        }
+        match (eof, until_handshaked, session.is_handshaking()) {
+            (_, true, false) => return Ok((rdlen, wrlen)),
+            (_, false, _) => return Ok((rdlen, wrlen)),
+            (true, true, true) => {
+                return Err(error!(
+                    io::Error::new(io::ErrorKind::UnexpectedEof, "Unexpected EOF").into()
+                ))
+            }
+            (..) => (),
+        }
+    }
+}
+
+fn complete_prior_io(
+    session: &mut Box<Session>,
+    io: &mut net::TcpStream,
+) -> Result<(), MesalinkError> {
+    if session.is_handshaking() {
+        complete_io(session, io)?;
+    }
+    if session.wants_write() {
+        complete_io(session, io)?;
+    }
+    Ok(())
+}
+
 impl MESALINK_SSL {
     fn new(ctx: &MESALINK_CTX_ARC) -> MESALINK_SSL {
         MESALINK_SSL {
@@ -254,149 +327,41 @@ impl MESALINK_SSL {
             eof: false,
         }
     }
-}
 
-fn complete_io(
-    session: &mut Box<Session>,
-    io: &mut net::TcpStream,
-) -> Result<(usize, usize), ErrorCode> {
-    let until_handshaked = session.is_handshaking();
-    let mut wrlen = 0;
-    let mut rdlen = 0;
-    let mut eof = false;
-    loop {
-        while session.wants_write() {
-            match session.write_tls(io) {
-                Ok(n) => wrlen += n,
-                Err(e) => {
-                    if e.kind() == io::ErrorKind::WouldBlock {
-                        return Err(ErrorCode::MesalinkErrorWantWrite);
-                    } else {
-                        return Err(ErrorCode::from(&e));
-                    }
-                }
-            }
-        }
-        if !until_handshaked && wrlen > 0 {
-            return Ok((wrlen, rdlen));
-        }
-        if !eof && session.wants_read() {
-            match session.read_tls(io) {
-                Ok(n) => {
-                    if n == 0 {
-                        eof = true;
-                    } else {
-                        rdlen += n;
-                    }
-                }
-                Err(e) => {
-                    if e.kind() == io::ErrorKind::WouldBlock {
-                        return Err(ErrorCode::MesalinkErrorWantRead);
-                    } else {
-                        return Err(ErrorCode::from(&e));
-                    }
-                }
-            }
-        }
-        match session.process_new_packets() {
-            // flush io to send any unsent alerts
-            Err(tls_err) => {
-                while session.wants_write() {
-                    let _ = session.write_tls(io).map_err(|e| ErrorCode::from(&e))?;
-                }
-                let _ = io.flush().map_err(|e| ErrorCode::from(&e))?;
-                return Err(ErrorCode::from(&tls_err));
-            }
-            Ok(_) => {}
-        }
-        match (eof, until_handshaked, session.is_handshaking()) {
-            (_, true, false) => return Ok((rdlen, wrlen)),
-            (_, false, _) => return Ok((rdlen, wrlen)),
-            (true, true, true) => return Err(ErrorCode::IoErrorUnexpectedEof),
-            (..) => (),
-        }
-    }
-}
-
-#[doc(hidden)]
-impl Read for MESALINK_SSL {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        match (self.session.as_mut(), self.io.as_mut()) {
-            (Some(session), Some(io)) => loop {
-                match self.error {
-                    ErrorCode::MesalinkErrorNone
-                    | ErrorCode::MesalinkErrorWantRead
-                    | ErrorCode::MesalinkErrorWantWrite => self.error = ErrorCode::default(),
-                    _ => (),
-                };
-                match session.read(buf) {
-                    Ok(0) => match complete_io(session, io) {
-                        Err(e) => {
-                            self.error = e;
-                            return Err(io::Error::from(io::ErrorKind::InvalidData));
-                        }
-                        Ok((rdlen, wrlen)) => {
-                            if rdlen == 0 && wrlen == 0 {
-                                self.eof = true;
-                                return Ok(0);
-                            }
-                        }
-                    },
-                    Ok(n) => {
-                        self.error = ErrorCode::default();
-                        return Ok(n);
-                    }
-                    Err(e) => {
-                        self.error = ErrorCode::from(&e);
-                        return Err(e);
-                    }
-                }
-            },
-            _ => {
-                ErrorQueue::push_error(error!(ErrorCode::MesalinkErrorBadFuncArg));
-                Err(io::Error::from(io::ErrorKind::Other))
-            }
-        }
-    }
-}
-
-#[doc(hidden)]
-impl Write for MESALINK_SSL {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+    pub fn ssl_read(&mut self, buf: &mut [u8]) -> Result<usize, MesalinkError> {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => {
-                let len = session.write(buf)?;
-                match session.write_tls(io) {
-                    Ok(_) => return Ok(len),
-                    Err(io_err) => {
-                        self.error = ErrorCode::from(&io_err);
-                        return Err(io_err);
-                    }
-                }
+                complete_prior_io(session, io)?;
+                while session.wants_read() && complete_io(session, io)?.0 != 0 {}
+                session.read(buf).map_err(|e| error!(e.into()))
             }
-            _ => {
-                ErrorQueue::push_error(error!(ErrorCode::MesalinkErrorNullPointer));
-                Err(io::Error::from(io::ErrorKind::Other))
-            }
+            _ => Err(error!(MesalinkBuiltinError::ErrorBadFuncArg.into())),
         }
     }
 
-    fn flush(&mut self) -> io::Result<()> {
+    pub fn ssl_write(&mut self, buf: &[u8]) -> Result<usize, MesalinkError> {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => {
-                let ret = session.flush();
-                match session.write_tls(io) {
-                    Ok(_) => return ret,
-                    Err(io_err) => {
-                        self.error = ErrorCode::from(&io_err);
-                        return Err(io_err);
-                    }
+                complete_prior_io(session, io)?;
+                let len = session.write(buf).map_err(|e| error!(e.into()))?;
+                complete_io(session, io)?;
+                Ok(len)
+            }
+            _ => Err(error!(MesalinkBuiltinError::ErrorBadFuncArg.into())),
+        }
+    }
+
+    pub fn ssl_flush(&mut self) -> Result<(), MesalinkError> {
+        match (self.session.as_mut(), self.io.as_mut()) {
+            (Some(session), Some(io)) => {
+                complete_prior_io(session, io)?;
+                let len = session.flush().map_err(|e| error!(e.into()))?;
+                if session.wants_write() {
+                    complete_io(session, io)?;
                 }
+                Ok(())
             }
-            _ => {
-                ErrorQueue::push_error(error!(ErrorCode::MesalinkErrorNullPointer));
-                Err(io::Error::from(io::ErrorKind::Other))
-            }
+            _ => Err(error!(MesalinkBuiltinError::ErrorBadFuncArg.into())),
         }
     }
 }
@@ -434,9 +399,7 @@ pub extern "C" fn mesalink_library_init() -> c_int {
 #[cfg(feature = "error_strings")]
 fn init_logger() {
     use env_logger;
-    env_logger::Builder::new()
-        .parse("trace")
-        .init()
+    env_logger::Builder::new().parse("trace").init()
 }
 
 #[cfg(not(feature = "error_strings"))]
@@ -791,25 +754,25 @@ fn inner_mesalink_ssl_ctx_use_certificate_chain_file(
 
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     if filename_ptr.is_null() {
-        return Err(error!(ErrorCode::MesalinkErrorNullPointer));
+        return Err(error!(MesalinkBuiltinError::ErrorNullPointer.into()));
     }
     let filename = unsafe {
         ffi::CStr::from_ptr(filename_ptr)
             .to_str()
-            .map_err(|_| error!(ErrorCode::MesalinkErrorBadFuncArg))?
+            .map_err(|_| error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?
     };
-    let file = fs::File::open(filename).map_err(|e| error!(ErrorCode::from(&e)))?;
+    let file = fs::File::open(filename).map_err(|e| error!(e.into()))?;
     let certs = internal::pemfile::certs(&mut io::BufReader::new(file))
-        .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+        .map_err(|_| error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     if certs.len() <= 0 {
-        return Err(error!(ErrorCode::TLSErrorWebpkiBadDER));
+        return Err(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()));
     }
     util::get_context_mut(ctx).certificates = Some(certs);
     if let Ok((certs, priv_key)) = util::try_get_context_certs_and_key(ctx) {
         util::get_context_mut(ctx)
             .server_config
             .set_single_cert(certs, priv_key)
-            .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+            .map_err(|e| error!(e.into()))?;
     }
     Ok(SSL_SUCCESS)
 }
@@ -846,18 +809,18 @@ fn inner_mesalink_ssl_ctx_use_privatekey_file(
 
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     if filename_ptr.is_null() {
-        return Err(error!(ErrorCode::MesalinkErrorNullPointer));
+        return Err(error!(MesalinkBuiltinError::ErrorNullPointer.into()));
     }
     let filename = unsafe {
         ffi::CStr::from_ptr(filename_ptr)
             .to_str()
-            .map_err(|_| error!(ErrorCode::IoErrorInvalidInput))?
+            .map_err(|_| error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?
     };
-    let file = fs::File::open(filename).map_err(|e| error!(ErrorCode::from(&e)))?;
+    let file = fs::File::open(filename).map_err(|e| error!(e.into()))?;
     let rsa_keys = internal::pemfile::rsa_private_keys(&mut io::BufReader::new(file));
-    let file = fs::File::open(filename).map_err(|e| error!(ErrorCode::from(&e)))?;
+    let file = fs::File::open(filename).map_err(|e| error!(e.into()))?;
     let pk8_keys = internal::pemfile::pkcs8_private_keys(&mut io::BufReader::new(file));
-    let mut valid_keys = Err(error!(ErrorCode::TLSErrorWebpkiBadDER));
+    let mut valid_keys = Err(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()));
     valid_keys = rsa_keys
         .and_then(|keys| if keys.len() <= 0 { Err(()) } else { Ok(keys) })
         .or_else(|_| valid_keys);
@@ -870,7 +833,7 @@ fn inner_mesalink_ssl_ctx_use_privatekey_file(
         util::get_context_mut(ctx)
             .server_config
             .set_single_cert(certs, priv_key)
-            .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+            .map_err(|e| error!(e.into()))?;
     }
     Ok(SSL_SUCCESS)
 }
@@ -901,13 +864,13 @@ fn inner_mesalink_ssl_ctx_check_private_key(
     match (&ctx.certificates, &ctx.private_key) {
         (&Some(ref certs), &Some(ref key)) => {
             let rsa_key = sign::RSASigningKey::new(&key)
-                .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+                .map_err(|_| error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
             sign::CertifiedKey::new(certs.clone(), Arc::new(Box::new(rsa_key)))
                 .cross_check_end_entity_cert(None)
-                .map_err(|e| error!(ErrorCode::from(&e)))?;
+                .map_err(|e| error!(e.into()))?;
             Ok(SSL_SUCCESS)
         }
-        _ => Err(error!(ErrorCode::MesalinkErrorBadFuncArg)),
+        _ => Err(error!(MesalinkBuiltinError::ErrorBadFuncArg.into())),
     }
 }
 
@@ -1066,7 +1029,7 @@ fn inner_mesalink_ssl_get_ssl_ctx(
     let ssl = sanitize_ptr_for_ref(ssl_ptr)?;
     let ctx = ssl.context
         .as_ref()
-        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+        .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     Ok(ctx as *const MESALINK_CTX_ARC)
 }
 
@@ -1099,7 +1062,7 @@ fn inner_mesalink_ssl_set_ssl_ctx(
     ssl.server_config = Arc::new(ctx.server_config.clone());
     let ctx_ref = ssl.context
         .as_ref()
-        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+        .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     Ok(ctx_ref as *const MESALINK_CTX_ARC)
 }
 
@@ -1129,10 +1092,10 @@ fn inner_mesalink_ssl_get_current_cipher(
     let ssl = sanitize_ptr_for_ref(ssl_ptr)?;
     let session = ssl.session
         .as_ref()
-        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+        .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     let ciphersuite = session
         .get_negotiated_ciphersuite()
-        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+        .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     Ok(Box::into_raw(Box::new(MESALINK_CIPHER::new(ciphersuite)))) // Allocates memory!
 }
 
@@ -1200,7 +1163,7 @@ fn inner_mesalink_ssl_cipher_get_bits(
     let ciphersuite = sanitize_ptr_for_ref(cipher_ptr)?;
     unsafe {
         if bits_ptr.is_null() {
-            return Err(error!(ErrorCode::MesalinkErrorNullPointer));
+            return Err(error!(MesalinkBuiltinError::ErrorNullPointer.into()));
         }
         ptr::write(bits_ptr, ciphersuite.ciphersuite.enc_key_len as c_int);
     }
@@ -1371,13 +1334,13 @@ fn inner_mesalink_ssl_get_peer_certificates(
 fn get_peer_certificates(ssl: &mut MESALINK_SSL) -> MesalinkInnerResult<Vec<rustls::Certificate>> {
     let session = ssl.session
         .as_mut()
-        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+        .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     session
         .get_peer_certificates()
-        .ok_or(error!(ErrorCode::TLSErrorHandshakeNotComplete))
+        .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))
         .and_then(|certs| {
             if certs.len() <= 0 {
-                Err(error!(ErrorCode::TLSErrorNoCertificatesPresented))
+                Err(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))
             } else {
                 Ok(certs)
             }
@@ -1409,15 +1372,15 @@ fn inner_mesalink_ssl_set_tlsext_host_name(
 ) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     if hostname_ptr.is_null() {
-        return Err(error!(ErrorCode::MesalinkErrorNullPointer));
+        return Err(error!(MesalinkBuiltinError::ErrorNullPointer.into()));
     }
     let hostname = unsafe {
         ffi::CStr::from_ptr(hostname_ptr)
             .to_str()
-            .map_err(|_| error!(ErrorCode::MesalinkErrorBadFuncArg))?
+            .map_err(|_| error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?
     };
     let _ = webpki::DNSNameRef::try_from_ascii_str(hostname)
-        .map_err(|_| error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+        .map_err(|_| error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     ssl.hostname = Some(hostname.to_owned());
     Ok(SSL_SUCCESS)
 }
@@ -1439,7 +1402,7 @@ pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> 
 fn inner_mesalink_ssl_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     if fd < 0 {
-        return Err(error!(ErrorCode::MesalinkErrorBadFuncArg));
+        return Err(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()));
     }
     let socket = unsafe { net::TcpStream::from_raw_fd(fd) };
     ssl.io = Some(socket);
@@ -1462,7 +1425,7 @@ fn inner_measlink_ssl_get_fd(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
     let ssl = sanitize_ptr_for_ref(ssl_ptr)?;
     let socket = ssl.io
         .as_ref()
-        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+        .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     Ok(socket.as_raw_fd())
 }
 
@@ -1484,15 +1447,15 @@ fn inner_mesalink_ssl_do_handshake(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerR
         (Some(session), Some(io)) => if session.is_handshaking() {
             match complete_io(session, io) {
                 Err(e) => {
-                    ssl.error = e;
-                    return Err(error!(e));
+                    ssl.error = ErrorCode::from(&e);
+                    return Err(e);
                 }
                 Ok(_) => Ok(SSL_SUCCESS),
             }
         } else {
             Ok(SSL_SUCCESS)
         },
-        _ => Err(error!(ErrorCode::MesalinkErrorBadFuncArg)),
+        _ => Err(error!(MesalinkBuiltinError::ErrorBadFuncArg.into())),
     }
 }
 
@@ -1542,21 +1505,21 @@ fn inner_mesalink_ssl_connect(
     };
     let mut io = ssl.io
         .as_mut()
-        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+        .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     if ssl.session.is_none() {
         let hostname = ssl.hostname
             .as_ref()
-            .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+            .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
         let dnsname = webpki::DNSNameRef::try_from_ascii_str(hostname)
-            .map_err(|_| error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+            .map_err(|_| error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
         let client_session = rustls::ClientSession::new(&ssl.client_config, dnsname);
         ssl.session = Some(Box::new(client_session));
     }
     if !is_lazy {
         match complete_io(ssl.session.as_mut().unwrap(), &mut io) {
             Err(e) => {
-                ssl.error = e;
-                Err(error!(e))
+                ssl.error = ErrorCode::from(&e);
+                Err(e)
             }
             Ok(_) => Ok(SSL_SUCCESS),
         }
@@ -1593,15 +1556,15 @@ fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
     };
     let mut io = ssl.io
         .as_mut()
-        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+        .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     if ssl.session.is_none() {
         let server_session = rustls::ServerSession::new(&ssl.server_config);
         ssl.session = Some(Box::new(server_session));
     }
     match complete_io(ssl.session.as_mut().unwrap(), &mut io) {
         Err(e) => {
-            ssl.error = e;
-            return Err(error!(e));
+            ssl.error = ErrorCode::from(&e);
+            Err(e)
         }
         Ok(_) => Ok(SSL_SUCCESS),
     }
@@ -1657,16 +1620,21 @@ fn inner_mesalink_ssl_read(
     buf_len: c_int,
 ) -> MesalinkInnerResult<c_int> {
     if buf_ptr.is_null() || buf_len < 0 {
-        return Err(error!(ErrorCode::MesalinkErrorBadFuncArg));
+        return Err(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()));
     }
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     let buf = unsafe { slice::from_raw_parts_mut(buf_ptr, buf_len as usize) };
-    match ssl.read(buf) {
+    match ssl.ssl_read(buf) {
         Ok(count) => Ok(count as c_int),
-        Err(e) => match e.kind() {
-            io::ErrorKind::WouldBlock | io::ErrorKind::NotConnected => Ok(SSL_ERROR),
-            _ => Err(error!(ErrorCode::from(&e))),
-        },
+        Err(e) => {
+            if let MesalinkErrorType::IoError(io_err) = e.error {
+                match io_err.kind() {
+                    io::ErrorKind::WouldBlock | io::ErrorKind::NotConnected => return Ok(SSL_ERROR),
+                    _ => (),
+                }
+            }
+            Err(e)
+        }
     }
 }
 
@@ -1696,16 +1664,21 @@ fn inner_mesalink_ssl_write(
     buf_len: c_int,
 ) -> MesalinkInnerResult<c_int> {
     if buf_ptr.is_null() || buf_len < 0 {
-        return Err(error!(ErrorCode::MesalinkErrorBadFuncArg));
+        return Err(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()));
     }
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     let buf = unsafe { slice::from_raw_parts(buf_ptr, buf_len as usize) };
-    match ssl.write(buf) {
+    match ssl.ssl_write(buf) {
         Ok(count) => Ok(count as c_int),
-        Err(e) => match e.kind() {
-            io::ErrorKind::WouldBlock | io::ErrorKind::NotConnected => Ok(SSL_ERROR),
-            _ => Err(error!(ErrorCode::from(&e))),
-        },
+        Err(e) => {
+            if let MesalinkErrorType::IoError(io_err) = e.error {
+                match io_err.kind() {
+                    io::ErrorKind::WouldBlock | io::ErrorKind::NotConnected => return Ok(SSL_ERROR),
+                    _ => (),
+                }
+            }
+            Err(e)
+        }
     }
 }
 
@@ -1725,7 +1698,7 @@ fn inner_mesalink_ssl_shutdown(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResul
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     let session = ssl.session
         .as_mut()
-        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+        .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     session.send_close_notify();
     Ok(SSL_SUCCESS)
 }
@@ -1748,10 +1721,10 @@ fn inner_mesalink_ssl_get_version(
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     let session = ssl.session
         .as_ref()
-        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+        .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     let version = session
         .get_protocol_version()
-        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+        .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     match version {
         rustls::ProtocolVersion::TLSv1_2 => Ok(util::CONST_TLS12_STR.as_ptr() as *const c_char),
         rustls::ProtocolVersion::TLSv1_3 => Ok(util::CONST_TLS13_STR.as_ptr() as *const c_char),
@@ -1965,7 +1938,7 @@ mod tests {
             let ret =
                 mesalink_SSL_write(self.ssl, buf.as_ptr() as *mut c_uchar, buf.len() as c_int);
             let ssl = sanitize_ptr_for_mut_ref(self.ssl).unwrap();
-            assert_eq!(true, ssl.flush().is_ok());
+            assert_eq!(true, ssl.ssl_flush().is_ok());
             ret
         }
 

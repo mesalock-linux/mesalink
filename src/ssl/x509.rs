@@ -16,7 +16,7 @@
 use libc::{c_char, c_int};
 use ring::der;
 use rustls;
-use ssl::err::{ErrorCode, MesalinkInnerResult};
+use ssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
 use ssl::error_san::*;
 use ssl::safestack::MESALINK_STACK_MESALINK_X509_NAME;
 use ssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
@@ -110,16 +110,16 @@ fn inner_mesalink_x509_get_alt_subject_names(
 ) -> MesalinkInnerResult<*mut MESALINK_STACK_MESALINK_X509_NAME> {
     let cert = sanitize_ptr_for_ref(x509_ptr)?;
     let cert_der = untrusted::Input::from(&cert.cert_data.0);
-    let x509 =
-        webpki::EndEntityCert::from(cert_der).map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+    let x509 = webpki::EndEntityCert::from(cert_der)
+        .map_err(|e| error!(rustls::TLSError::WebPKIError(e).into()))?;
     let subject_alt_name = x509.inner
         .subject_alt_name
-        .ok_or(error!(ErrorCode::TLSErrorWebpkiExtensionValueInvalid))?;
+        .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     let mut reader = untrusted::Reader::new(subject_alt_name);
     let mut stack = MESALINK_STACK_MESALINK_X509_NAME::new(Vec::new());
     while !reader.at_end() {
         let (tag, value) = der::read_tag_and_get_value(&mut reader)
-            .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+            .map_err(|_| error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
         if tag == 0x82 {
             let x509_name = MESALINK_X509_NAME::new(value.as_slice_less_safe());
             stack.stack.push(x509_name);
@@ -140,8 +140,8 @@ fn inner_mesalink_x509_get_subject(
 ) -> MesalinkInnerResult<*mut MESALINK_X509_NAME> {
     let cert = sanitize_ptr_for_ref(x509_ptr)?;
     let cert_der = untrusted::Input::from(&cert.cert_data.0);
-    let x509 =
-        webpki::EndEntityCert::from(cert_der).map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+    let x509 = webpki::EndEntityCert::from(cert_der)
+        .map_err(|e| error!(rustls::TLSError::WebPKIError(e).into()))?;
     let subject = x509.inner.subject.as_slice_less_safe();
     let subject_len = subject.len();
     let mut value = Vec::new();
@@ -184,29 +184,30 @@ fn inner_mesalink_x509_get_subject_name(
 ) -> MesalinkInnerResult<*mut MESALINK_X509_NAME> {
     let cert = sanitize_ptr_for_ref(x509_ptr)?;
     let cert_der = untrusted::Input::from(&cert.cert_data.0);
-    let x509 =
-        webpki::EndEntityCert::from(cert_der).map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+    let x509 = webpki::EndEntityCert::from(cert_der)
+        .map_err(|e| error!(rustls::TLSError::WebPKIError(e).into()))?;
 
     let mut subject_name = String::new();
 
+    let x509_parse_error = error!(MesalinkBuiltinError::ErrorBadFuncArg.into());
     let _ = x509.inner
         .subject
-        .read_all(error!(ErrorCode::TLSErrorWebpkiBadDER), |subject| {
+        .read_all(x509_parse_error, |subject| {
             while !subject.at_end() {
-                let (maybe_asn_set_tag, sequence) = der::read_tag_and_get_value(subject)
-                    .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+                let (maybe_asn_set_tag, sequence) =
+                    der::read_tag_and_get_value(subject).map_err(|_| x509_parse_error)?;
                 if (maybe_asn_set_tag as usize) != 0x31 {
                     // Subject should be an ASN.1 SET
-                    return Err(error!(ErrorCode::TLSErrorWebpkiBadDER));
+                    return Err(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()));
                 }
-                let _ = sequence.read_all(error!(ErrorCode::TLSErrorWebpkiBadDER), |seq| {
+                let _ = sequence.read_all(x509_parse_error, |seq| {
                     let oid_and_data = der::expect_tag_and_get_value(seq, der::Tag::Sequence)
-                        .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
-                    oid_and_data.read_all(error!(ErrorCode::TLSErrorWebpkiBadDER), |oid_and_data| {
+                        .map_err(|_| x509_parse_error)?;
+                    oid_and_data.read_all(x509_parse_error, |oid_and_data| {
                         let oid = der::expect_tag_and_get_value(oid_and_data, der::Tag::OID)
-                            .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+                            .map_err(|_| x509_parse_error)?;
                         let (_, value) = der::read_tag_and_get_value(oid_and_data)
-                            .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER))?;
+                            .map_err(|_| x509_parse_error)?;
 
                         let keyword = match oid.as_slice_less_safe().last().unwrap() {
                             // RFC 1779, X.500 attrinutes, oid 2.5.4
@@ -233,7 +234,7 @@ fn inner_mesalink_x509_get_subject_name(
             }
             Ok(())
         })
-        .map_err(|_| error!(ErrorCode::TLSErrorWebpkiBadDER));
+        .map_err(|_| x509_parse_error);
 
     let x509_name = MESALINK_X509_NAME::new(subject_name.as_bytes());
     Ok(Box::into_raw(Box::new(x509_name)) as *mut MESALINK_X509_NAME)
@@ -263,7 +264,7 @@ fn inner_mesalink_x509_name_oneline(
         let name: &[c_char] = mem::transmute::<&[u8], &[c_char]>(&x509_name.name);
         let name_len: usize = name.len();
         if buf_ptr.is_null() {
-            return Err(error!(ErrorCode::MesalinkErrorNullPointer));
+            return Err(error!(MesalinkBuiltinError::ErrorNullPointer.into()));
         }
         let buf = slice::from_raw_parts_mut(buf_ptr, buf_len);
         if name_len + 1 > buf_len {

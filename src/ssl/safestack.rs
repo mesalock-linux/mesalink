@@ -14,7 +14,7 @@
  */
 
 use libc::c_int;
-use ssl::err::{ErrorCode, MesalinkInnerResult};
+use ssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
 use ssl::error_san::*;
 use ssl::x509::{MESALINK_X509, MESALINK_X509_NAME};
 use ssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
@@ -83,7 +83,7 @@ fn inner_mesalink_sk_X509_value(
     let item = stack
         .stack
         .get(index as usize)
-        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+        .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     Ok(item as *const MESALINK_X509)
 }
 
@@ -190,7 +190,7 @@ fn inner_mesalink_sk_X509_NAME_value(
     let item = stack
         .stack
         .get(index as usize)
-        .ok_or(error!(ErrorCode::MesalinkErrorBadFuncArg))?;
+        .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     Ok(item as *const MESALINK_X509_NAME)
 }
 
