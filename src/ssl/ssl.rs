@@ -233,7 +233,6 @@ pub struct MESALINK_SSL {
     io: Option<net::TcpStream>,
     session: Option<Box<Session>>,
     error: ErrorCode,
-    eof: bool,
 }
 
 impl MesalinkOpaquePointerType for MESALINK_SSL {
@@ -305,10 +304,10 @@ fn complete_prior_io(
     io: &mut net::TcpStream,
 ) -> Result<(), MesalinkError> {
     if session.is_handshaking() {
-        complete_io(session, io)?;
+        let _ = complete_io(session, io)?;
     }
     if session.wants_write() {
-        complete_io(session, io)?;
+        let _ = complete_io(session, io)?;
     }
     Ok(())
 }
@@ -324,7 +323,6 @@ impl MESALINK_SSL {
             io: None,
             session: None,
             error: ErrorCode::default(),
-            eof: false,
         }
     }
 
@@ -344,7 +342,7 @@ impl MESALINK_SSL {
             (Some(session), Some(io)) => {
                 complete_prior_io(session, io)?;
                 let len = session.write(buf).map_err(|e| error!(e.into()))?;
-                complete_io(session, io)?;
+                let _ = complete_io(session, io)?;
                 Ok(len)
             }
             _ => Err(error!(MesalinkBuiltinError::ErrorBadFuncArg.into())),
@@ -355,9 +353,9 @@ impl MESALINK_SSL {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => {
                 complete_prior_io(session, io)?;
-                let len = session.flush().map_err(|e| error!(e.into()))?;
+                let _ = session.flush().map_err(|e| error!(e.into()))?;
                 if session.wants_write() {
-                    complete_io(session, io)?;
+                    let _ = complete_io(session, io)?;
                 }
                 Ok(())
             }
@@ -1627,7 +1625,7 @@ fn inner_mesalink_ssl_read(
     match ssl.ssl_read(buf) {
         Ok(count) => Ok(count as c_int),
         Err(e) => {
-            if let MesalinkErrorType::IoError(io_err) = e.error {
+            if let MesalinkErrorType::IoError(io_err) = &e.error {
                 match io_err.kind() {
                     io::ErrorKind::WouldBlock | io::ErrorKind::NotConnected => return Ok(SSL_ERROR),
                     _ => (),
@@ -1671,7 +1669,7 @@ fn inner_mesalink_ssl_write(
     match ssl.ssl_write(buf) {
         Ok(count) => Ok(count as c_int),
         Err(e) => {
-            if let MesalinkErrorType::IoError(io_err) = e.error {
+            if let MesalinkErrorType::IoError(io_err) = &e.error {
                 match io_err.kind() {
                     io::ErrorKind::WouldBlock | io::ErrorKind::NotConnected => return Ok(SSL_ERROR),
                     _ => (),

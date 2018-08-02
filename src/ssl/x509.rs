@@ -189,52 +189,67 @@ fn inner_mesalink_x509_get_subject_name(
 
     let mut subject_name = String::new();
 
-    let x509_parse_error = error!(MesalinkBuiltinError::ErrorBadFuncArg.into());
     let _ = x509.inner
         .subject
-        .read_all(x509_parse_error, |subject| {
-            while !subject.at_end() {
-                let (maybe_asn_set_tag, sequence) =
-                    der::read_tag_and_get_value(subject).map_err(|_| x509_parse_error)?;
-                if (maybe_asn_set_tag as usize) != 0x31 {
-                    // Subject should be an ASN.1 SET
-                    return Err(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()));
+        .read_all(
+            error!(MesalinkBuiltinError::ErrorBadFuncArg.into()),
+            |subject| {
+                while !subject.at_end() {
+                    let (maybe_asn_set_tag, sequence) = der::read_tag_and_get_value(subject)
+                        .map_err(|_| error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
+                    if (maybe_asn_set_tag as usize) != 0x31 {
+                        // Subject should be an ASN.1 SET
+                        return Err(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()));
+                    }
+                    let _ = sequence.read_all(
+                        error!(MesalinkBuiltinError::ErrorBadFuncArg.into()),
+                        |seq| {
+                            let oid_and_data =
+                                der::expect_tag_and_get_value(seq, der::Tag::Sequence).map_err(
+                                    |_| error!(MesalinkBuiltinError::ErrorBadFuncArg.into()),
+                                )?;
+                            oid_and_data.read_all(
+                                error!(MesalinkBuiltinError::ErrorBadFuncArg.into()),
+                                |oid_and_data| {
+                                    let oid =
+                                        der::expect_tag_and_get_value(oid_and_data, der::Tag::OID)
+                                            .map_err(|_| {
+                                                error!(MesalinkBuiltinError::ErrorBadFuncArg.into())
+                                            })?;
+                                    let (_, value) = der::read_tag_and_get_value(oid_and_data)
+                                        .map_err(|_| {
+                                            error!(MesalinkBuiltinError::ErrorBadFuncArg.into())
+                                        })?;
+
+                                    let keyword = match oid.as_slice_less_safe().last().unwrap() {
+                                        // RFC 1779, X.500 attrinutes, oid 2.5.4
+                                        3 => "CN",  // CommonName
+                                        7 => "L",   // LocalityName
+                                        8 => "ST",  // StateOrProvinceName
+                                        10 => "O",  // OrganizationName
+                                        11 => "OU", // OrganizationalUnitName
+                                        6 => "C",   // CountryName
+                                        _ => "",
+                                    };
+
+                                    if keyword.len() > 0 {
+                                        if let Ok(s) = str::from_utf8(value.as_slice_less_safe()) {
+                                            subject_name.push_str("/");
+                                            subject_name.push_str(keyword);
+                                            subject_name.push_str("=");
+                                            subject_name.push_str(s);
+                                        }
+                                    }
+                                    Ok(())
+                                },
+                            )
+                        },
+                    );
                 }
-                let _ = sequence.read_all(x509_parse_error, |seq| {
-                    let oid_and_data = der::expect_tag_and_get_value(seq, der::Tag::Sequence)
-                        .map_err(|_| x509_parse_error)?;
-                    oid_and_data.read_all(x509_parse_error, |oid_and_data| {
-                        let oid = der::expect_tag_and_get_value(oid_and_data, der::Tag::OID)
-                            .map_err(|_| x509_parse_error)?;
-                        let (_, value) = der::read_tag_and_get_value(oid_and_data)
-                            .map_err(|_| x509_parse_error)?;
-
-                        let keyword = match oid.as_slice_less_safe().last().unwrap() {
-                            // RFC 1779, X.500 attrinutes, oid 2.5.4
-                            3 => "CN",  // CommonName
-                            7 => "L",   // LocalityName
-                            8 => "ST",  // StateOrProvinceName
-                            10 => "O",  // OrganizationName
-                            11 => "OU", // OrganizationalUnitName
-                            6 => "C",   // CountryName
-                            _ => "",
-                        };
-
-                        if keyword.len() > 0 {
-                            if let Ok(s) = str::from_utf8(value.as_slice_less_safe()) {
-                                subject_name.push_str("/");
-                                subject_name.push_str(keyword);
-                                subject_name.push_str("=");
-                                subject_name.push_str(s);
-                            }
-                        }
-                        Ok(())
-                    })
-                });
-            }
-            Ok(())
-        })
-        .map_err(|_| x509_parse_error);
+                Ok(())
+            },
+        )
+        .map_err(|_| error!(MesalinkBuiltinError::ErrorBadFuncArg.into()));
 
     let x509_name = MESALINK_X509_NAME::new(subject_name.as_bytes());
     Ok(Box::into_raw(Box::new(x509_name)) as *mut MESALINK_X509_NAME)

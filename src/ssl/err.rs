@@ -146,7 +146,7 @@
 
 use libc::{self, c_char, c_ulong, size_t};
 use rustls;
-use std::{io, slice, fmt, error};
+use std::{error, fmt, io, slice};
 use webpki;
 
 use std::cell::RefCell;
@@ -504,23 +504,23 @@ impl<'a> From<&'a MesalinkError> for ErrorCode {
         use rustls::internal::msgs::enums::{AlertDescription, ContentType};
         use rustls::TLSError;
         match e.error {
-            MesalinkErrorType::BuiltinError(e) => match e {
-                MesalinkBuiltinError::ErrorNone => ErrorCode::MesalinkErrorNone,
-                MesalinkBuiltinError::ErrorZeroReturn => ErrorCode::MesalinkErrorZeroReturn,
-                MesalinkBuiltinError::ErrorWantRead => ErrorCode::MesalinkErrorWantRead,
-                MesalinkBuiltinError::ErrorWantWrite => ErrorCode::MesalinkErrorWantWrite,
-                MesalinkBuiltinError::ErrorWantConnect => ErrorCode::MesalinkErrorWantConnect,
-                MesalinkBuiltinError::ErrorWantAccept => ErrorCode::MesalinkErrorWantAccept,
-                MesalinkBuiltinError::ErrorSyscall => ErrorCode::MesalinkErrorSyscall,
-                MesalinkBuiltinError::ErrorSsl => ErrorCode::MesalinkErrorSsl,
-                MesalinkBuiltinError::ErrorNullPointer => ErrorCode::MesalinkErrorNullPointer,
-                MesalinkBuiltinError::ErrorMalformedObject => {
+            MesalinkErrorType::BuiltinError(ref e) => match e {
+                &MesalinkBuiltinError::ErrorNone => ErrorCode::MesalinkErrorNone,
+                &MesalinkBuiltinError::ErrorZeroReturn => ErrorCode::MesalinkErrorZeroReturn,
+                &MesalinkBuiltinError::ErrorWantRead => ErrorCode::MesalinkErrorWantRead,
+                &MesalinkBuiltinError::ErrorWantWrite => ErrorCode::MesalinkErrorWantWrite,
+                &MesalinkBuiltinError::ErrorWantConnect => ErrorCode::MesalinkErrorWantConnect,
+                &MesalinkBuiltinError::ErrorWantAccept => ErrorCode::MesalinkErrorWantAccept,
+                &MesalinkBuiltinError::ErrorSyscall => ErrorCode::MesalinkErrorSyscall,
+                &MesalinkBuiltinError::ErrorSsl => ErrorCode::MesalinkErrorSsl,
+                &MesalinkBuiltinError::ErrorNullPointer => ErrorCode::MesalinkErrorNullPointer,
+                &MesalinkBuiltinError::ErrorMalformedObject => {
                     ErrorCode::MesalinkErrorMalformedObject
                 }
-                MesalinkBuiltinError::ErrorBadFuncArg => ErrorCode::MesalinkErrorBadFuncArg,
-                MesalinkBuiltinError::ErrorPanic => ErrorCode::MesalinkErrorPanic,
+                &MesalinkBuiltinError::ErrorBadFuncArg => ErrorCode::MesalinkErrorBadFuncArg,
+                &MesalinkBuiltinError::ErrorPanic => ErrorCode::MesalinkErrorPanic,
             },
-            MesalinkErrorType::IoError(e) => match e.kind() {
+            MesalinkErrorType::IoError(ref e) => match e.kind() {
                 io::ErrorKind::NotFound => ErrorCode::IoErrorNotFound,
                 io::ErrorKind::PermissionDenied => ErrorCode::IoErrorPermissionDenied,
                 io::ErrorKind::ConnectionRefused => ErrorCode::IoErrorConnectionRefused,
@@ -541,17 +541,17 @@ impl<'a> From<&'a MesalinkError> for ErrorCode {
                 io::ErrorKind::UnexpectedEof => ErrorCode::IoErrorUnexpectedEof,
                 _ => ErrorCode::UndefinedError,
             },
-            MesalinkErrorType::TlsError(e) => match e {
-                TLSError::InappropriateMessage {
+            MesalinkErrorType::TlsError(ref e) => match e {
+                &TLSError::InappropriateMessage {
                     ref expect_types,
                     ref got_type,
                 } => ErrorCode::TLSErrorInappropriateMessage,
-                TLSError::InappropriateHandshakeMessage {
+                &TLSError::InappropriateHandshakeMessage {
                     ref expect_types,
                     ref got_type,
                 } => ErrorCode::TLSErrorInappropriateHandshakeMessage,
-                TLSError::CorruptMessage => ErrorCode::TLSErrorCorruptMessage,
-                TLSError::CorruptMessagePayload(c) => match c {
+                &TLSError::CorruptMessage => ErrorCode::TLSErrorCorruptMessage,
+                &TLSError::CorruptMessagePayload(c) => match c {
                     ContentType::Alert => ErrorCode::TLSErrorCorruptMessagePayloadAlert,
                     ContentType::ChangeCipherSpec => {
                         ErrorCode::TLSErrorCorruptMessagePayloadChangeCipherSpec
@@ -559,11 +559,11 @@ impl<'a> From<&'a MesalinkError> for ErrorCode {
                     ContentType::Handshake => ErrorCode::TLSErrorCorruptMessagePayloadHandshake,
                     _ => ErrorCode::TLSErrorCorruptMessagePayload,
                 },
-                TLSError::NoCertificatesPresented => ErrorCode::TLSErrorNoCertificatesPresented,
-                TLSError::DecryptError => ErrorCode::TLSErrorDecryptError,
-                TLSError::PeerIncompatibleError(_) => ErrorCode::TLSErrorPeerIncompatibleError,
-                TLSError::PeerMisbehavedError(_) => ErrorCode::TLSErrorPeerMisbehavedError,
-                TLSError::AlertReceived(alert) => match alert {
+                &TLSError::NoCertificatesPresented => ErrorCode::TLSErrorNoCertificatesPresented,
+                &TLSError::DecryptError => ErrorCode::TLSErrorDecryptError,
+                &TLSError::PeerIncompatibleError(_) => ErrorCode::TLSErrorPeerIncompatibleError,
+                &TLSError::PeerMisbehavedError(_) => ErrorCode::TLSErrorPeerMisbehavedError,
+                &TLSError::AlertReceived(alert) => match alert {
                     AlertDescription::CloseNotify => ErrorCode::TLSErrorAlertReceivedCloseNotify,
                     AlertDescription::UnexpectedMessage => {
                         ErrorCode::TLSErrorAlertReceivedUnexpectedMessage
@@ -654,7 +654,7 @@ impl<'a> From<&'a MesalinkError> for ErrorCode {
                     }
                     AlertDescription::Unknown(_) => ErrorCode::TLSErrorAlertReceivedUnknown,
                 },
-                TLSError::WebPKIError(pki_err) => match pki_err {
+                &TLSError::WebPKIError(pki_err) => match pki_err {
                     webpki::Error::BadDER => ErrorCode::TLSErrorWebpkiBadDER,
                     webpki::Error::BadDERTime => ErrorCode::TLSErrorWebpkiBadDERTime,
                     webpki::Error::CAUsedAsEndEntity => ErrorCode::TLSErrorWebpkiCAUsedAsEndEntity,
@@ -699,12 +699,12 @@ impl<'a> From<&'a MesalinkError> for ErrorCode {
                         ErrorCode::TLSErrorWebpkiUnsupportedSignatureAlgorithm
                     }
                 },
-                TLSError::InvalidSCT(_) => ErrorCode::TLSErrorInvalidSCT,
-                TLSError::General(_) => ErrorCode::TLSErrorGeneral,
-                TLSError::FailedToGetCurrentTime => ErrorCode::TLSErrorFailedToGetCurrentTime,
-                TLSError::InvalidDNSName(_) => ErrorCode::TLSErrorInvalidDNSName,
-                TLSError::HandshakeNotComplete => ErrorCode::TLSErrorHandshakeNotComplete,
-                TLSError::PeerSentOversizedRecord => ErrorCode::TLSErrorPeerSentOversizedRecord,
+                &TLSError::InvalidSCT(_) => ErrorCode::TLSErrorInvalidSCT,
+                &TLSError::General(_) => ErrorCode::TLSErrorGeneral,
+                &TLSError::FailedToGetCurrentTime => ErrorCode::TLSErrorFailedToGetCurrentTime,
+                &TLSError::InvalidDNSName(_) => ErrorCode::TLSErrorInvalidDNSName,
+                &TLSError::HandshakeNotComplete => ErrorCode::TLSErrorHandshakeNotComplete,
+                &TLSError::PeerSentOversizedRecord => ErrorCode::TLSErrorPeerSentOversizedRecord,
             },
         }
     }
@@ -902,14 +902,14 @@ mod tests {
     #[test]
     fn push() {
         let error_code = ErrorCode::MesalinkErrorNullPointer;
-        ErrorQueue::push_error(error!(error_code));
+        ErrorQueue::push_error(error!(MesalinkBuiltinError::ErrorNullPointer.into()));
         assert_eq!(error_code, ErrorCode::from(mesalink_ERR_get_error()));
         mesalink_ERR_clear_error();
     }
 
     #[test]
     fn clear() {
-        ErrorQueue::push_error(error!(ErrorCode::MesalinkErrorNullPointer));
+        ErrorQueue::push_error(error!(MesalinkBuiltinError::ErrorNullPointer.into()));
         mesalink_ERR_clear_error();
         assert_eq!(0, mesalink_ERR_get_error());
         mesalink_ERR_clear_error();
@@ -917,7 +917,7 @@ mod tests {
 
     #[test]
     fn get_should_remove_error() {
-        ErrorQueue::push_error(error!(ErrorCode::MesalinkErrorNullPointer));
+        ErrorQueue::push_error(error!(MesalinkBuiltinError::ErrorNullPointer.into()));
         let _ = mesalink_ERR_get_error();
         assert_eq!(0, mesalink_ERR_get_error());
         mesalink_ERR_clear_error();
@@ -926,7 +926,7 @@ mod tests {
     #[test]
     fn peek_should_not_remove_error() {
         let error_code = ErrorCode::MesalinkErrorNullPointer;
-        ErrorQueue::push_error(error!(error_code));
+        ErrorQueue::push_error(error!(MesalinkBuiltinError::ErrorNullPointer.into()));
         let _ = mesalink_ERR_peek_last_error();
         assert_eq!(error_code, ErrorCode::from(mesalink_ERR_get_error()));
         mesalink_ERR_clear_error();
@@ -935,10 +935,10 @@ mod tests {
     #[test]
     fn error_queue_is_thread_local() {
         let thread = thread::spawn(|| {
-            ErrorQueue::push_error(error!(ErrorCode::MesalinkErrorNullPointer));
+            ErrorQueue::push_error(error!(MesalinkBuiltinError::ErrorNullPointer.into()));
             ErrorCode::from(mesalink_ERR_get_error())
         });
-        ErrorQueue::push_error(error!(ErrorCode::MesalinkErrorMalformedObject));
+        ErrorQueue::push_error(error!(MesalinkBuiltinError::ErrorMalformedObject.into()));
 
         let main_thread_error_code = ErrorCode::from(mesalink_ERR_get_error());
         let sub_thread_error_code = thread.join().unwrap();
@@ -1088,8 +1088,10 @@ mod tests {
         ];
 
         for error in mesalink_errors.into_iter() {
-            assert_eq!(true, 0 == ErrorCode::from(error) as c_ulong >> 24);
-            assert_eq!(true, 0 != ErrorCode::from(error) as c_ulong & 0xFFFFFF);
+            let mesalink_error = error!(MesalinkErrorType::BuiltinError(error.clone()));
+            let error_code = ErrorCode::from(&mesalink_error);
+            assert_eq!(true, 0 == error_code as c_ulong >> 24);
+            assert_eq!(true, 0 != error_code as c_ulong & 0xFFFFFF);
         }
     }
 
@@ -1117,9 +1119,11 @@ mod tests {
         ];
 
         for error_kind in io_errors.into_iter() {
-            let error = io::Error::from(*error_kind);
-            assert_eq!(true, 2 == ErrorCode::from(&error) as c_ulong >> 24);
-            assert_eq!(true, 0 != ErrorCode::from(&error) as c_ulong & 0xFFFFFF);
+            let io_error = io::Error::from(*error_kind);
+            let mesalink_error = error!(MesalinkErrorType::IoError(io_error));
+            let error_code = ErrorCode::from(&mesalink_error);
+            assert_eq!(true, 2 == error_code as c_ulong >> 24);
+            assert_eq!(true, 0 != error_code as c_ulong & 0xFFFFFF);
         }
     }
 
@@ -1147,8 +1151,10 @@ mod tests {
         ];
 
         for error in tls_errors.into_iter() {
-            assert_eq!(true, 3 == ErrorCode::from(error) as c_ulong >> 24);
-            assert_eq!(true, 0 != ErrorCode::from(error) as c_ulong & 0xFFFFFF);
+            let mesalink_error = error!(MesalinkErrorType::TlsError(error.clone()));
+            let error_code = ErrorCode::from(&mesalink_error);
+            assert_eq!(true, 3 == error_code as c_ulong >> 24);
+            assert_eq!(true, 0 != error_code as c_ulong & 0xFFFFFF);
         }
     }
 
@@ -1178,8 +1184,10 @@ mod tests {
 
         for pki_error in webpki_errors.into_iter() {
             let error = rustls::TLSError::WebPKIError(*pki_error);
-            assert_eq!(true, 3 == ErrorCode::from(&error) as c_ulong >> 24);
-            assert_eq!(true, 0 != ErrorCode::from(&error) as c_ulong & 0xFFFFFF);
+            let mesalink_error = error!(MesalinkErrorType::TlsError(error));
+            let error_code = ErrorCode::from(&mesalink_error);
+            assert_eq!(true, 3 == error_code as c_ulong >> 24);
+            assert_eq!(true, 0 != error_code as c_ulong & 0xFFFFFF);
         }
     }
 
@@ -1225,8 +1233,10 @@ mod tests {
 
         for alert in alerts.into_iter() {
             let error = rustls::TLSError::AlertReceived(*alert);
-            assert_eq!(true, 3 == ErrorCode::from(&error) as c_ulong >> 24);
-            assert_eq!(true, 0 != ErrorCode::from(&error) as c_ulong & 0xFFFFFF);
+            let mesalink_error = error!(MesalinkErrorType::TlsError(error));
+            let error_code = ErrorCode::from(&mesalink_error);
+            assert_eq!(true, 3 == error_code as c_ulong >> 24);
+            assert_eq!(true, 0 != error_code as c_ulong & 0xFFFFFF);
         }
     }
 
@@ -1314,7 +1324,7 @@ mod tests {
     fn err_print_errors_fp() {
         use std::io;
         use std::os::unix::io::AsRawFd;
-        ErrorQueue::push_error(error!(ErrorCode::MesalinkErrorNone));
+        ErrorQueue::push_error(error!(MesalinkBuiltinError::ErrorNone.into()));
         let fd = io::stderr().as_raw_fd();
         let mode = b"wb\0".as_ptr() as *const c_char;
         let file = unsafe { libc::fdopen(fd, mode) };
