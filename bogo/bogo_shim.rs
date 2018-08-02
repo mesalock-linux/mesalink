@@ -99,9 +99,7 @@ impl Options {
     }
 
     fn tls13_supported(&self) -> bool {
-        self.support_tls13
-            && (self.version_allowed(0x0304) || self.version_allowed(0x7f16)
-                || self.version_allowed(0x7f17))
+        self.support_tls13 && (self.version_allowed(0x0304) || self.version_allowed(0x7f1c))
     }
 
     fn tls12_supported(&self) -> bool {
@@ -224,8 +222,10 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC) {
         quit_err("MESALINK_SSL is null");
     }
 
-    if ssl::mesalink_SSL_set_tlsext_host_name(ssl, opts.host_name.as_ptr() as *const libc::c_char)
-        != 1
+    if ssl::mesalink_SSL_set_tlsext_host_name(
+        ssl,
+        CString::new(opts.host_name.clone()).unwrap().as_ptr() as *const libc::c_char,
+    ) != 1
     {
         cleanup(ssl, ctx);
         quit_err("mesalink_SSL_set_tlsext_host_name failed\n");
