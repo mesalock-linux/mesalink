@@ -252,13 +252,7 @@ fn complete_io(
         while session.wants_write() {
             match session.write_tls(io) {
                 Ok(n) => wrlen += n,
-                Err(e) => {
-                    if e.kind() == io::ErrorKind::WouldBlock {
-                        return Err(error!(MesalinkBuiltinError::ErrorWantWrite.into()));
-                    } else {
-                        return Err(error!(e.into()));
-                    }
-                }
+                Err(e) => return Err(error!(e.into())),
             }
         }
         if !until_handshaked && wrlen > 0 {
@@ -268,13 +262,7 @@ fn complete_io(
             match session.read_tls(io) {
                 Ok(0) => eof = true,
                 Ok(n) => rdlen += n,
-                Err(e) => {
-                    if e.kind() == io::ErrorKind::WouldBlock {
-                        return Err(error!(MesalinkBuiltinError::ErrorWantRead.into()));
-                    } else {
-                        return Err(error!(e.into()));
-                    }
-                }
+                Err(e) => return Err(error!(e.into())),
             }
         }
         match session.process_new_packets() {
@@ -1037,7 +1025,8 @@ fn inner_mesalink_ssl_get_ssl_ctx(
     ssl_ptr: *mut MESALINK_SSL,
 ) -> MesalinkInnerResult<*const MESALINK_CTX_ARC> {
     let ssl = sanitize_ptr_for_ref(ssl_ptr)?;
-    let ctx = ssl.context
+    let ctx = ssl
+        .context
         .as_ref()
         .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     Ok(ctx as *const MESALINK_CTX_ARC)
@@ -1070,7 +1059,8 @@ fn inner_mesalink_ssl_set_ssl_ctx(
     ssl.context = Some(ctx.clone());
     ssl.client_config = Arc::new(ctx.client_config.clone());
     ssl.server_config = Arc::new(ctx.server_config.clone());
-    let ctx_ref = ssl.context
+    let ctx_ref = ssl
+        .context
         .as_ref()
         .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     Ok(ctx_ref as *const MESALINK_CTX_ARC)
@@ -1100,7 +1090,8 @@ fn inner_mesalink_ssl_get_current_cipher(
     ssl_ptr: *mut MESALINK_SSL,
 ) -> MesalinkInnerResult<*mut MESALINK_CIPHER> {
     let ssl = sanitize_ptr_for_ref(ssl_ptr)?;
-    let session = ssl.session
+    let session = ssl
+        .session
         .as_ref()
         .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     let ciphersuite = session
@@ -1342,7 +1333,8 @@ fn inner_mesalink_ssl_get_peer_certificates(
 }
 
 fn get_peer_certificates(ssl: &mut MESALINK_SSL) -> MesalinkInnerResult<Vec<rustls::Certificate>> {
-    let session = ssl.session
+    let session = ssl
+        .session
         .as_mut()
         .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     session
@@ -1433,7 +1425,8 @@ pub extern "C" fn mesalink_SSL_get_fd(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 
 fn inner_measlink_ssl_get_fd(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_ref(ssl_ptr)?;
-    let socket = ssl.io
+    let socket = ssl
+        .io
         .as_ref()
         .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     Ok(socket.as_raw_fd())
@@ -1513,11 +1506,13 @@ fn inner_mesalink_ssl_connect(
         | ErrorCode::MesalinkErrorWantAccept => ssl.error = ErrorCode::default(),
         _ => (),
     };
-    let mut io = ssl.io
+    let mut io = ssl
+        .io
         .as_mut()
         .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     if ssl.session.is_none() {
-        let hostname = ssl.hostname
+        let hostname = ssl
+            .hostname
             .as_ref()
             .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
         let dnsname = webpki::DNSNameRef::try_from_ascii_str(hostname)
@@ -1564,7 +1559,8 @@ fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
         | ErrorCode::MesalinkErrorWantAccept => ssl.error = ErrorCode::default(),
         _ => (),
     };
-    let mut io = ssl.io
+    let mut io = ssl
+        .io
         .as_mut()
         .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     if ssl.session.is_none() {
@@ -1637,8 +1633,14 @@ fn inner_mesalink_ssl_read(
     match ssl.ssl_read(buf) {
         Ok(count) => Ok(count as c_int),
         Err(e) => {
+            let error_code = ErrorCode::from(&e);
             ssl.error = ErrorCode::from(&e);
-            if ssl.error == ErrorCode::MesalinkErrorWantWrite
+            if error_code == ErrorCode::IoErrorWouldBlock {
+                ssl.error = ErrorCode::MesalinkErrorWantRead;
+            } else {
+                ssl.error = error_code;
+            }
+            if ssl.error == ErrorCode::MesalinkErrorWantRead
                 || ssl.error == ErrorCode::IoErrorNotConnected
             {
                 return Ok(SSL_ERROR);
@@ -1681,7 +1683,13 @@ fn inner_mesalink_ssl_write(
     match ssl.ssl_write(buf) {
         Ok(count) => Ok(count as c_int),
         Err(e) => {
+            let error_code = ErrorCode::from(&e);
             ssl.error = ErrorCode::from(&e);
+            if error_code == ErrorCode::IoErrorWouldBlock {
+                ssl.error = ErrorCode::MesalinkErrorWantWrite;
+            } else {
+                ssl.error = error_code;
+            }
             if ssl.error == ErrorCode::MesalinkErrorWantWrite
                 || ssl.error == ErrorCode::IoErrorNotConnected
             {
@@ -1706,7 +1714,8 @@ pub extern "C" fn mesalink_SSL_shutdown(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 
 fn inner_mesalink_ssl_shutdown(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
-    let session = ssl.session
+    let session = ssl
+        .session
         .as_mut()
         .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     session.send_close_notify();
@@ -1729,7 +1738,8 @@ fn inner_mesalink_ssl_get_version(
     ssl_ptr: *mut MESALINK_SSL,
 ) -> MesalinkInnerResult<*const c_char> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
-    let session = ssl.session
+    let session = ssl
+        .session
         .as_ref()
         .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     let version = session
@@ -2097,7 +2107,8 @@ mod tests {
             server_version: TlsVersion,
             should_fail: bool,
         ) {
-            let port = self.get_unused_port()
+            let port = self
+                .get_unused_port()
                 .expect("No port between 50000-60000 is available");
             let server = self.init_server(port);
             let client_thread = self.run_client(port, client_version);
