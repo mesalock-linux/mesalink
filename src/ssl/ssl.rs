@@ -873,9 +873,9 @@ fn inner_mesalink_ssl_ctx_check_private_key(
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     match (&ctx.certificates, &ctx.private_key) {
         (&Some(ref certs), &Some(ref key)) => {
-            let rsa_key = sign::RSASigningKey::new(&key)
+            let signing_key = sign::any_supported_type(&key)
                 .map_err(|_| error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
-            sign::CertifiedKey::new(certs.clone(), Arc::new(Box::new(rsa_key)))
+            sign::CertifiedKey::new(certs.clone(), Arc::new(signing_key))
                 .cross_check_end_entity_cert(None)
                 .map_err(|e| error!(e.into()))?;
             Ok(SSL_SUCCESS)
