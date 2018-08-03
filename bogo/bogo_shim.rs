@@ -203,7 +203,7 @@ fn cleanup(ssl: *mut ssl::MESALINK_SSL, ctx: *mut ssl::MESALINK_CTX_ARC) {
 
 fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC) {
     use std::os::unix::io::AsRawFd;
-    let mut conn = net::TcpStream::connect(("localhost", opts.port)).expect("cannot connect");
+    let conn = net::TcpStream::connect(("localhost", opts.port)).expect("cannot connect");
     let mut sent_shutdown = false;
     let mut seen_eof = false;
 
@@ -231,7 +231,7 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC) {
     if !opts.server {
         if ssl::mesalink_SSL_connect(ssl) != 1 {
             let err = ErrorCode::from(ssl::mesalink_SSL_get_error(ssl, -1) as libc::c_ulong);
-            let _ = conn.flush();
+            ssl::mesalink_SSL_flush(ssl);
             thread::sleep(time::Duration::from_millis(200));
             cleanup(ssl, ctx);
             handle_err(err);
@@ -239,7 +239,7 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC) {
     } else {
         if ssl::mesalink_SSL_accept(ssl) != 1 {
             let err = ErrorCode::from(ssl::mesalink_SSL_get_error(ssl, -1) as libc::c_ulong);
-            let _ = conn.flush();
+            ssl::mesalink_SSL_flush(ssl);
             thread::sleep(time::Duration::from_millis(200));
             cleanup(ssl, ctx);
             handle_err(err);
@@ -257,7 +257,7 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC) {
     let mut len;
     let mut buf = [0u8; 1024];
     loop {
-        let _ = conn.flush();
+        ssl::mesalink_SSL_flush(ssl);
 
         len = ssl::mesalink_SSL_read(
             ssl,
@@ -274,7 +274,7 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC) {
                         println!("close notify ok");
                     }
                     println!("EOF (tls)");
-                    let _ = conn.flush();
+                    ssl::mesalink_SSL_flush(ssl);
                     ssl::mesalink_SSL_free(ssl);
                     return;
                 }
@@ -283,7 +283,7 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC) {
                     quit_err(":CLOSE_WITHOUT_CLOSE_NOTIFY:")
                 },
                 _ => {
-                    let _ = conn.flush();
+                    ssl::mesalink_SSL_flush(ssl);
                     cleanup(ssl, ctx);
                     handle_err(error);
                 }
@@ -292,19 +292,19 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC) {
                 if !seen_eof {
                     seen_eof = true;
                 } else {
-                    let _ = conn.flush();
+                    ssl::mesalink_SSL_flush(ssl);
                     cleanup(ssl, ctx);
                     quit_err(":CLOSE_WITHOUT_CLOSE_NOTIFY:");
                 }
             } else {
                 println!("EOF (plain)");
-                let _ = conn.flush();
+                ssl::mesalink_SSL_flush(ssl);
                 ssl::mesalink_SSL_free(ssl);
                 return;
             }
         } else if len < 0 {
             let err = ErrorCode::from(ssl::mesalink_SSL_get_error(ssl, len) as libc::c_ulong);
-            let _ = conn.flush();
+            ssl::mesalink_SSL_flush(ssl);
             cleanup(ssl, ctx);
             handle_err(err);
         }

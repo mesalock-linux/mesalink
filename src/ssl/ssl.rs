@@ -301,7 +301,7 @@ impl MESALINK_SSL {
         }
     }
 
-    pub(self) fn ssl_read(&mut self, buf: &mut [u8]) -> Result<usize, MesalinkError> {
+    pub(crate) fn ssl_read(&mut self, buf: &mut [u8]) -> Result<usize, MesalinkError> {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => loop {
                 match session.read(buf) {
@@ -329,12 +329,29 @@ impl MESALINK_SSL {
         }
     }
 
-    pub(self) fn ssl_write(&mut self, buf: &[u8]) -> Result<usize, MesalinkError> {
+    pub(crate) fn ssl_write(&mut self, buf: &[u8]) -> Result<usize, MesalinkError> {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => {
                 let len = session.write(buf).map_err(|e| error!(e.into()))?;
                 match session.write_tls(io) {
                     Ok(_) => return Ok(len),
+                    Err(e) => {
+                        let error = error!(e.into());
+                        self.error = ErrorCode::from(&error);
+                        return Err(error);
+                    }
+                }
+            }
+            _ => Err(error!(MesalinkBuiltinError::ErrorBadFuncArg.into())),
+        }
+    }
+
+    pub(crate) fn ssl_flush(&mut self) -> Result<(), MesalinkError> {
+        match (self.session.as_mut(), self.io.as_mut()) {
+            (Some(session), Some(io)) => {
+                let _ = session.flush().map_err(|e| error!(e.into()))?;
+                match session.write_tls(io) {
+                    Ok(_) => return Ok(()),
                     Err(e) => {
                         let error = error!(e.into());
                         self.error = ErrorCode::from(&error);
@@ -1675,6 +1692,48 @@ fn inner_mesalink_ssl_write(
     }
 }
 
+/// `SSL_write` - write `num` bytes from the buffer `buf` into the
+/// specified `ssl` connection.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_write(SSL *ssl, const void *buf, int num);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_flush(
+    ssl_ptr: *mut MESALINK_SSL,
+) -> c_int {
+    check_inner_result!(
+        inner_mesalink_ssl_flush(ssl_ptr),
+        SSL_FAILURE
+    )
+}
+
+fn inner_mesalink_ssl_flush(
+    ssl_ptr: *mut MESALINK_SSL,
+) -> MesalinkInnerResult<c_int> {
+    let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
+    match ssl.ssl_flush() {
+        Ok(_) => Ok(SSL_SUCCESS),
+        Err(e) => {
+            let error_code = ErrorCode::from(&e);
+            ssl.error = ErrorCode::from(&e);
+            if error_code == ErrorCode::IoErrorWouldBlock {
+                ssl.error = ErrorCode::MesalinkErrorWantWrite;
+            } else {
+                ssl.error = error_code;
+            }
+            if ssl.error == ErrorCode::MesalinkErrorWantWrite
+                || ssl.error == ErrorCode::IoErrorNotConnected
+            {
+                return Ok(SSL_ERROR);
+            }
+            Err(e)
+        }
+    }
+}
+
 /// `SSL_shutdown` - shut down a TLS connection
 ///
 /// ```c
@@ -1767,8 +1826,8 @@ mod util {
     use ssl::ssl;
     use std::sync::Arc;
 
-    pub const CONST_NONE_STR: &'static [u8] = b" NONE \0";
-    pub const CONST_TLS12_STR: &'static [u8] = b"TLS1.2\0";
+    pub(crate) const CONST_NONE_STR: &'static [u8] = b" NONE \0";
+    pub(crate) const CONST_TLS12_STR: &'static [u8] = b"TLS1.2\0";
     pub const CONST_TLS13_STR: &'static [u8] = b"TLS1.3\0";
 
     #[cfg(feature = "server_apis")]

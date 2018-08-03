@@ -129,6 +129,7 @@ MESALINK_API int mesalink_SSL_accept(MESALINK_SSL *);
 
 MESALINK_API int mesalink_SSL_write(MESALINK_SSL *, const void *, int);
 MESALINK_API int mesalink_SSL_read(MESALINK_SSL *, void *, int);
+MESALINK_API int mesalink_SSL_flush(MESALINK_SSL *);
 MESALINK_API int mesalink_SSL_shutdown(MESALINK_SSL *);
 MESALINK_API MESALINK_CTX *mesalink_SSL_get_SSL_CTX(const MESALINK_SSL *);
 MESALINK_API MESALINK_CTX *mesalink_SSL_set_SSL_CTX(MESALINK_SSL *,
