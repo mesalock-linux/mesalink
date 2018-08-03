@@ -47,8 +47,7 @@ use std::{ffi, io, net, ptr, slice};
 use webpki;
 
 // Trait imports
-use rustls::Session;
-use std::io::{Read, Write};
+use std::ops::{Deref, DerefMut};
 use std::os::unix::io::{AsRawFd, FromRawFd};
 
 const CLIENT_CACHE_SIZE: usize = 32;
@@ -216,6 +215,31 @@ impl MESALINK_CTX {
     }
 }
 
+enum ClientOrServerSession {
+    Client(rustls::ClientSession),
+    Server(rustls::ServerSession),
+}
+
+impl Deref for ClientOrServerSession {
+    type Target = rustls::Session;
+
+    fn deref(&self) -> &Self::Target {
+        match &self {
+            ClientOrServerSession::Client(ref c) => c,
+            ClientOrServerSession::Server(ref s) => s,
+        }
+    }
+}
+
+impl DerefMut for ClientOrServerSession {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            ClientOrServerSession::Client(ref mut c) => c,
+            ClientOrServerSession::Server(ref mut s) => s,
+        }
+    }
+}
+
 /// The main TLS structure which is created by a server or client per
 /// established connection.
 ///
@@ -229,7 +253,7 @@ pub struct MESALINK_SSL {
     server_config: Arc<rustls::ServerConfig>,
     hostname: Option<String>,
     io: Option<net::TcpStream>,
-    session: Option<Box<Session>>,
+    session: Option<ClientOrServerSession>,
     error: ErrorCode,
     eof: bool,
 }
@@ -241,7 +265,7 @@ impl MesalinkOpaquePointerType for MESALINK_SSL {
 }
 
 fn complete_io(
-    session: &mut Box<Session>,
+    session: &mut ClientOrServerSession,
     io: &mut net::TcpStream,
 ) -> Result<(usize, usize), MesalinkError> {
     let until_handshaked = session.is_handshaking();
@@ -1510,7 +1534,7 @@ fn inner_mesalink_ssl_connect(
         let dnsname = webpki::DNSNameRef::try_from_ascii_str(hostname)
             .map_err(|_| error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
         let client_session = rustls::ClientSession::new(&ssl.client_config, dnsname);
-        ssl.session = Some(Box::new(client_session));
+        ssl.session = Some(ClientOrServerSession::Client(client_session));
     }
     if !is_lazy {
         match complete_io(ssl.session.as_mut().unwrap(), &mut io) {
@@ -1557,7 +1581,7 @@ fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
         .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
     if ssl.session.is_none() {
         let server_session = rustls::ServerSession::new(&ssl.server_config);
-        ssl.session = Some(Box::new(server_session));
+        ssl.session = Some(ClientOrServerSession::Server(server_session));
     }
     match complete_io(ssl.session.as_mut().unwrap(), &mut io) {
         Err(e) => {
@@ -1701,18 +1725,11 @@ fn inner_mesalink_ssl_write(
 /// int SSL_write(SSL *ssl, const void *buf, int num);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_flush(
-    ssl_ptr: *mut MESALINK_SSL,
-) -> c_int {
-    check_inner_result!(
-        inner_mesalink_ssl_flush(ssl_ptr),
-        SSL_FAILURE
-    )
+pub extern "C" fn mesalink_SSL_flush(ssl_ptr: *mut MESALINK_SSL) -> c_int {
+    check_inner_result!(inner_mesalink_ssl_flush(ssl_ptr), SSL_FAILURE)
 }
 
-fn inner_mesalink_ssl_flush(
-    ssl_ptr: *mut MESALINK_SSL,
-) -> MesalinkInnerResult<c_int> {
+fn inner_mesalink_ssl_flush(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     match ssl.ssl_flush() {
         Ok(_) => Ok(SSL_SUCCESS),
