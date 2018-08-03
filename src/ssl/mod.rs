@@ -17,11 +17,11 @@ use ring::rand;
 use ring::rand::SecureRandom;
 
 #[doc(hidden)]
-pub const MAGIC_SIZE: usize = 4;
+pub(self) const MAGIC_SIZE: usize = 4;
 
 lazy_static! {
     #[doc(hidden)]
-    pub static ref MAGIC: [u8; MAGIC_SIZE] = {
+    pub(self) static ref MAGIC: [u8; MAGIC_SIZE] = {
         let mut number = [0u8; MAGIC_SIZE];
         if rand::SystemRandom::new().fill(&mut number).is_ok() {
             let number = number;
@@ -33,7 +33,7 @@ lazy_static! {
 }
 
 #[doc(hidden)]
-pub trait MesalinkOpaquePointerType {
+pub(crate) trait MesalinkOpaquePointerType {
     fn check_magic(&self) -> bool;
 }
 
@@ -59,7 +59,7 @@ mod macros {
     #[macro_export]
     macro_rules! check_inner_result {
         ($inner:expr, $err_ret:expr) => {{
-            use ssl::err::{MesalinkBuiltinError, ErrorQueue};
+            use ssl::err::{ErrorQueue, MesalinkBuiltinError};
             use std::panic;
             match panic::catch_unwind(panic::AssertUnwindSafe(|| $inner))
                 .unwrap_or_else(|_| Err(error!(MesalinkBuiltinError::ErrorPanic.into())))
@@ -88,7 +88,7 @@ pub mod safestack;
 
 #[doc(hidden)]
 #[repr(C)]
-pub enum SslConstants {
+pub(self) enum SslConstants {
     SslError = -1,
     SslFailure = 0,
     SslSuccess = 1,
@@ -97,7 +97,7 @@ pub enum SslConstants {
 #[doc(hidden)]
 #[repr(C)]
 #[derive(Clone)]
-pub enum SslSessionCacheModes {
+pub(self) enum SslSessionCacheModes {
     SslSessCacheOff = 0x0,
     SslSessCacheClient = 0x1,
     SslSessCacheServer = 0x2,
@@ -105,17 +105,17 @@ pub enum SslSessionCacheModes {
 }
 
 use libc::c_int;
-pub const SSL_ERROR: c_int = SslConstants::SslError as c_int;
-pub const SSL_FAILURE: c_int = SslConstants::SslFailure as c_int;
-pub const SSL_SUCCESS: c_int = SslConstants::SslSuccess as c_int;
+pub(self) const SSL_ERROR: c_int = SslConstants::SslError as c_int;
+pub(self) const SSL_FAILURE: c_int = SslConstants::SslFailure as c_int;
+pub(self) const SSL_SUCCESS: c_int = SslConstants::SslSuccess as c_int;
 
 #[macro_use]
 #[doc(hidden)]
-pub mod error_san {
+mod error_san {
     use ssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
     use ssl::MesalinkOpaquePointerType;
 
-    pub fn sanitize_const_ptr_for_ref<'a, T>(ptr: *const T) -> MesalinkInnerResult<&'a T>
+    pub(crate) fn sanitize_const_ptr_for_ref<'a, T>(ptr: *const T) -> MesalinkInnerResult<&'a T>
     where
         T: MesalinkOpaquePointerType,
     {
@@ -123,14 +123,14 @@ pub mod error_san {
         sanitize_ptr_for_mut_ref(ptr).map(|r| r as &'a T)
     }
 
-    pub fn sanitize_ptr_for_ref<'a, T>(ptr: *mut T) -> MesalinkInnerResult<&'a T>
+    pub(crate) fn sanitize_ptr_for_ref<'a, T>(ptr: *mut T) -> MesalinkInnerResult<&'a T>
     where
         T: MesalinkOpaquePointerType,
     {
         sanitize_ptr_for_mut_ref(ptr).map(|r| r as &'a T)
     }
 
-    pub fn sanitize_ptr_for_mut_ref<'a, T>(ptr: *mut T) -> MesalinkInnerResult<&'a mut T>
+    pub(crate) fn sanitize_ptr_for_mut_ref<'a, T>(ptr: *mut T) -> MesalinkInnerResult<&'a mut T>
     where
         T: MesalinkOpaquePointerType,
     {

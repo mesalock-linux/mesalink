@@ -40,7 +40,7 @@ impl MesalinkOpaquePointerType for MESALINK_X509 {
 }
 
 impl MESALINK_X509 {
-    pub fn new(cert: rustls::Certificate) -> MESALINK_X509 {
+    pub(crate) fn new(cert: rustls::Certificate) -> MESALINK_X509 {
         MESALINK_X509 {
             magic: *MAGIC,
             cert_data: cert,
@@ -74,7 +74,7 @@ impl<'a> MesalinkOpaquePointerType for MESALINK_X509_NAME {
 }
 
 impl<'a> MESALINK_X509_NAME {
-    pub fn new(name: &[u8]) -> MESALINK_X509_NAME {
+    pub(crate) fn new(name: &[u8]) -> MESALINK_X509_NAME {
         MESALINK_X509_NAME {
             magic: *MAGIC,
             name: name.to_vec(),

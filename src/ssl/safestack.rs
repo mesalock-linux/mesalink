@@ -39,7 +39,7 @@ impl MesalinkOpaquePointerType for MESALINK_STACK_MESALINK_X509 {
 }
 
 impl MESALINK_STACK_MESALINK_X509 {
-    pub fn new(names: Vec<MESALINK_X509>) -> MESALINK_STACK_MESALINK_X509 {
+    pub(crate) fn new(names: Vec<MESALINK_X509>) -> MESALINK_STACK_MESALINK_X509 {
         MESALINK_STACK_MESALINK_X509 {
             magic: *MAGIC,
             stack: names,

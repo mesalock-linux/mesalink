@@ -158,7 +158,7 @@ thread_local! {
 #[doc(hidden)]
 #[repr(C)]
 #[derive(PartialEq, Clone, Debug)]
-pub enum MesalinkBuiltinError {
+pub(crate) enum MesalinkBuiltinError {
     ErrorNone,
     ErrorZeroReturn,
     ErrorWantRead,
@@ -202,7 +202,7 @@ impl error::Error for MesalinkBuiltinError {
 
 #[cfg_attr(feature = "error_strings", derive(Debug))]
 #[doc(hidden)]
-pub enum MesalinkErrorType {
+pub(crate) enum MesalinkErrorType {
     IoError(io::Error),
     TlsError(rustls::TLSError),
     BuiltinError(MesalinkBuiltinError),
@@ -231,7 +231,7 @@ impl From<MesalinkBuiltinError> for MesalinkErrorType {
 
 #[cfg_attr(feature = "error_strings", derive(Debug))]
 #[doc(hidden)]
-pub struct MesalinkError {
+pub(crate) struct MesalinkError {
     pub error: MesalinkErrorType,
     call_site: &'static str,
 }
@@ -246,7 +246,7 @@ impl MesalinkError {
 }
 
 #[doc(hidden)]
-pub type MesalinkInnerResult<T> = Result<T, MesalinkError>;
+pub(crate) type MesalinkInnerResult<T> = Result<T, MesalinkError>;
 
 #[doc(hidden)]
 #[repr(C)]
@@ -784,7 +784,7 @@ pub extern "C" fn mesalink_ERR_reason_error_string(e: c_ulong) -> *const c_char 
 }
 
 #[doc(hidden)]
-pub struct ErrorQueue {}
+pub(crate) struct ErrorQueue {}
 
 impl ErrorQueue {
     pub fn push_error<'a>(e: MesalinkError) {

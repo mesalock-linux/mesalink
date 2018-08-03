@@ -301,7 +301,7 @@ impl MESALINK_SSL {
         }
     }
 
-    pub fn ssl_read(&mut self, buf: &mut [u8]) -> Result<usize, MesalinkError> {
+    pub(self) fn ssl_read(&mut self, buf: &mut [u8]) -> Result<usize, MesalinkError> {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => loop {
                 match session.read(buf) {
@@ -329,29 +329,12 @@ impl MESALINK_SSL {
         }
     }
 
-    pub fn ssl_write(&mut self, buf: &[u8]) -> Result<usize, MesalinkError> {
+    pub(self) fn ssl_write(&mut self, buf: &[u8]) -> Result<usize, MesalinkError> {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => {
                 let len = session.write(buf).map_err(|e| error!(e.into()))?;
                 match session.write_tls(io) {
                     Ok(_) => return Ok(len),
-                    Err(e) => {
-                        let error = error!(e.into());
-                        self.error = ErrorCode::from(&error);
-                        return Err(error);
-                    }
-                }
-            }
-            _ => Err(error!(MesalinkBuiltinError::ErrorBadFuncArg.into())),
-        }
-    }
-
-    pub fn ssl_flush(&mut self) -> Result<(), MesalinkError> {
-        match (self.session.as_mut(), self.io.as_mut()) {
-            (Some(session), Some(io)) => {
-                let _ = session.flush().map_err(|e| error!(e.into()))?;
-                match session.write_tls(io) {
-                    Ok(_) => return Ok(()),
                     Err(e) => {
                         let error = error!(e.into());
                         self.error = ErrorCode::from(&error);
@@ -1955,11 +1938,7 @@ mod tests {
         }
 
         fn write(&self, buf: &[u8]) -> c_int {
-            let ret =
-                mesalink_SSL_write(self.ssl, buf.as_ptr() as *mut c_uchar, buf.len() as c_int);
-            let ssl = sanitize_ptr_for_mut_ref(self.ssl).unwrap();
-            assert_eq!(true, ssl.ssl_flush().is_ok());
-            ret
+            mesalink_SSL_write(self.ssl, buf.as_ptr() as *mut c_uchar, buf.len() as c_int)
         }
 
         fn shutdown(&self) -> c_int {
