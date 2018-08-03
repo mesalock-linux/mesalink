@@ -349,18 +349,10 @@ impl MESALINK_SSL {
 
 #[doc(hidden)]
 #[repr(C)]
-pub enum Filetypes {
-    FiletypePEM = 1,
-    FiletypeASN = 2,
-    FiletypeRaw = 3,
-}
-
-#[doc(hidden)]
-#[repr(C)]
-pub enum VerifyModes {
+pub(self) enum VerifyModes {
     VerifyNone = 0,
-    VerifyPeer = 1,
-    VerifyFailIfNoPeerCert = 2,
+    //VerifyPeer = 1,
+    //VerifyFailIfNoPeerCert = 2,
 }
 
 /// For OpenSSL compatibility only. Always returns 1.
