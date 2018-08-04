@@ -44,6 +44,10 @@ typedef MESALINK_SSL SSL;
 #define SSL_SESS_CACHE_SERVER MESALINK_SSL_SESS_CACHE_SERVER
 #define SSL_SESS_CACHE_BOTH MESALINK_SSL_SESS_CACHE_BOTH
 
+#define SSL_EARLY_DATA_NOT_SENT MESALINK_SSL_EARLY_DATA_NOT_SENT
+#define SSL_EARLY_DATA_REJECTED MESALINK_SSL_EARLY_DATA_REJECTED
+#define SSL_EARLY_DATA_ACCEPTED MESALINK_SSL_EARLY_DATA_ACCEPTED
+
 #define SSL_library_init mesalink_library_init
 #define OpenSSL_add_ssl_algorithms mesalink_add_ssl_algorithms
 #define SSL_load_error_strings mesalink_SSL_load_error_strings
@@ -110,6 +114,9 @@ typedef MESALINK_SSL SSL;
 
 #define SSL_write mesalink_SSL_write
 #define SSL_read mesalink_SSL_read
+#ifdef HAVE_TLS13
+#define SSL_write_early_data mesalink_SSL_write_early_data
+#endif
 #define SSL_flush mesalink_SSL_flush
 #define SSL_shutdown mesalink_SSL_shutdown
 #define SSL_get_version mesalink_SSL_get_version

@@ -402,9 +402,9 @@ impl MESALINK_SSL {
         match self.session.as_mut() {
             Some(session) => {
                 let client_session = session.assert_client();
-                let mut early_writer = client_session
-                    .early_data()
-                    .ok_or(error!(io::Error::new(io::ErrorKind::InvalidData, "Early data not supported").into()))?;
+                let mut early_writer = client_session.early_data().ok_or(error!(
+                    io::Error::new(io::ErrorKind::InvalidData, "Early data not supported").into()
+                ))?;
                 // WriteEarlyData::write() does not really write I/O.
                 // It is still necessary to call complete_io to drive handshaking.
                 match early_writer.write(buf) {
@@ -1821,20 +1821,13 @@ fn inner_mesalink_ssl_write_early_data(
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     let buf = unsafe { slice::from_raw_parts(buf_ptr, buf_len as usize) };
     match ssl.ssl_write_early_data(buf) {
-        Ok(count) => Ok(count as c_int),
+        Ok(count) => {
+            let written_size: size_t = count;
+            unsafe { ptr::write(written_len_ptr, written_size) };
+            Ok(count as c_int)
+        }
         Err(e) => {
-            let error_code = ErrorCode::from(&e);
             ssl.error = ErrorCode::from(&e);
-            if error_code == ErrorCode::IoErrorWouldBlock {
-                ssl.error = ErrorCode::MesalinkErrorWantWrite;
-            } else {
-                ssl.error = error_code;
-            }
-            if ssl.error == ErrorCode::MesalinkErrorWantWrite
-                || ssl.error == ErrorCode::IoErrorNotConnected
-            {
-                return Ok(SSL_ERROR);
-            }
             Err(e)
         }
     }

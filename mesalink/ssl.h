@@ -20,6 +20,7 @@
 extern "C" {
 #endif
 
+#include <stddef.h>
 #include <mesalink/options.h>
 #include <mesalink/version.h>
 #include <mesalink/visibility.h>
@@ -30,13 +31,15 @@ typedef struct MEASLINK_CTX MESALINK_CTX;
 typedef struct MESALINK_CIPHER MESALINK_CIPHER;
 typedef struct MESALINK_SSL MESALINK_SSL;
 
-typedef enum {
+typedef enum
+{
   SSL_VERIFY_NONE = 0,
   SSL_VERIFY_PEER = 1,
   SSL_VERIFY_FAIL_IF_NO_PEER_CERT = 2,
 } mesalink_verify_mode_t;
 
-typedef enum {
+typedef enum
+{
   MESALINK_FAILURE = 0,
   MESALINK_ERROR = -1,
   MESALINK_SUCCESS = 1,
@@ -50,6 +53,10 @@ typedef enum {
   MESALINK_SSL_SESS_CACHE_CLIENT = 0x1,
   MESALINK_SSL_SESS_CACHE_SERVER = 0x2,
   MESALINK_SSL_SESS_CACHE_BOTH = 0x3,
+
+  MESALINK_SSL_EARLY_DATA_NOT_SENT = 0,
+  MESALINK_SSL_EARLY_DATA_REJECTED = 1,
+  MESALINK_SSL_EARLY_DATA_ACCEPTED = 2,
 } mesalink_constant_t;
 
 MESALINK_API int mesalink_library_init(void);
@@ -130,6 +137,9 @@ MESALINK_API int mesalink_SSL_accept(MESALINK_SSL *);
 MESALINK_API int mesalink_SSL_write(MESALINK_SSL *, const void *, int);
 MESALINK_API int mesalink_SSL_read(MESALINK_SSL *, void *, int);
 MESALINK_API int mesalink_SSL_flush(MESALINK_SSL *);
+#ifdef HAVE_TLS13
+MESALINK_API int mesalink_SSL_write_early_data(MESALINK_SSL *, const void *, int, size_t *);
+#endif
 MESALINK_API int mesalink_SSL_shutdown(MESALINK_SSL *);
 MESALINK_API MESALINK_CTX *mesalink_SSL_get_SSL_CTX(const MESALINK_SSL *);
 MESALINK_API MESALINK_CTX *mesalink_SSL_set_SSL_CTX(MESALINK_SSL *,
