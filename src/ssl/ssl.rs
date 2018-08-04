@@ -35,7 +35,7 @@
 
 // Module imports
 
-use libc::{c_char, c_int, c_long, c_uchar};
+use libc::{c_char, c_int, c_long, c_uchar, size_t};
 use rustls;
 use ssl::err::{ErrorCode, MesalinkBuiltinError, MesalinkError, MesalinkInnerResult};
 use ssl::error_san::*;
@@ -202,6 +202,7 @@ impl MESALINK_CTX {
         client_config
             .root_store
             .add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
+        client_config.enable_early_data = true;
         server_config.ticketer = rustls::Ticketer::new(); // Enable ticketing for server
 
         MESALINK_CTX {
@@ -236,6 +237,15 @@ impl DerefMut for ClientOrServerSession {
         match self {
             ClientOrServerSession::Client(ref mut c) => c,
             ClientOrServerSession::Server(ref mut s) => s,
+        }
+    }
+}
+
+impl ClientOrServerSession {
+    fn assert_client(&mut self) -> &mut rustls::ClientSession {
+        match self {
+            ClientOrServerSession::Client(ref mut c) => c,
+            ClientOrServerSession::Server(_) => panic!("ClientSession required here"),
         }
     }
 }
@@ -377,6 +387,30 @@ impl MESALINK_SSL {
                 match session.write_tls(io) {
                     Ok(_) => return Ok(()),
                     Err(e) => {
+                        let error = error!(e.into());
+                        self.error = ErrorCode::from(&error);
+                        return Err(error);
+                    }
+                }
+            }
+            _ => Err(error!(MesalinkBuiltinError::ErrorBadFuncArg.into())),
+        }
+    }
+
+    pub(crate) fn ssl_write_early_data(&mut self, buf: &[u8]) -> Result<usize, MesalinkError> {
+        use std::io::Write;
+        match self.session.as_mut() {
+            Some(session) => {
+                let client_session = session.assert_client();
+                let mut early_writer = client_session
+                    .early_data()
+                    .ok_or(error!(io::Error::new(io::ErrorKind::InvalidData, "Early data not supported").into()))?;
+                // WriteEarlyData::write() does not really write I/O.
+                // It is still necessary to call complete_io to drive handshaking.
+                match early_writer.write(buf) {
+                    Ok(len) => return Ok(len),
+                    Err(e) => {
+                        // EarlyData::check_write() returns io::ErrorKind::InvalidIput if
                         let error = error!(e.into());
                         self.error = ErrorCode::from(&error);
                         return Err(error);
@@ -1733,6 +1767,61 @@ fn inner_mesalink_ssl_flush(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     match ssl.ssl_flush() {
         Ok(_) => Ok(SSL_SUCCESS),
+        Err(e) => {
+            let error_code = ErrorCode::from(&e);
+            ssl.error = ErrorCode::from(&e);
+            if error_code == ErrorCode::IoErrorWouldBlock {
+                ssl.error = ErrorCode::MesalinkErrorWantWrite;
+            } else {
+                ssl.error = error_code;
+            }
+            if ssl.error == ErrorCode::MesalinkErrorWantWrite
+                || ssl.error == ErrorCode::IoErrorNotConnected
+            {
+                return Ok(SSL_ERROR);
+            }
+            Err(e)
+        }
+    }
+}
+
+/// `SSL_write_early_data` - write `num` bytes of TLS 1.3 early data from the
+/// buffer `buf` into the specified `ssl` connection.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_write_early_data(SSL *s, const void *buf, size_t num, size_t *written);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_write_early_data(
+    ssl_ptr: *mut MESALINK_SSL,
+    buf_ptr: *const c_uchar,
+    buf_len: c_int,
+    written_len_ptr: *mut size_t,
+) -> c_int {
+    check_inner_result!(
+        inner_mesalink_ssl_write_early_data(ssl_ptr, buf_ptr, buf_len, written_len_ptr),
+        SSL_FAILURE
+    )
+}
+
+fn inner_mesalink_ssl_write_early_data(
+    ssl_ptr: *mut MESALINK_SSL,
+    buf_ptr: *const c_uchar,
+    buf_len: c_int,
+    written_len_ptr: *mut size_t,
+) -> MesalinkInnerResult<c_int> {
+    if buf_ptr.is_null() || buf_len < 0 {
+        return Err(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()));
+    }
+    if written_len_ptr.is_null() {
+        return Err(error!(MesalinkBuiltinError::ErrorNullPointer.into()));
+    }
+    let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
+    let buf = unsafe { slice::from_raw_parts(buf_ptr, buf_len as usize) };
+    match ssl.ssl_write_early_data(buf) {
+        Ok(count) => Ok(count as c_int),
         Err(e) => {
             let error_code = ErrorCode::from(&e);
             ssl.error = ErrorCode::from(&e);
