@@ -40,6 +40,10 @@ tls_client(SSL_CTX *ctx, const char *hostname)
   struct sockaddr_in addr;
   char sendbuf[8192] = { 0 };
   char recvbuf[8192] = { 0 };
+  size_t early_send_len = 0;
+
+  fprintf(stderr, "==================================================\n\n");
+  fprintf(stderr, "[+] Session started\n");
 
   if((hp = gethostbyname(hostname)) == NULL) {
     fprintf(stderr, "[-] Gethostname error\n");
@@ -70,6 +74,10 @@ tls_client(SSL_CTX *ctx, const char *hostname)
     fprintf(stderr, "[-] Faield to set fd\n");
     goto fail;
   }
+
+  snprintf(sendbuf, sizeof(sendbuf), REQUEST, hostname);
+  SSL_write_early_data(ssl, sendbuf, (int)strlen(sendbuf), &early_send_len);
+
   if(SSL_connect(ssl) == SSL_SUCCESS) {
     int sendlen = -1, recvlen = -1, total_recvlen = 0;
     int cipher_bits = 0;
@@ -102,9 +110,14 @@ tls_client(SSL_CTX *ctx, const char *hostname)
     sk_X509_NAME_free(names);
     X509_free(cert);
 
-    snprintf(sendbuf, sizeof(sendbuf), REQUEST, hostname);
-    sendlen = SSL_write(ssl, sendbuf, (int)strlen(sendbuf));
-    printf("[+] Sent %d bytes\n\n%s\n", sendlen, sendbuf);
+    if(SSL_get_early_data_status(ssl) == SSL_EARLY_DATA_ACCEPTED) {
+      printf(
+        "[+] Sent %zu bytes of early data\n\n%s\n", early_send_len, sendbuf);
+    }
+    else {
+      sendlen = SSL_write(ssl, sendbuf, (int)strlen(sendbuf));
+      printf("[+] Sent %d bytes\n\n%s\n", sendlen, sendbuf);
+    }
 
     while((recvlen = SSL_read(ssl, recvbuf, sizeof(recvbuf) - 1)) > 0) {
       recvbuf[recvlen] = 0;
@@ -137,6 +150,8 @@ fail:
   if(!sockfd) {
     close(sockfd);
   }
+  fprintf(stderr, "[+] Session completed\n");
+  fprintf(stderr, "==================================================\n\n");
   return -1;
 }
 
@@ -156,7 +171,8 @@ main(int argc, char *argv[])
   ERR_load_crypto_strings();
   // SSL_load_error_strings(); // Uncomment this line to see SSL logs
 
-  ctx = SSL_CTX_new(TLSv1_2_client_method());
+  ctx = SSL_CTX_new(TLSv1_3_client_method());
+  // Enable client sessiont cache to test session resumption and early data
   SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_CLIENT);
 
   if(ctx == NULL) {
@@ -164,7 +180,9 @@ main(int argc, char *argv[])
     ERR_print_errors_fp(stderr);
     return -1;
   }
-  // fresh start
+  // Do two sessions. The first will be a normal request, the
+  // second will use early data if the server supports it.
+  tls_client(ctx, hostname);
   tls_client(ctx, hostname);
   SSL_CTX_free(ctx);
   return 0;

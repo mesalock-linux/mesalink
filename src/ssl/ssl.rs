@@ -1818,13 +1818,14 @@ fn inner_mesalink_ssl_write_early_data(
     if written_len_ptr.is_null() {
         return Err(error!(MesalinkBuiltinError::ErrorNullPointer.into()));
     }
+    let _ = inner_mesalink_ssl_connect(ssl_ptr, true)?; // creates a client session
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     let buf = unsafe { slice::from_raw_parts(buf_ptr, buf_len as usize) };
     match ssl.ssl_write_early_data(buf) {
         Ok(count) => {
             let written_size: size_t = count;
             unsafe { ptr::write(written_len_ptr, written_size) };
-            Ok(count as c_int)
+            Ok(SSL_SUCCESS)
         }
         Err(e) => {
             ssl.error = ErrorCode::from(&e);
