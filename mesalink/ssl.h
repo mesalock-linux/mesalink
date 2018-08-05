@@ -138,7 +138,9 @@ MESALINK_API int mesalink_SSL_write(MESALINK_SSL *, const void *, int);
 MESALINK_API int mesalink_SSL_read(MESALINK_SSL *, void *, int);
 MESALINK_API int mesalink_SSL_flush(MESALINK_SSL *);
 #ifdef HAVE_TLS13
-MESALINK_API int mesalink_SSL_write_early_data(MESALINK_SSL *, const void *, int, size_t *);
+MESALINK_API int mesalink_SSL_write_early_data(MESALINK_SSL *, const void *,
+                                               int, size_t *);
+MESALINK_API int mesalink_SSL_get_early_data_status(const MESALINK_SSL *);
 #endif
 MESALINK_API int mesalink_SSL_shutdown(MESALINK_SSL *);
 MESALINK_API MESALINK_CTX *mesalink_SSL_get_SSL_CTX(const MESALINK_SSL *);

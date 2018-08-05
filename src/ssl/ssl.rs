@@ -1833,6 +1833,37 @@ fn inner_mesalink_ssl_write_early_data(
     }
 }
 
+/// `SSL_get_early_data_status` - returns SSL_EARLY_DATA_ACCEPTED if early data
+/// was accepted by the server, SSL_EARLY_DATA_REJECTED if early data was
+/// rejected by the server.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_get_early_data_status(const SSL *s);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_get_early_data_status(ssl_ptr: *mut MESALINK_SSL) -> c_int {
+    check_inner_result!(
+        inner_mesalink_ssl_get_early_data_status(ssl_ptr),
+        SSL_FAILURE
+    )
+}
+
+fn inner_mesalink_ssl_get_early_data_status(
+    ssl_ptr: *mut MESALINK_SSL,
+) -> MesalinkInnerResult<c_int> {
+    let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
+    let session = ssl
+        .session
+        .as_mut()
+        .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
+    match session.assert_client().is_early_data_accepted() {
+        true => Ok(2),  // accepted
+        false => Ok(1), // FIXME: rejected or not sent
+    }
+}
+
 /// `SSL_shutdown` - shut down a TLS connection
 ///
 /// ```c

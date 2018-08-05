@@ -116,6 +116,7 @@ typedef MESALINK_SSL SSL;
 #define SSL_read mesalink_SSL_read
 #ifdef HAVE_TLS13
 #define SSL_write_early_data mesalink_SSL_write_early_data
+#define SSL_get_early_data_status mesalink_SSL_get_early_data_status
 #endif
 #define SSL_flush mesalink_SSL_flush
 #define SSL_shutdown mesalink_SSL_shutdown
