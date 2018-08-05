@@ -1,2 +1,3 @@
 include examples/client/include.am
+include examples/0rtt_client/include.am
 include examples/server/include.am

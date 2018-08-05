@@ -1,0 +1,6 @@
+if BUILD_EXAMPLE_CLIENT
+noinst_PROGRAMS += examples/0rtt_client/0rtt_client
+examples_0rtt_client_0rtt_client_SOURCES = examples/0rtt_client/0rtt_client.c
+examples_0rtt_client_0rtt_client_LDADD = libmesalink.la
+DISTCLEANFILES+= examples/client/.libs/0rtt_client
+endif
