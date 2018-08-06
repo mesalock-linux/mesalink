@@ -1130,7 +1130,7 @@ mod tests {
     #[test]
     fn tls_error_conversion() {
         use rustls::internal::msgs::enums::{AlertDescription, ContentType, HandshakeType};
-        let tls_errors: [rustls::TLSError; 11] = [
+        let tls_errors: [rustls::TLSError; 15] = [
             rustls::TLSError::InappropriateMessage {
                 expect_types: vec![],
                 got_type: ContentType::Heartbeat,
@@ -1148,6 +1148,10 @@ mod tests {
             rustls::TLSError::AlertReceived(AlertDescription::CloseNotify),
             rustls::TLSError::WebPKIError(webpki::Error::BadDER),
             rustls::TLSError::General("".to_string()),
+            rustls::TLSError::FailedToGetCurrentTime,
+            rustls::TLSError::InvalidDNSName("".to_string()),
+            rustls::TLSError::HandshakeNotComplete,
+            rustls::TLSError::PeerSentOversizedRecord,
         ];
 
         for error in tls_errors.into_iter() {
@@ -1324,12 +1328,17 @@ mod tests {
     fn err_print_errors_fp() {
         use std::io;
         use std::os::unix::io::AsRawFd;
+
+        mesalink_ERR_load_error_strings();
         ErrorQueue::push_error(error!(MesalinkBuiltinError::ErrorNone.into()));
+        ErrorQueue::push_error(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()));
+        ErrorQueue::push_error(error!(MesalinkBuiltinError::ErrorMalformedObject.into()));
         let fd = io::stderr().as_raw_fd();
         let mode = b"wb\0".as_ptr() as *const c_char;
         let file = unsafe { libc::fdopen(fd, mode) };
         mesalink_ERR_print_errors_fp(file);
         mesalink_ERR_clear_error();
+        mesalink_ERR_free_error_strings();
     }
 
 }

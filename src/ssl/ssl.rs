@@ -2551,4 +2551,72 @@ mod tests {
         );
         mesalink_SSL_CTX_free(ctx_ptr);
     }
+
+    #[test]
+    fn early_data_to_mesalink_io() {
+        const HTTP_REQUEST: &[u8; 84] = b"GET / HTTP/1.1\r\n\
+            Host: mesalink.io\r\n\
+            Connection: close\r\n\
+            Accept-Encoding: identity\r\n\
+            \r\n\0";
+
+        let method = mesalink_TLSv1_3_client_method();
+        let ctx = mesalink_SSL_CTX_new(method);
+        let _ = mesalink_SSL_CTX_set_session_cache_mode(
+            ctx,
+            SslSessionCacheModes::SslSessCacheClient as c_long,
+        );
+
+        for i in 0..2 {
+            let ssl = mesalink_SSL_new(ctx);
+            assert_ne!(ssl, ptr::null_mut(), "SSL is null");
+            assert_eq!(
+                SSL_SUCCESS,
+                mesalink_SSL_set_tlsext_host_name(ssl, b"mesalink.io\0".as_ptr() as *const c_char),
+                "Failed to set SNI"
+            );
+            let sock = net::TcpStream::connect("mesalink.io:443").expect("Connect failed");
+            sock.set_nodelay(true).unwrap();
+            assert_eq!(
+                SSL_SUCCESS,
+                mesalink_SSL_set_fd(ssl, sock.as_raw_fd()),
+                "Failed to set fd"
+            );
+
+            if i == 0 {
+                // Just send normal plain data
+                assert_eq!(SSL_SUCCESS, mesalink_SSL_connect(ssl));
+                let wr_len = mesalink_SSL_write(ssl, HTTP_REQUEST.as_ptr() as *const c_uchar, 83);
+                assert_eq!(true, wr_len > 0);
+                assert_eq!(SSL_SUCCESS, mesalink_SSL_flush(ssl));
+            } else {
+                // Do session resumption and early data
+                let len: size_t = 0;
+                let len_ptr = Box::into_raw(Box::new(len));
+                let _ = mesalink_SSL_write_early_data(
+                    ssl,
+                    HTTP_REQUEST.as_ptr() as *const c_uchar,
+                    83,
+                    len_ptr,
+                );
+                let written_len = unsafe { Box::from_raw(len_ptr) };
+                assert_eq!(true, *written_len > 0);
+                assert_eq!(SSL_SUCCESS, mesalink_SSL_connect(ssl));
+                assert_eq!(2, mesalink_SSL_get_early_data_status(ssl));
+            }
+            let mut buf = [0u8; 10240];
+            let rd_len =
+                mesalink_SSL_read(ssl, buf.as_mut_ptr() as *mut c_uchar, buf.len() as c_int);
+            assert_eq!(true, rd_len > 0);
+
+            let error = mesalink_ERR_get_error();
+            assert_eq!(0, error);
+            let ssl_error = mesalink_SSL_get_error(ssl, -1);
+            assert_eq!(0, ssl_error);
+
+            assert_eq!(SSL_SUCCESS, mesalink_SSL_shutdown(ssl));
+            mesalink_SSL_free(ssl);
+        }
+        mesalink_SSL_CTX_free(ctx);
+    }
 }
