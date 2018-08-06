@@ -70,6 +70,11 @@ struct Options {
     min_version: Option<u16>,
     max_version: Option<u16>,
     read_size: usize,
+    enable_early_data: bool,
+    expect_ticket_supports_early_data: bool,
+    expect_accept_early_data: bool,
+    expect_reject_early_data: bool,
+    shim_writes_first_on_resume: bool,
 }
 
 impl Options {
@@ -90,6 +95,11 @@ impl Options {
             min_version: None,
             max_version: None,
             read_size: 512,
+            enable_early_data: false,
+            expect_ticket_supports_early_data: false,
+            expect_accept_early_data: false,
+            expect_reject_early_data: false,
+            shim_writes_first_on_resume: false,
         }
     }
 
@@ -201,7 +211,7 @@ fn cleanup(ssl: *mut ssl::MESALINK_SSL, ctx: *mut ssl::MESALINK_CTX_ARC) {
     }
 }
 
-fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC) {
+fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC, count: usize) {
     use std::os::unix::io::AsRawFd;
     let conn = net::TcpStream::connect(("localhost", opts.port)).expect("cannot connect");
     let mut sent_shutdown = false;
@@ -227,6 +237,22 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC) {
         quit_err("mesalink_SSL_set_fd failed\n");
     }
 
+    if opts.shim_writes_first_on_resume && count > 0 && opts.enable_early_data {
+        let len: libc::size_t = 0;
+        let len_ptr = Box::into_raw(Box::new(len));
+        let buf = b"hello";
+        ssl::mesalink_SSL_write_early_data(ssl, buf.as_ptr() as *const libc::c_uchar, 5, len_ptr);
+        let written_len = unsafe { Box::from_raw(len_ptr) };
+        if *written_len < 5 {
+            let remaining_buf = &buf[*written_len..];
+            ssl::mesalink_SSL_write(
+                ssl,
+                remaining_buf.as_ptr() as *const libc::c_uchar,
+                (5 - *written_len) as libc::c_int,
+            );
+        }
+    }
+
     use std::{thread, time};
     if !opts.server {
         if ssl::mesalink_SSL_connect(ssl) != 1 {
@@ -249,8 +275,8 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC) {
     if opts.shim_writes_first {
         ssl::mesalink_SSL_write(
             ssl,
-            b"hello world\0".as_ptr() as *const libc::c_uchar,
-            11 as libc::c_int,
+            b"hello".as_ptr() as *const libc::c_uchar,
+            5 as libc::c_int,
         );
     }
 
@@ -258,6 +284,15 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC) {
     let mut buf = [0u8; 1024];
     loop {
         ssl::mesalink_SSL_flush(ssl);
+
+        if opts.enable_early_data && count > 0 {
+            let early_data_accepted = ssl::mesalink_SSL_get_early_data_status(ssl) == 2;
+            if opts.expect_accept_early_data && !early_data_accepted {
+                quit_err("Early data was not accepted, but we expect the opposite");
+            } else if opts.expect_reject_early_data && early_data_accepted {
+                quit_err("Early data was accepted, but we expect the opposite");
+            }
+        }
 
         len = ssl::mesalink_SSL_read(
             ssl,
@@ -420,6 +455,22 @@ fn main() {
                 println!("not checking {}; disabled for MesaLink", arg);
                 process::exit(BOGO_NACK);
             }
+            "-enable-early-data" |
+            "-on-resume-enable-early-data" => {
+                opts.enable_early_data = true;
+            }
+            "-on-resume-shim-writes-first" => {
+                opts.shim_writes_first_on_resume = true;
+            }
+            "-expect-ticket-supports-early-data" => {
+                opts.expect_ticket_supports_early_data = true;
+            }
+            "-expect-accept-early-data" => {
+                opts.expect_accept_early_data = true;
+            }
+            "-expect-reject-early-data" => {
+                opts.expect_reject_early_data = true;
+            }
             "-shim-writes-first" => {
                 opts.shim_writes_first = true;
             }
@@ -484,7 +535,6 @@ fn main() {
             "-enable-channel-id" |
             "-resumption-delay" |
             "-expect-early-data-info" |
-            "-enable-early-data" |
             "-expect-cipher-aes" |
             "-retain-only-sha256-client-cert-initial" |
             "-use-client-ca-list" |
@@ -498,9 +548,10 @@ fn main() {
             "-handshake-twice" |
             "-verify-prefs" |
             "-no-op-extra-handshake" |
-            "-on-resume-enable-early-data" |
             "-read-with-unfinished-write" |
-            "-expect-peer-cert-file" => {
+            "-on-resume-read-with-unfinished-write" |
+            "-expect-peer-cert-file" |
+            "-on-initial-expect-peer-cert-file" => {
                 println!("NYI option {:?}", arg);
                 process::exit(BOGO_NACK);
             }
@@ -512,6 +563,11 @@ fn main() {
         }
     }
 
+    if opts.enable_early_data && opts.server {
+        println!("For now we only test client-side early data");
+        process::exit(BOGO_NACK);
+    }
+
     println!("opts {:?}", opts);
 
     let ctx = setup_ctx(&opts);
@@ -520,8 +576,8 @@ fn main() {
         quit_err("MESALINK_SSL_CTX is null");
     }
 
-    for _ in 0..opts.resume_count + 1 {
-        do_connection(&opts, ctx);
+    for i in 0..opts.resume_count + 1 {
+        do_connection(&opts, ctx, i);
     }
     if !ctx.is_null() {
         ssl::mesalink_SSL_CTX_free(ctx);
