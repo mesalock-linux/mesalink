@@ -287,10 +287,10 @@
     "ExtendedMasterSecret-NoToYes-Client": ":PEER_MISBEHAVIOUR:",
     "ExtendedMasterSecret-YesToNo-Server": ":PEER_MISBEHAVIOUR:",
     "ExtendedMasterSecret-YesToNo-Client": ":PEER_MISBEHAVIOUR:",
-    "ServerAcceptsEarlyDataOnHRR-Client-TLS13Draft23": ":PEER_MISBEHAVIOUR:",
-    "EarlyDataVersionDowngrade-Client-TLS13Draft23": ":WRONG_VERSION:",
-    "EarlyDataWithoutResume-Client-TLS13Draft23": ":PEER_MISBEHAVIOUR:",
-    "EarlyDataVersionDowngrade-Client-TLS13Draft23": ":PEER_MISBEHAVIOUR:"
+    "ServerAcceptsEarlyDataOnHRR-Client-TLS13Draft28": ":PEER_MISBEHAVIOUR:",
+    "EarlyDataWithoutResume-Client-TLS13Draft28": ":PEER_MISBEHAVIOUR:",
+    "EarlyDataVersionDowngrade-Client-TLS13Draft28": ":PEER_MISBEHAVIOUR:",
+    "EarlyData-Client-VersionAPI-TLS13Draft28": ":PEER_MISBEHAVIOUR:"
   },
   "TestLocalErrorMap": {
     "SendServerHelloAsHelloRetryRequest": "remote error: error decoding message",

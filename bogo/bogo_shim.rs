@@ -75,6 +75,7 @@ struct Options {
     expect_accept_early_data: bool,
     expect_reject_early_data: bool,
     shim_writes_first_on_resume: bool,
+    expect_version: u16,
 }
 
 impl Options {
@@ -100,6 +101,7 @@ impl Options {
             expect_accept_early_data: false,
             expect_reject_early_data: false,
             shim_writes_first_on_resume: false,
+            expect_version: 0,
         }
     }
 
@@ -292,6 +294,13 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC, count: usize) 
             } else if opts.expect_reject_early_data && early_data_accepted {
                 quit_err("Early data was accepted, but we expect the opposite");
             }
+            if opts.expect_version == 0x0304 {
+                let version_ptr = ssl::mesalink_SSL_get_version(ssl);
+                let version = unsafe { std::ffi::CStr::from_ptr(version_ptr).to_str().unwrap() };
+                if version != "TLS1.3" {
+                    quit_err("wrong protocol version");
+                }
+            }
         }
 
         len = ssl::mesalink_SSL_read(
@@ -408,7 +417,7 @@ fn main() {
             }
             "-tls13-variant" => {
                 let variant = args.remove(0).parse::<u16>().unwrap();
-                if variant != 5 {
+                if variant != 1 {
                     println!("NYI TLS1.3 variant selection: {:?} {:?}", arg, variant);
                     process::exit(BOGO_NACK);
                 }
@@ -483,6 +492,9 @@ fn main() {
             "-host-name" => {
                 opts.host_name = args.remove(0);
                 opts.use_sni = true;
+            }
+            "-expect-version" => {
+                opts.expect_version = args.remove(0).parse::<u16>().unwrap();
             }
 
             // defaults:

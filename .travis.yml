@@ -1,82 +1,37 @@
 language: rust
 cache: cargo
+rust:
+  - stable
+  - nightly
 env:
-  global: CONFIGURE_PARAMETERS=""
+  - ARCH=x86_64_linux
+  - ARCH=arm_linux TARGET=arm-linux-gnueabi RUST_TARGET=arm-unknown-linux-gnueabi
+  - ARCH=aarch64_linux TARGET=aarch64-linux-gnu RUST_TARGET=aarch64-unknown-linux-gnu
+  - ARCH=arm_android TARGET=arm-linux-androideabi RUST_TARGET=arm-linux-androideabi NDK_API=19 NDK_ARCH=arm
+  - ARCH=aarch64_android TARGET=aarch64-linux-android RUST_TARGET=aarch64-linux-android NDK_API=21 NDK_ARCH=arm64
+  - ARCH=x86_64_android TARGET=x86_64-linux-android RUST_TARGET=x86_64-linux-android NDK_API=21 NDK_ARCH=x86_64
 matrix:
   include:
-  - os: linux
-    dist: trusty
-    sudo: required
-    rust: stable
-    services: docker
-    env: ARCH=x86_64_linux COVERAGE=yes
-  - os: osx
-    rust: stable
-    env: ARCH=x86_64_macos
-  - os: linux
-    dist: trusty
-    sudo: false
-    rust: stable
-    env: ARCH=arm_linux TARGET=arm-linux-gnueabi RUST_TARGET=arm-unknown-linux-gnueabi
-    addons:
-      apt:
-        packages:
-        - gcc-arm-linux-gnueabi
-        - libc6-armel-cross
-        - libc6-dev-armel-cross
-  - os: linux
-    dist: trusty
-    sudo: false
-    rust: stable
-    env: ARCH=aarch64_linux TARGET=aarch64-linux-gnu RUST_TARGET=aarch64-unknown-linux-gnu
-    addons:
-      apt:
-        packages:
-        - gcc-aarch64-linux-gnu
-        - libc6-arm64-cross
-        - libc6-dev-arm64-cross
-  - os: linux
-    dist: trusty
-    sudo: false
-    rust: stable
-    env: ARCH=arm_android TARGET=arm-linux-androideabi RUST_TARGET=arm-linux-androideabi
-  - os: linux
-    dist: trusty
-    sudo: false
-    rust: stable
-    env: ARCH=aarch64_android TARGET=aarch64-linux-android RUST_TARGET=aarch64-linux-android
-  - os: linux
-    dist: trusty
-    sudo: false
-    rust: stable
-    env: ARCH=x86_android TARGET=i686-linux-android RUST_TARGET=i686-linux-android
-  - os: linux
-    dist: trusty
-    sudo: false
-    rust: stable
-    env: ARCH=x86_64_android TARGET=x86_64-linux-android RUST_TARGET=x86_64-linux-android
+    - os: osx
+      rust: stable
+      env: ARCH=x86_64_macos
+    - os: osx
+      rust: nightly
+      env: ARCH=x86_64_macos
+    - sudo: required
+      rust: stable
+      env: COVERAGE=yes
+  allow_failures:
+    - rust: nightly
+  fast_finish: true
 before_install:
-- |-
-  if [[ "$TARGET" = *"android"* ]] ; then wget -nv https://dl.google.com/android/repository/android-ndk-r17b-linux-x86_64.zip; unzip android-ndk-r17b-linux-x86_64.zip  2>&1 >/dev/null;
-  if [[ x"$TARGET" = "xarm-linux-androideabi" ]]; then ./android-ndk-r17b/build/tools/make_standalone_toolchain.py --arch arm --api 19 --install-dir $PWD/cross; elif [[ x"$TARGET" = "xaarch64-linux-android" ]]; then ./android-ndk-r17b/build/tools/make_standalone_toolchain.py --arch arm64 --api 21 --install-dir $PWD/cross; elif [[ x"$TARGET" = "xi686-linux-android" ]]; then ./android-ndk-r17b/build/tools/make_standalone_toolchain.py --arch x86 --api 19 --install-dir $PWD/cross; elif [[ x"$TARGET" = "xx86_64-linux-android" ]]; then ./android-ndk-r17b/build/tools/make_standalone_toolchain.py --arch x86_64 --api 21 --install-dir $PWD/cross; fi
-  export PATH="$PATH:$PWD/cross/bin"; fi
-script:
-- |-
-  if [[ x"$TARGET" == "x" ]]; then ./autogen.sh $CONFIGURE_PARAMETERS --enable-examples ; else rustup target add $RUST_TARGET ; ./autogen.sh --host=$TARGET --enable-rusthost=$RUST_TARGET $CONFIGURE_PARAMETERS ; fi
-  make ; make DESTDIR=$TRAVIS_BUILD_DIR/inst install-strip ;
-  du -sh $TRAVIS_BUILD_DIR/inst/usr/local/lib/libmesalink.* ;
-  if [[ x"$TARGET" == "x" ]]; then ./examples/client/client google.com ; RUST_BACKTRACE=1 cargo test ; ( cd bogo && ./runme ) ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -qq; fi
+install: ./ci-scripts/install.sh
+script: ./ci-scripts/script.sh
 after_success:
-- if [[ x"$COVERAGE" == x"yes" ]]; then docker run --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID ; fi
-notifications:
-  slack:
-    secure: c0IaJbDfVEfNoRW3jwBDeQK2SCB+eYLOlky3yMSrgw74OORo5hvWbaJrU0CGF6FQSPftxc6kAYmAtQD+NLPWhjvdF4GUflhgi7ZGsgTgq2dH/FnWafBzOuCq0fnUkl2GH08I+Rbl+rNiEM4VwbkKiNJoT6voonjr5WAru2ZDRMGVO3apbFdPnyZXfm49IcXML7JKZqCSfcM3aMXMQlzf1/kXXATTBhfU2gbF98EIki/GsWP9o2uYGp51AFj8jp1JKNFDp1hiNvPmpPA74+VA5G15u3BkdjU1zPAl29J8TZf5HTcWWItCaZMcNJ9mg0ftsF02SFLfevClMZXh4CHo8VEojgyCs9p6WGLPlyUEAeQAu/xzBVTD3qp9+MxTEYBEiHriqVxtZu8gvs/OYA4y0bLyNpeEGQ1nimcvzhKzdBMkdveMg3CMHsQcTLgyHXo8ajdPjY6QBrRCwzPoZt+LrktdIqcNgcDzasaC64+eT7mANdrELCxKQKGl99Ot5Cmd6zQJCTJXEr+Fmw3OepRdzZnjrNCXOp+HFRwueKBN1hnm+tE9EeNSL0tneV0Rx9xRm8xTl4/lgtw/ku0OdMW/lfe1ocmQ2UrgCAM4PrXiqwnKP9fCrZX2VsELOhSOOSjdm90UVLRW4wY/KWVwx4N7hePIIBb1mVVxjPKkqpAPTiU=
-    on_success: change
-    on_failure: always
-before_deploy:
-- if [[ x"$ARCH" != "x" ]]; then mkdir -p $TRAVIS_BUILD_DIR/releases ; cd $TRAVIS_BUILD_DIR/inst &&
-   tar -zcvf $TRAVIS_BUILD_DIR/releases/mesalink-$TRAVIS_BRANCH-$ARCH.tar.gz * && cd
-  $TRAVIS_BUILD_DIR ; fi
+- if [[ "$COVERAGE" == "yes" ]]; then docker run --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID ; fi
+before_deploy: ./ci-scripts/before_deploy.sh
+# Commands to release binaries to Github
 deploy:
   provider: releases
   api_key:

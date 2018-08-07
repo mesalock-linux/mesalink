@@ -2310,7 +2310,7 @@ mod tests {
     }
 
     #[test]
-    fn versions() {
+    fn cross_version_tests() {
         transfer_test(TlsVersion::Both, TlsVersion::Both, false);
         transfer_test(TlsVersion::Tlsv12, TlsVersion::Tlsv12, false);
         transfer_test(TlsVersion::Tlsv13, TlsVersion::Tlsv13, false);
@@ -2367,7 +2367,7 @@ mod tests {
             SSL_SUCCESS,
             mesalink_SSL_CTX_use_PrivateKey_file(
                 ctx_ptr,
-                b"you_do_not_find_me".as_ptr() as *const c_char,
+                b"you_do_not_find_me\0".as_ptr() as *const c_char,
                 0
             )
         );
@@ -2460,7 +2460,7 @@ mod tests {
     fn dummy_openssl_compatible_apis_always_return_success() {
         assert_eq!(SSL_SUCCESS, mesalink_library_init());
         assert_eq!(SSL_SUCCESS, mesalink_add_ssl_algorithms());
-        assert_eq!((), mesalink_SSL_load_error_strings());
+        //assert_eq!((), mesalink_SSL_load_error_strings());
     }
 
     #[test]
@@ -2554,11 +2554,7 @@ mod tests {
 
     #[test]
     fn early_data_to_mesalink_io() {
-        const HTTP_REQUEST: &[u8; 84] = b"GET / HTTP/1.1\r\n\
-            Host: mesalink.io\r\n\
-            Connection: close\r\n\
-            Accept-Encoding: identity\r\n\
-            \r\n\0";
+        const HTTP_REQUEST: &[u8; 83] = b"GET / HTTP/1.0\r\nHost: mesalink.io\r\nConnection: close\r\nAccept-Encoding: identity\r\n\r\n";
 
         let method = mesalink_TLSv1_3_client_method();
         let ctx = mesalink_SSL_CTX_new(method);
@@ -2568,6 +2564,8 @@ mod tests {
         );
 
         for i in 0..2 {
+            mesalink_ERR_clear_error();
+            let is_resuming = i != 0;
             let ssl = mesalink_SSL_new(ctx);
             assert_ne!(ssl, ptr::null_mut(), "SSL is null");
             assert_eq!(
@@ -2575,44 +2573,57 @@ mod tests {
                 mesalink_SSL_set_tlsext_host_name(ssl, b"mesalink.io\0".as_ptr() as *const c_char),
                 "Failed to set SNI"
             );
-            let sock = net::TcpStream::connect("mesalink.io:443").expect("Connect failed");
-            sock.set_nodelay(true).unwrap();
+            let sock = net::TcpStream::connect("mesalink.io:443").expect("Failed to connect");
             assert_eq!(
                 SSL_SUCCESS,
                 mesalink_SSL_set_fd(ssl, sock.as_raw_fd()),
-                "Failed to set fd"
             );
 
-            if i == 0 {
-                // Just send normal plain data
-                assert_eq!(SSL_SUCCESS, mesalink_SSL_connect(ssl));
+            let early_written_len_ptr = Box::into_raw(Box::new(0));
+            let ret = mesalink_SSL_write_early_data(
+                ssl,
+                HTTP_REQUEST.as_ptr() as *const c_uchar,
+                83,
+                early_written_len_ptr,
+            );
+            if is_resuming {
+                assert_eq!(true, ret == SSL_SUCCESS);
+            }
+            let early_written_len = unsafe { Box::from_raw(early_written_len_ptr) };
+            if is_resuming {
+                println!(
+                    "Resuming session, buffered {} bytes of early data",
+                    *early_written_len
+                );
+                assert_eq!(true, *early_written_len > 0);
+            }
+
+            if SSL_SUCCESS != mesalink_SSL_connect(ssl) {
+                let error = mesalink_SSL_get_error(ssl, -1);
+                panic!("Connect error: 0x{:X}\n", error);
+            }
+            if 2 != mesalink_SSL_get_early_data_status(ssl) {
                 let wr_len = mesalink_SSL_write(ssl, HTTP_REQUEST.as_ptr() as *const c_uchar, 83);
                 assert_eq!(true, wr_len > 0);
-                assert_eq!(SSL_SUCCESS, mesalink_SSL_flush(ssl));
-            } else {
-                // Do session resumption and early data
-                let len: size_t = 0;
-                let len_ptr = Box::into_raw(Box::new(len));
-                let _ = mesalink_SSL_write_early_data(
-                    ssl,
-                    HTTP_REQUEST.as_ptr() as *const c_uchar,
-                    83,
-                    len_ptr,
-                );
-                let written_len = unsafe { Box::from_raw(len_ptr) };
-                assert_eq!(true, *written_len > 0);
-                assert_eq!(SSL_SUCCESS, mesalink_SSL_connect(ssl));
-                assert_eq!(2, mesalink_SSL_get_early_data_status(ssl));
             }
-            let mut buf = [0u8; 10240];
-            let rd_len =
-                mesalink_SSL_read(ssl, buf.as_mut_ptr() as *mut c_uchar, buf.len() as c_int);
-            assert_eq!(true, rd_len > 0);
+            assert_eq!(SSL_SUCCESS, mesalink_SSL_flush(ssl));
 
-            let error = mesalink_ERR_get_error();
-            assert_eq!(0, error);
-            let ssl_error = mesalink_SSL_get_error(ssl, -1);
-            assert_eq!(0, ssl_error);
+            let mut buf = [0u8; 2048];
+            loop {
+                let rd_len =
+                    mesalink_SSL_read(ssl, buf.as_mut_ptr() as *mut c_uchar, buf.len() as c_int);
+                println!("Read {} bytes", rd_len);
+                if rd_len <= 0 {
+                    break;
+                }
+            }
+
+            if is_resuming {
+                let error = mesalink_ERR_get_error();
+                assert_eq!(0, error);
+                let ssl_error = mesalink_SSL_get_error(ssl, -1);
+                assert_eq!(0, ssl_error);
+            }
 
             assert_eq!(SSL_SUCCESS, mesalink_SSL_shutdown(ssl));
             mesalink_SSL_free(ssl);

@@ -300,7 +300,6 @@ mod tests {
     use ssl::safestack::*;
     use std::fs::File;
     use std::io::BufReader;
-    use std::str;
 
     #[test]
     fn x509_get_subject_name_and_alt_names() {
@@ -318,7 +317,6 @@ mod tests {
             buf.as_ptr() as *mut c_char,
             255,
         );
-        println!("Subject DER: {:x?}", buf.to_vec());
         mesalink_X509_NAME_free(subject_der_ptr);
 
         let subject_name_ptr = mesalink_X509_get_subject_name(x509_ptr);
@@ -330,7 +328,6 @@ mod tests {
             buf.as_ptr() as *mut c_char,
             255,
         );
-        println!("Subject name: {}", str::from_utf8(&buf).unwrap());
         mesalink_X509_NAME_free(subject_name_ptr);
 
         let name_stack_ptr = mesalink_X509_get_alt_subject_names(x509_ptr);
@@ -346,7 +343,6 @@ mod tests {
                 buf.as_ptr() as *mut c_char,
                 253,
             );
-            println!("DNSName: {}", str::from_utf8(&buf).unwrap());
         }
         mesalink_sk_X509_NAME_free(name_stack_ptr);
         mesalink_X509_free(x509_ptr);
