@@ -20,6 +20,7 @@ matrix:
       env: ARCH=x86_64_macos
     - name: "cargo-clippy"
       rust: nightly
+      env: CLIPPY=yes
       before_install:
       install:
       before_script:
@@ -29,6 +30,7 @@ matrix:
     - name: "cargo-fmt and cargo-tarpaulin"
       sudo: required
       rust: stable
+      env: COV=yes
       before_install:
       install:
       before_script:
