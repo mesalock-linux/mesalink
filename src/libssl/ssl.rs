@@ -2348,7 +2348,7 @@ mod tests {
             mesalink_SSL_set_tlsext_host_name(ssl, b"mesalink.io\0".as_ptr() as *const c_char)
         );
         assert_eq!(SSL_SUCCESS, mesalink_SSL_set_fd(ssl, sock.as_raw_fd()));
-        assert_eq!(SSL_ERROR, mesalink_SSL_connect(ssl));
+        assert_eq!(SSL_SUCCESS, mesalink_SSL_connect0(ssl));
         let mut buf = [0u8; 64];
         assert_eq!(
             SSL_ERROR,
