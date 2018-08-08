@@ -1066,7 +1066,7 @@ mod tests {
 
     #[test]
     fn mesalink_error_code_conversion() {
-        let mesalink_errors: [MesalinkBuiltinError; 10] = [
+        let mesalink_errors: [MesalinkBuiltinError; 11] = [
             MesalinkBuiltinError::ZeroReturn,
             MesalinkBuiltinError::WantRead,
             MesalinkBuiltinError::WantWrite,
@@ -1077,11 +1077,14 @@ mod tests {
             MesalinkBuiltinError::NullPointer,
             MesalinkBuiltinError::MalformedObject,
             MesalinkBuiltinError::BadFuncArg,
+            MesalinkBuiltinError::Panic,
         ];
 
         for error in mesalink_errors.into_iter() {
+            use std::error::Error;
             let mesalink_error = error!(MesalinkErrorType::Builtin(error.clone()));
             let error_code = ErrorCode::from(&mesalink_error);
+            println!("{}, {}", error, error.description());
             assert_eq!(true, 0 == error_code as c_ulong >> 24);
             assert_eq!(true, 0 != error_code as c_ulong & 0xFFFFFF);
         }
@@ -1331,6 +1334,7 @@ mod tests {
         let file = unsafe { libc::fdopen(fd, mode) };
         unsafe {
             mesalink_ERR_print_errors_fp(file);
+            mesalink_ERR_print_errors_fp(ptr::null_mut());
         }
         mesalink_ERR_clear_error();
         mesalink_ERR_free_error_strings();

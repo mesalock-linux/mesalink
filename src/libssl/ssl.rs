@@ -1568,7 +1568,18 @@ fn inner_mesalink_ssl_connect(
     if !is_lazy {
         match complete_io(ssl.session.as_mut().unwrap(), &mut io) {
             Err(e) => {
+                let error_code = ErrorCode::from(&e);
                 ssl.error = ErrorCode::from(&e);
+                if error_code == ErrorCode::IoErrorWouldBlock {
+                    ssl.error = ErrorCode::MesalinkErrorWantConnect;
+                } else {
+                    ssl.error = error_code;
+                }
+                if ssl.error == ErrorCode::MesalinkErrorWantConnect
+                    || ssl.error == ErrorCode::IoErrorNotConnected
+                {
+                    return Ok(SSL_ERROR);
+                }
                 Err(e)
             }
             Ok(_) => Ok(SSL_SUCCESS),
@@ -1614,7 +1625,18 @@ fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
     }
     match complete_io(ssl.session.as_mut().unwrap(), &mut io) {
         Err(e) => {
+            let error_code = ErrorCode::from(&e);
             ssl.error = ErrorCode::from(&e);
+            if error_code == ErrorCode::IoErrorWouldBlock {
+                ssl.error = ErrorCode::MesalinkErrorWantAccept;
+            } else {
+                ssl.error = error_code;
+            }
+            if ssl.error == ErrorCode::MesalinkErrorWantAccept
+                || ssl.error == ErrorCode::IoErrorNotConnected
+            {
+                return Ok(SSL_ERROR);
+            }
             Err(e)
         }
         Ok(_) => Ok(SSL_SUCCESS),
@@ -1727,21 +1749,7 @@ fn inner_mesalink_ssl_write(
     let buf = unsafe { slice::from_raw_parts(buf_ptr, buf_len as usize) };
     match ssl.ssl_write(buf) {
         Ok(count) => Ok(count as c_int),
-        Err(e) => {
-            let error_code = ErrorCode::from(&e);
-            ssl.error = ErrorCode::from(&e);
-            if error_code == ErrorCode::IoErrorWouldBlock {
-                ssl.error = ErrorCode::MesalinkErrorWantWrite;
-            } else {
-                ssl.error = error_code;
-            }
-            if ssl.error == ErrorCode::MesalinkErrorWantWrite
-                || ssl.error == ErrorCode::IoErrorNotConnected
-            {
-                return Ok(SSL_ERROR);
-            }
-            Err(e)
-        }
+        Err(_) => unreachable!(),
     }
 }
 
@@ -1762,21 +1770,7 @@ fn inner_mesalink_ssl_flush(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     match ssl.ssl_flush() {
         Ok(_) => Ok(SSL_SUCCESS),
-        Err(e) => {
-            let error_code = ErrorCode::from(&e);
-            ssl.error = ErrorCode::from(&e);
-            if error_code == ErrorCode::IoErrorWouldBlock {
-                ssl.error = ErrorCode::MesalinkErrorWantWrite;
-            } else {
-                ssl.error = error_code;
-            }
-            if ssl.error == ErrorCode::MesalinkErrorWantWrite
-                || ssl.error == ErrorCode::IoErrorNotConnected
-            {
-                return Ok(SSL_ERROR);
-            }
-            Err(e)
-        }
+        Err(_) => unreachable!(),
     }
 }
 
@@ -2013,8 +2007,8 @@ mod tests {
     use libssl::x509::*;
     use std::{str, thread};
 
-    const CONST_CHAIN_FILE: &'static [u8] = b"tests/test.certs\0";
-    const CONST_KEY_FILE: &'static [u8] = b"tests/test.rsa\0";
+    const CONST_CHAIN_FILE: &'static [u8] = b"tests/end.fullchain\0";
+    const CONST_KEY_FILE: &'static [u8] = b"tests/end.rsa\0";
     const CONST_SERVER_ADDR: &'static str = "127.0.0.1";
 
     struct MesalinkTestSession {
@@ -2317,6 +2311,60 @@ mod tests {
     }
 
     #[test]
+    fn ssl_io_on_bad_file_descriptor() {
+        let sock = unsafe { net::TcpStream::from_raw_fd(4526) };
+        let ctx = mesalink_SSL_CTX_new(mesalink_SSLv23_client_method());
+        let ssl = mesalink_SSL_new(ctx);
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_set_tlsext_host_name(ssl, b"google.com\0".as_ptr() as *const c_char)
+        );
+        assert_eq!(SSL_SUCCESS, mesalink_SSL_set_fd(ssl, sock.as_raw_fd()));
+        assert_eq!(SSL_SUCCESS, mesalink_SSL_connect0(ssl));
+
+        let mut buf = [0u8; 64];
+        assert_eq!(
+            SSL_FAILURE,
+            mesalink_SSL_read(ssl, buf.as_mut_ptr() as *mut c_uchar, 64)
+        );
+        assert_eq!(
+            SSL_FAILURE,
+            mesalink_SSL_write(ssl, buf.as_ptr() as *const c_uchar, 64)
+        );
+        assert_eq!(SSL_FAILURE, mesalink_SSL_flush(ssl));
+
+        mesalink_SSL_free(ssl);
+        mesalink_SSL_CTX_free(ctx);
+    }
+
+    #[test]
+    fn ssl_on_nonblocking_socket() {
+        let sock = net::TcpStream::connect("mesalink.io:443").expect("Conenction failed");
+        assert_eq!(true, sock.set_nonblocking(true).is_ok());
+        let ctx = mesalink_SSL_CTX_new(mesalink_SSLv23_client_method());
+        let ssl = mesalink_SSL_new(ctx);
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_set_tlsext_host_name(ssl, b"mesalink.io\0".as_ptr() as *const c_char)
+        );
+        assert_eq!(SSL_SUCCESS, mesalink_SSL_set_fd(ssl, sock.as_raw_fd()));
+        assert_eq!(SSL_ERROR, mesalink_SSL_connect(ssl));
+        let mut buf = [0u8; 64];
+        assert_eq!(
+            SSL_ERROR,
+            mesalink_SSL_read(ssl, buf.as_mut_ptr() as *mut c_uchar, 64)
+        );
+        assert_eq!(
+            64,
+            mesalink_SSL_write(ssl, buf.as_ptr() as *const c_uchar, 64)
+        );
+        assert_eq!(SSL_SUCCESS, mesalink_SSL_flush(ssl));
+
+        mesalink_SSL_free(ssl);
+        mesalink_SSL_CTX_free(ctx);
+    }
+
+    #[test]
     fn ssl_ctx_is_thread_safe() {
         let context_ptr = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
         let context = sanitize_ptr_for_mut_ref(context_ptr);
@@ -2375,7 +2423,7 @@ mod tests {
             SSL_SUCCESS,
             mesalink_SSL_CTX_use_certificate_chain_file(
                 ctx_ptr,
-                b"tests/bad.certs\0".as_ptr() as *const c_char,
+                b"tests/bad.chain\0".as_ptr() as *const c_char,
                 0
             )
         );
@@ -2542,7 +2590,11 @@ mod tests {
 
     #[test]
     fn early_data_to_mesalink_io() {
-        const HTTP_REQUEST: &[u8; 83] = b"GET / HTTP/1.0\r\nHost: mesalink.io\r\nConnection: close\r\nAccept-Encoding: identity\r\n\r\n";
+        const HTTP_REQUEST: &[u8; 83] = b"GET / HTTP/1.1\r\n\
+            Host: mesalink.io\r\n\
+            Connection: close\r\n\
+            Accept-Encoding: identity\r\n\
+            \r\n";
 
         let method = mesalink_TLSv1_3_client_method();
         let ctx = mesalink_SSL_CTX_new(method);
@@ -2612,5 +2664,41 @@ mod tests {
             mesalink_SSL_free(ssl);
         }
         mesalink_SSL_CTX_free(ctx);
+    }
+
+    #[test]
+    fn test_null_pointers_as_arguments() {
+        assert_eq!(
+            SSL_FAILURE,
+            mesalink_SSL_CTX_use_certificate_chain_file(ptr::null_mut(), ptr::null_mut(), 0)
+        );
+        assert_eq!(
+            SSL_FAILURE,
+            mesalink_SSL_CTX_use_PrivateKey_file(ptr::null_mut(), ptr::null_mut(), 0)
+        );
+        assert_eq!(
+            SSL_FAILURE,
+            mesalink_SSL_CIPHER_get_bits(ptr::null_mut(), ptr::null_mut())
+        );
+        let version_str_ptr_1 = mesalink_SSL_CIPHER_get_version(ptr::null_mut());
+        let version_str_1 = unsafe { ffi::CStr::from_ptr(version_str_ptr_1).to_str().unwrap() };
+        assert_eq!(" NONE ", version_str_1);
+
+        let version_str_ptr_2 = mesalink_SSL_get_cipher(ptr::null_mut());
+        assert_eq!(ptr::null(), version_str_ptr_2);
+
+        assert_eq!(
+            SSL_FAILURE,
+            mesalink_SSL_read(ptr::null_mut(), ptr::null_mut(), 100)
+        );
+        assert_eq!(
+            SSL_FAILURE,
+            mesalink_SSL_write(ptr::null_mut(), ptr::null_mut(), 100)
+        );
+        assert_eq!(SSL_FAILURE, mesalink_SSL_flush(ptr::null_mut()));
+        assert_eq!(
+            SSL_FAILURE,
+            mesalink_SSL_write_early_data(ptr::null_mut(), ptr::null_mut(), 100, ptr::null_mut())
+        );
     }
 }

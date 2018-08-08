@@ -241,7 +241,7 @@ mod tests {
     #[test]
     fn x509_sk() {
         let stack_ptr: *mut MESALINK_STACK_MESALINK_X509 = mesalink_sk_X509_new_null();
-        let mut certs_io = BufReader::new(File::open("tests/test.certs").unwrap());
+        let mut certs_io = BufReader::new(File::open("tests/end.fullchain").unwrap());
         let certs = pemfile::certs(&mut certs_io).unwrap();
         let certs_count = certs.len();
         assert_eq!(true, certs_count > 0);

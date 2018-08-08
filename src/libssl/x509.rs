@@ -291,19 +291,25 @@ mod tests {
 
     #[test]
     fn x509_get_subject_name_and_alt_names() {
-        let mut certs_io = BufReader::new(File::open("tests/test.certs").unwrap());
+        let mut certs_io = BufReader::new(File::open("tests/end.fullchain").unwrap());
         let certs = pemfile::certs(&mut certs_io).unwrap();
         assert_eq!(true, certs.len() > 0);
         let x509 = MESALINK_X509::new(certs[0].clone());
         let x509_ptr = Box::into_raw(Box::new(x509)) as *mut MESALINK_X509;
 
-        let buf = [0u8; 255];
+        let buf_1 = [0u8; 255];
         let subject_der_ptr = mesalink_X509_get_subject(x509_ptr);
         assert_ne!(subject_der_ptr, ptr::null_mut());
         let _ = mesalink_X509_NAME_oneline(
             subject_der_ptr as *mut MESALINK_X509_NAME,
-            buf.as_ptr() as *mut c_char,
+            buf_1.as_ptr() as *mut c_char,
             255,
+        );
+        let buf_2 = [0u8; 2];
+        let _ = mesalink_X509_NAME_oneline(
+            subject_der_ptr as *mut MESALINK_X509_NAME,
+            buf_2.as_ptr() as *mut c_char,
+            2,
         );
         mesalink_X509_NAME_free(subject_der_ptr);
 
@@ -337,8 +343,12 @@ mod tests {
     }
 
     #[test]
-    fn x509_name_free_null_pointer() {
+    fn x509_null_pointer() {
         mesalink_X509_free(ptr::null_mut());
         mesalink_X509_NAME_free(ptr::null_mut());
+        assert_eq!(
+            ptr::null(),
+            mesalink_X509_NAME_oneline(ptr::null_mut(), ptr::null_mut(), 10)
+        );
     }
 }

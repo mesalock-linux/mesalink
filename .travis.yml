@@ -46,6 +46,9 @@ install:
   - if [[ "$TARGET" = *"android"* ]]; then export PATH="$PATH:$PWD/cross/bin"; fi
 script: ./ci-scripts/script.sh
 before_deploy: ./ci-scripts/before_deploy.sh
+notifications:
+  email:
+    on_success: never
 # Commands to release binaries to Github
 deploy:
   provider: releases
