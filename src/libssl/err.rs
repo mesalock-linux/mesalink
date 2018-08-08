@@ -52,95 +52,95 @@
 //!   MESALINK_ERROR_MALFORMED_OBJECT = 0xe1,
 //!   MESALINK_ERROR_BAD_FUNC_ARG = 0xe2,
 //!   MESALINK_ERROR_PANIC = 0xe3,
-//!   IO_ERROR_NOT_FOUND = 0x02000001,
-//!   IO_ERROR_PERMISSION_DENIED = 0x02000002,
-//!   IO_ERROR_CONNECTION_REFUSED = 0x02000003,
-//!   IO_ERROR_CONNECTION_RESET = 0x02000004,
-//!   IO_ERROR_CONNECTION_ABORTED = 0x02000005,
-//!   IO_ERROR_NOT_CONNECTED = 0x02000006,
-//!   IO_ERROR_ADDR_IN_USE = 0x02000007,
-//!   IO_ERROR_ADDR_NOT_AVAILABLE = 0x02000008,
-//!   IO_ERROR_BROKEN_PIPE = 0x02000009,
-//!   IO_ERROR_ALREADY_EXISTS = 0x0200000a,
-//!   IO_ERROR_WOULD_BLOCK = 0x0200000b,
-//!   IO_ERROR_INVALID_INPUT = 0x0200000c,
-//!   IO_ERROR_INVALID_DATA = 0x0200000d,
-//!   IO_ERROR_TIMED_OUT = 0x0200000e,
-//!   IO_ERROR_WRITE_ZERO = 0x0200000f,
-//!   IO_ERROR_INTERRUPTED = 0x02000010,
-//!   IO_ERROR_OTHER = 0x02000011,
-//!   IO_ERROR_UNEXPECTED_EOF = 0x02000012,
-//!   TLS_ERROR_INAPPROPRIATE_MESSAGE = 0x03000100,
-//!   TLS_ERROR_INAPPROPRIATE_HANDSHAKE_MESSAGE = 0x03000200,
-//!   TLS_ERROR_CORRUPT_MESSAGE = 0x03000300,
-//!   TLS_ERROR_CORRUPT_MESSAGE_PAYLOAD = 0x03000400,
-//!   TLS_ERROR_CORRUPT_MESSAGE_PAYLOAD_ALERT = 0x03000401,
-//!   TLS_ERROR_CORRUPT_MESSAGE_PAYLOAD_CHANGE_CIPHER_SPEC = 0x03000402,
-//!   TLS_ERROR_CORRUPT_MESSAGE_PAYLOAD_HANDSHAKE = 0x03000403,
-//!   TLS_ERROR_NO_CERTIFICATES_PRESENTED = 0x03000500,
-//!   TLS_ERROR_DECRYPT_ERROR = 0x03000600,
-//!   TLS_ERROR_PEER_INCOMPATIBLE_ERROR = 0x03000700,
-//!   TLS_ERROR_PEER_MISBEHAVED_ERROR = 0x03000800,
-//!   TLS_ERROR_ALERT_RECEIVED_CLOSE_NOTIFY = 0x03000901,
-//!   TLS_ERROR_ALERT_RECEIVED_UNEXPECTED_MESSAGE = 0x03000902,
-//!   TLS_ERROR_ALERT_RECEIVED_BAD_RECORD_MAC = 0x03000903,
-//!   TLS_ERROR_ALERT_RECEIVED_DECRYPTION_FAILED = 0x03000904,
-//!   TLS_ERROR_ALERT_RECEIVED_RECORD_OVERFLOW = 0x03000905,
-//!   TLS_ERROR_ALERT_RECEIVED_DECOMPRESSION_FAILURE = 0x03000906,
-//!   TLS_ERROR_ALERT_RECEIVED_HANDSHAKE_FAILURE = 0x03000907,
-//!   TLS_ERROR_ALERT_RECEIVED_NO_CERTIFICATE = 0x03000908,
-//!   TLS_ERROR_ALERT_RECEIVED_BAD_CERTIFICATE = 0x03000909,
-//!   TLS_ERROR_ALERT_RECEIVED_UNSUPPORTED_CERTIFICATE = 0x0300090a,
-//!   TLS_ERROR_ALERT_RECEIVED_CERTIFICATE_REVOKED = 0x0300090b,
-//!   TLS_ERROR_ALERT_RECEIVED_CERTIFICATE_EXPIRED = 0x0300090c,
-//!   TLS_ERROR_ALERT_RECEIVED_CERTIFICATE_UNKNOWN = 0x0300090d,
-//!   TLS_ERROR_ALERT_RECEIVED_ILLEGAL_PARAMETER = 0x0300090e,
-//!   TLS_ERROR_ALERT_RECEIVED_UNKNOWN_CA = 0x0300090f,
-//!   TLS_ERROR_ALERT_RECEIVED_ACCESS_DENIED = 0x03000910,
-//!   TLS_ERROR_ALERT_RECEIVED_DECODE_ERROR = 0x03000911,
-//!   TLS_ERROR_ALERT_RECEIVED_DECRYPT_ERROR = 0x03000912,
-//!   TLS_ERROR_ALERT_RECEIVED_EXPORT_RESTRICTION = 0x03000913,
-//!   TLS_ERROR_ALERT_RECEIVED_PROTOCOL_VERSION = 0x03000914,
-//!   TLS_ERROR_ALERT_RECEIVED_INSUFFICIENT_SECURITY = 0x03000915,
-//!   TLS_ERROR_ALERT_RECEIVED_INTERNAL_ERROR = 0x03000916,
-//!   TLS_ERROR_ALERT_RECEIVED_INAPPROPRIATE_FALLBACK = 0x03000917,
-//!   TLS_ERROR_ALERT_RECEIVED_USER_CANCELED = 0x03000918,
-//!   TLS_ERROR_ALERT_RECEIVED_NO_RENEGOTIATION = 0x03000919,
-//!   TLS_ERROR_ALERT_RECEIVED_MISSING_EXTENSION = 0x0300091a,
-//!   TLS_ERROR_ALERT_RECEIVED_UNSUPPORTED_EXTENSION = 0x0300091b,
-//!   TLS_ERROR_ALERT_RECEIVED_CERTIFICATE_UNOBTAINABLE = 0x0300091c,
-//!   TLS_ERROR_ALERT_RECEIVED_UNRECOGNISED_NAME = 0x0300091d,
-//!   TLS_ERROR_ALERT_RECEIVED_BAD_CERTIFICATE_STATUS_RESPONSE = 0x0300091e,
-//!   TLS_ERROR_ALERT_RECEIVED_BAD_CERTIFICATE_HASH_VALUE = 0x0300091f,
-//!   TLS_ERROR_ALERT_RECEIVED_UNKNOWN_PSK_IDENTITY = 0x03000920,
-//!   TLS_ERROR_ALERT_RECEIVED_CERTIFICATE_REQUIRED = 0x03000921,
-//!   TLS_ERROR_ALERT_RECEIVED_NO_APPLICATION_PROTOCOL = 0x03000922,
-//!   TLS_ERROR_ALERT_RECEIVED_UNKNOWN = 0x030009ff,
-//!   TLS_ERROR_WEBPKI_BAD_DER = 0x03000a01,
-//!   TLS_ERROR_WEBPKI_BAD_DER_TIME = 0x03000a02,
-//!   TLS_ERROR_WEBPKI_CA_USED_AS_END_ENTITY = 0x03000a03,
-//!   TLS_ERROR_WEBPKI_CERT_EXPIRED = 0x03000a04,
-//!   TLS_ERROR_WEBPKI_CERT_NOT_VALID_FOR_NAME = 0x03000a05,
-//!   TLS_ERROR_WEBPKI_CERT_NOT_VALID_YET = 0x03000a06,
-//!   TLS_ERROR_WEBPKI_END_ENTITY_USED_AS_CA = 0x03000a07,
-//!   TLS_ERROR_WEBPKI_EXTENSION_VALUE_INVALID = 0x03000a08,
-//!   TLS_ERROR_WEBPKI_INVALID_CERT_VALIDITY = 0x03000a09,
-//!   TLS_ERROR_WEBPKI_INVALID_SIGNATURE_FOR_PUBLIC_KEY = 0x03000a0a,
-//!   TLS_ERROR_WEBPKI_NAME_CONSTRAINT_VIOLATION = 0x03000a0b,
-//!   TLS_ERROR_WEBPKI_PATH_LEN_CONSTRAINT_VIOLATED = 0x03000a0c,
-//!   TLS_ERROR_WEBPKI_SIGNATURE_ALGORITHM_MISMATCH = 0x03000a0d,
-//!   TLS_ERROR_WEBPKI_REQUIRED_EKU_NOT_FOUND = 0x03000a0e,
-//!   TLS_ERROR_WEBPKI_UNKNOWN_ISSUER = 0x03000a0f,
-//!   TLS_ERROR_WEBPKI_UNSUPPORTED_CERT_VERSION = 0x03000a10,
-//!   TLS_ERROR_WEBPKI_UNSUPPORTED_CRITICAL_EXTENSION = 0x03000a11,
-//!   TLS_ERROR_WEBPKI_UNSUPPORTED_SIGNATURE_ALGORITHM_FOR_PUBLIC_KEY = 0x03000a12,
-//!   TLS_ERROR_WEBPKI_UNSUPPORTED_SIGNATURE_ALGORITHM = 0x03000a13,
-//!   TLS_ERROR_INVALID_SCT = 0x03000b00,
-//!   TLS_ERROR_GENERAL = 0x03000c00,
-//!   TLS_ERROR_FAILED_TO_GET_CURRENT_TIME = 0x03000d00,
-//!   TLS_ERROR_INVALID_DNS_NAME = 0x03000e00,
-//!   TLS_ERROR_HANDSHAKE_NOT_COMPLETE = 0x03000f00,
-//!   TLS_ERROR_PEER_SENT_OVERSIZED_RECORD = 0x03001000,
+//!   IO_ERROR_NOT_FOUND = 0x0200_0001,
+//!   IO_ERROR_PERMISSION_DENIED = 0x0200_0002,
+//!   IO_ERROR_CONNECTION_REFUSED = 0x0200_0003,
+//!   IO_ERROR_CONNECTION_RESET = 0x0200_0004,
+//!   IO_ERROR_CONNECTION_ABORTED = 0x0200_0005,
+//!   IO_ERROR_NOT_CONNECTED = 0x0200_0006,
+//!   IO_ERROR_ADDR_IN_USE = 0x0200_0007,
+//!   IO_ERROR_ADDR_NOT_AVAILABLE = 0x0200_0008,
+//!   IO_ERROR_BROKEN_PIPE = 0x0200_0009,
+//!   IO_ERROR_ALREADY_EXISTS = 0x0200_000a,
+//!   IO_ERROR_WOULD_BLOCK = 0x0200_000b,
+//!   IO_ERROR_INVALID_INPUT = 0x0200_000c,
+//!   IO_ERROR_INVALID_DATA = 0x0200_000d,
+//!   IO_ERROR_TIMED_OUT = 0x0200_000e,
+//!   IO_ERROR_WRITE_ZERO = 0x0200_000f,
+//!   IO_ERROR_INTERRUPTED = 0x0200_0010,
+//!   IO_ERROR_OTHER = 0x0200_0011,
+//!   IO_ERROR_UNEXPECTED_EOF = 0x0200_0012,
+//!   TLS_ERROR_INAPPROPRIATE_MESSAGE = 0x0300_0100,
+//!   TLS_ERROR_INAPPROPRIATE_HANDSHAKE_MESSAGE = 0x0300_0200,
+//!   TLS_ERROR_CORRUPT_MESSAGE = 0x0300_0300,
+//!   TLS_ERROR_CORRUPT_MESSAGE_PAYLOAD = 0x0300_0400,
+//!   TLS_ERROR_CORRUPT_MESSAGE_PAYLOAD_ALERT = 0x0300_0401,
+//!   TLS_ERROR_CORRUPT_MESSAGE_PAYLOAD_CHANGE_CIPHER_SPEC = 0x0300_0402,
+//!   TLS_ERROR_CORRUPT_MESSAGE_PAYLOAD_HANDSHAKE = 0x0300_0403,
+//!   TLS_ERROR_NO_CERTIFICATES_PRESENTED = 0x0300_0500,
+//!   TLS_ERROR_DECRYPT_ERROR = 0x0300_0600,
+//!   TLS_ERROR_PEER_INCOMPATIBLE_ERROR = 0x0300_0700,
+//!   TLS_ERROR_PEER_MISBEHAVED_ERROR = 0x0300_0800,
+//!   TLS_ERROR_ALERT_RECEIVED_CLOSE_NOTIFY = 0x0300_0901,
+//!   TLS_ERROR_ALERT_RECEIVED_UNEXPECTED_MESSAGE = 0x0300_0902,
+//!   TLS_ERROR_ALERT_RECEIVED_BAD_RECORD_MAC = 0x0300_0903,
+//!   TLS_ERROR_ALERT_RECEIVED_DECRYPTION_FAILED = 0x0300_0904,
+//!   TLS_ERROR_ALERT_RECEIVED_RECORD_OVERFLOW = 0x0300_0905,
+//!   TLS_ERROR_ALERT_RECEIVED_DECOMPRESSION_FAILURE = 0x0300_0906,
+//!   TLS_ERROR_ALERT_RECEIVED_HANDSHAKE_FAILURE = 0x0300_0907,
+//!   TLS_ERROR_ALERT_RECEIVED_NO_CERTIFICATE = 0x0300_0908,
+//!   TLS_ERROR_ALERT_RECEIVED_BAD_CERTIFICATE = 0x0300_0909,
+//!   TLS_ERROR_ALERT_RECEIVED_UNSUPPORTED_CERTIFICATE = 0x0300_090a,
+//!   TLS_ERROR_ALERT_RECEIVED_CERTIFICATE_REVOKED = 0x0300_090b,
+//!   TLS_ERROR_ALERT_RECEIVED_CERTIFICATE_EXPIRED = 0x0300_090c,
+//!   TLS_ERROR_ALERT_RECEIVED_CERTIFICATE_UNKNOWN = 0x0300_090d,
+//!   TLS_ERROR_ALERT_RECEIVED_ILLEGAL_PARAMETER = 0x0300_090e,
+//!   TLS_ERROR_ALERT_RECEIVED_UNKNOWN_CA = 0x0300_090f,
+//!   TLS_ERROR_ALERT_RECEIVED_ACCESS_DENIED = 0x0300_0910,
+//!   TLS_ERROR_ALERT_RECEIVED_DECODE_ERROR = 0x0300_0911,
+//!   TLS_ERROR_ALERT_RECEIVED_DECRYPT_ERROR = 0x0300_0912,
+//!   TLS_ERROR_ALERT_RECEIVED_EXPORT_RESTRICTION = 0x0300_0913,
+//!   TLS_ERROR_ALERT_RECEIVED_PROTOCOL_VERSION = 0x0300_0914,
+//!   TLS_ERROR_ALERT_RECEIVED_INSUFFICIENT_SECURITY = 0x0300_0915,
+//!   TLS_ERROR_ALERT_RECEIVED_INTERNAL_ERROR = 0x0300_0916,
+//!   TLS_ERROR_ALERT_RECEIVED_INAPPROPRIATE_FALLBACK = 0x0300_0917,
+//!   TLS_ERROR_ALERT_RECEIVED_USER_CANCELED = 0x0300_0918,
+//!   TLS_ERROR_ALERT_RECEIVED_NO_RENEGOTIATION = 0x0300_0919,
+//!   TLS_ERROR_ALERT_RECEIVED_MISSING_EXTENSION = 0x0300_091a,
+//!   TLS_ERROR_ALERT_RECEIVED_UNSUPPORTED_EXTENSION = 0x0300_091b,
+//!   TLS_ERROR_ALERT_RECEIVED_CERTIFICATE_UNOBTAINABLE = 0x0300_091c,
+//!   TLS_ERROR_ALERT_RECEIVED_UNRECOGNISED_NAME = 0x0300_091d,
+//!   TLS_ERROR_ALERT_RECEIVED_BAD_CERTIFICATE_STATUS_RESPONSE = 0x0300_091e,
+//!   TLS_ERROR_ALERT_RECEIVED_BAD_CERTIFICATE_HASH_VALUE = 0x0300_091f,
+//!   TLS_ERROR_ALERT_RECEIVED_UNKNOWN_PSK_IDENTITY = 0x0300_0920,
+//!   TLS_ERROR_ALERT_RECEIVED_CERTIFICATE_REQUIRED = 0x0300_0921,
+//!   TLS_ERROR_ALERT_RECEIVED_NO_APPLICATION_PROTOCOL = 0x0300_0922,
+//!   TLS_ERROR_ALERT_RECEIVED_UNKNOWN = 0x0300_09ff,
+//!   TLS_ERROR_WEBPKI_BAD_DER = 0x0300_0a01,
+//!   TLS_ERROR_WEBPKI_BAD_DER_TIME = 0x0300_0a02,
+//!   TLS_ERROR_WEBPKI_CA_USED_AS_END_ENTITY = 0x0300_0a03,
+//!   TLS_ERROR_WEBPKI_CERT_EXPIRED = 0x0300_0a04,
+//!   TLS_ERROR_WEBPKI_CERT_NOT_VALID_FOR_NAME = 0x0300_0a05,
+//!   TLS_ERROR_WEBPKI_CERT_NOT_VALID_YET = 0x0300_0a06,
+//!   TLS_ERROR_WEBPKI_END_ENTITY_USED_AS_CA = 0x0300_0a07,
+//!   TLS_ERROR_WEBPKI_EXTENSION_VALUE_INVALID = 0x0300_0a08,
+//!   TLS_ERROR_WEBPKI_INVALID_CERT_VALIDITY = 0x0300_0a09,
+//!   TLS_ERROR_WEBPKI_INVALID_SIGNATURE_FOR_PUBLIC_KEY = 0x0300_0a0a,
+//!   TLS_ERROR_WEBPKI_NAME_CONSTRAINT_VIOLATION = 0x0300_0a0b,
+//!   TLS_ERROR_WEBPKI_PATH_LEN_CONSTRAINT_VIOLATED = 0x0300_0a0c,
+//!   TLS_ERROR_WEBPKI_SIGNATURE_ALGORITHM_MISMATCH = 0x0300_0a0d,
+//!   TLS_ERROR_WEBPKI_REQUIRED_EKU_NOT_FOUND = 0x0300_0a0e,
+//!   TLS_ERROR_WEBPKI_UNKNOWN_ISSUER = 0x0300_0a0f,
+//!   TLS_ERROR_WEBPKI_UNSUPPORTED_CERT_VERSION = 0x0300_0a10,
+//!   TLS_ERROR_WEBPKI_UNSUPPORTED_CRITICAL_EXTENSION = 0x0300_0a11,
+//!   TLS_ERROR_WEBPKI_UNSUPPORTED_SIGNATURE_ALGORITHM_FOR_PUBLIC_KEY = 0x0300_0a12,
+//!   TLS_ERROR_WEBPKI_UNSUPPORTED_SIGNATURE_ALGORITHM = 0x0300_0a13,
+//!   TLS_ERROR_INVALID_SCT = 0x0300_0b00,
+//!   TLS_ERROR_GENERAL = 0x0300_0c00,
+//!   TLS_ERROR_FAILED_TO_GET_CURRENT_TIME = 0x0300_0d00,
+//!   TLS_ERROR_INVALID_DNS_NAME = 0x0300_0e00,
+//!   TLS_ERROR_HANDSHAKE_NOT_COMPLETE = 0x0300_0f00,
+//!   TLS_ERROR_PEER_SENT_OVERSIZED_RECORD = 0x0300_1000,
 //!   UNDEFINED_ERROR = 0x0eeeeeee,
 //! ```
 
@@ -159,18 +159,18 @@ thread_local! {
 #[repr(C)]
 #[derive(PartialEq, Clone, Debug)]
 pub(crate) enum MesalinkBuiltinError {
-    ErrorNone,
-    ErrorZeroReturn,
-    ErrorWantRead,
-    ErrorWantWrite,
-    ErrorWantConnect,
-    ErrorWantAccept,
-    ErrorSyscall,
-    ErrorSsl,
-    ErrorNullPointer,
-    ErrorMalformedObject,
-    ErrorBadFuncArg,
-    ErrorPanic,
+    None,
+    ZeroReturn,
+    WantRead,
+    WantWrite,
+    WantConnect,
+    WantAccept,
+    Syscall,
+    Ssl,
+    NullPointer,
+    MalformedObject,
+    BadFuncArg,
+    Panic,
 }
 
 #[doc(hidden)]
@@ -184,18 +184,18 @@ impl fmt::Display for MesalinkBuiltinError {
 impl error::Error for MesalinkBuiltinError {
     fn description(&self) -> &str {
         match *self {
-            MesalinkBuiltinError::ErrorNone => "SSL_ERROR_NONE",
-            MesalinkBuiltinError::ErrorZeroReturn => "SSL_ERROR_ZERO_RETURN",
-            MesalinkBuiltinError::ErrorWantRead => "SSL_ERROR_WANT_READ",
-            MesalinkBuiltinError::ErrorWantWrite => "SSL_ERROR_WANT_WRITE",
-            MesalinkBuiltinError::ErrorWantConnect => "SSL_ERROR_WANT_CONNECT",
-            MesalinkBuiltinError::ErrorWantAccept => "SSL_ERROR_WANT_ACCEPT",
-            MesalinkBuiltinError::ErrorSyscall => "SSL_ERROR_SYSCALL",
-            MesalinkBuiltinError::ErrorSsl => "SSL_ERROR_SSL",
-            MesalinkBuiltinError::ErrorNullPointer => "MESALINK_ERROR_NULL_POINTER",
-            MesalinkBuiltinError::ErrorMalformedObject => "MESALINK_ERROR_MALFORMED_OBJECT",
-            MesalinkBuiltinError::ErrorBadFuncArg => "MESALINK_ERROR_BAD_FUNCTION_ARGUMENT",
-            MesalinkBuiltinError::ErrorPanic => "MESALINK_ERROR_PANIC_AT_FFI",
+            MesalinkBuiltinError::None => "SSL_ERROR_NONE",
+            MesalinkBuiltinError::ZeroReturn => "SSL_ERROR_ZERO_RETURN",
+            MesalinkBuiltinError::WantRead => "SSL_ERROR_WANT_READ",
+            MesalinkBuiltinError::WantWrite => "SSL_ERROR_WANT_WRITE",
+            MesalinkBuiltinError::WantConnect => "SSL_ERROR_WANT_CONNECT",
+            MesalinkBuiltinError::WantAccept => "SSL_ERROR_WANT_ACCEPT",
+            MesalinkBuiltinError::Syscall => "SSL_ERROR_SYSCALL",
+            MesalinkBuiltinError::Ssl => "SSL_ERROR_SSL",
+            MesalinkBuiltinError::NullPointer => "MESALINK_ERROR_NULL_POINTER",
+            MesalinkBuiltinError::MalformedObject => "MESALINK_ERROR_MALFORMED_OBJECT",
+            MesalinkBuiltinError::BadFuncArg => "MESALINK_ERROR_BAD_FUNCTION_ARGUMENT",
+            MesalinkBuiltinError::Panic => "MESALINK_ERROR_PANIC_AT_FFI",
         }
     }
 }
@@ -203,29 +203,29 @@ impl error::Error for MesalinkBuiltinError {
 #[cfg_attr(feature = "error_strings", derive(Debug))]
 #[doc(hidden)]
 pub(crate) enum MesalinkErrorType {
-    IoError(io::Error),
-    TlsError(rustls::TLSError),
-    BuiltinError(MesalinkBuiltinError),
+    Io(io::Error),
+    Tls(rustls::TLSError),
+    Builtin(MesalinkBuiltinError),
 }
 
 #[doc(hidden)]
 impl From<io::Error> for MesalinkErrorType {
     fn from(err: io::Error) -> MesalinkErrorType {
-        MesalinkErrorType::IoError(err)
+        MesalinkErrorType::Io(err)
     }
 }
 
 #[doc(hidden)]
 impl From<rustls::TLSError> for MesalinkErrorType {
     fn from(err: rustls::TLSError) -> MesalinkErrorType {
-        MesalinkErrorType::TlsError(err)
+        MesalinkErrorType::Tls(err)
     }
 }
 
 #[doc(hidden)]
 impl From<MesalinkBuiltinError> for MesalinkErrorType {
     fn from(err: MesalinkBuiltinError) -> MesalinkErrorType {
-        MesalinkErrorType::BuiltinError(err)
+        MesalinkErrorType::Builtin(err)
     }
 }
 
@@ -238,10 +238,7 @@ pub(crate) struct MesalinkError {
 
 impl MesalinkError {
     pub fn new(error: MesalinkErrorType, call_site: &'static str) -> MesalinkError {
-        MesalinkError {
-            error: error,
-            call_site: call_site,
-        }
+        MesalinkError { error, call_site }
     }
 }
 
@@ -262,108 +259,108 @@ pub enum ErrorCode {
     MesalinkErrorWantAccept = 8,
     MesalinkErrorSyscall = 5,
     MesalinkErrorSsl = 0x55,
-    MesalinkErrorNullPointer = 0xe0,
+    MesalinkNullPointer = 0xe0,
     MesalinkErrorMalformedObject = 0xe1,
     MesalinkErrorBadFuncArg = 0xe2,
     MesalinkErrorPanic = 0xe3,
     // Rust IO ErrorKind codes
-    IoErrorNotFound = 0x02000001,
-    IoErrorPermissionDenied = 0x02000002,
-    IoErrorConnectionRefused = 0x02000003,
-    IoErrorConnectionReset = 0x02000004,
-    IoErrorConnectionAborted = 0x02000005,
-    IoErrorNotConnected = 0x02000006,
-    IoErrorAddrInUse = 0x02000007,
-    IoErrorAddrNotAvailable = 0x02000008,
-    IoErrorBrokenPipe = 0x02000009,
-    IoErrorAlreadyExists = 0x0200000a,
-    IoErrorWouldBlock = 0x0200000b,
-    IoErrorInvalidInput = 0x0200000c,
-    IoErrorInvalidData = 0x0200000d,
-    IoErrorTimedOut = 0x0200000e,
-    IoErrorWriteZero = 0x0200000f,
-    IoErrorInterrupted = 0x02000010,
-    IoErrorOther = 0x02000011,
-    IoErrorUnexpectedEof = 0x02000012,
+    IoErrorNotFound = 0x0200_0001,
+    IoErrorPermissionDenied = 0x0200_0002,
+    IoErrorConnectionRefused = 0x0200_0003,
+    IoErrorConnectionReset = 0x0200_0004,
+    IoErrorConnectionAborted = 0x0200_0005,
+    IoErrorNotConnected = 0x0200_0006,
+    IoErrorAddrInUse = 0x0200_0007,
+    IoErrorAddrNotAvailable = 0x0200_0008,
+    IoErrorBrokenPipe = 0x0200_0009,
+    IoErrorAlreadyExists = 0x0200_000a,
+    IoErrorWouldBlock = 0x0200_000b,
+    IoErrorInvalidInput = 0x0200_000c,
+    IoErrorInvalidData = 0x0200_000d,
+    IoErrorTimedOut = 0x0200_000e,
+    IoErrorWriteZero = 0x0200_000f,
+    IoErrorInterrupted = 0x0200_0010,
+    IoErrorOther = 0x0200_0011,
+    IoErrorUnexpectedEof = 0x0200_0012,
     // TLS error codes
-    TLSErrorInappropriateMessage = 0x03000100,
-    TLSErrorInappropriateHandshakeMessage = 0x03000200,
-    TLSErrorCorruptMessage = 0x03000300,
-    TLSErrorCorruptMessagePayload = 0x03000400,
-    TLSErrorCorruptMessagePayloadAlert = 0x03000401,
-    TLSErrorCorruptMessagePayloadChangeCipherSpec = 0x03000402,
-    TLSErrorCorruptMessagePayloadHandshake = 0x03000403,
-    TLSErrorNoCertificatesPresented = 0x03000500,
-    TLSErrorDecryptError = 0x03000600,
-    TLSErrorPeerIncompatibleError = 0x03000700,
-    TLSErrorPeerMisbehavedError = 0x03000800,
-    TLSErrorAlertReceivedCloseNotify = 0x03000901,
-    TLSErrorAlertReceivedUnexpectedMessage = 0x03000902,
-    TLSErrorAlertReceivedBadRecordMac = 0x03000903,
-    TLSErrorAlertReceivedDecryptionFailed = 0x03000904,
-    TLSErrorAlertReceivedRecordOverflow = 0x03000905,
-    TLSErrorAlertReceivedDecompressionFailure = 0x03000906,
-    TLSErrorAlertReceivedHandshakeFailure = 0x03000907,
-    TLSErrorAlertReceivedNoCertificate = 0x03000908,
-    TLSErrorAlertReceivedBadCertificate = 0x03000909,
-    TLSErrorAlertReceivedUnsupportedCertificate = 0x0300090a,
-    TLSErrorAlertReceivedCertificateRevoked = 0x0300090b,
-    TLSErrorAlertReceivedCertificateExpired = 0x0300090c,
-    TLSErrorAlertReceivedCertificateUnknown = 0x0300090d,
-    TLSErrorAlertReceivedIllegalParameter = 0x0300090e,
-    TLSErrorAlertReceivedUnknownCA = 0x0300090f,
-    TLSErrorAlertReceivedAccessDenied = 0x03000910,
-    TLSErrorAlertReceivedDecodeError = 0x03000911,
-    TLSErrorAlertReceivedDecryptError = 0x03000912,
-    TLSErrorAlertReceivedExportRestriction = 0x03000913,
-    TLSErrorAlertReceivedProtocolVersion = 0x03000914,
-    TLSErrorAlertReceivedInsufficientSecurity = 0x03000915,
-    TLSErrorAlertReceivedInternalError = 0x03000916,
-    TLSErrorAlertReceivedInappropriateFallback = 0x03000917,
-    TLSErrorAlertReceivedUserCanceled = 0x03000918,
-    TLSErrorAlertReceivedNoRenegotiation = 0x03000919,
-    TLSErrorAlertReceivedMissingExtension = 0x0300091a,
-    TLSErrorAlertReceivedUnsupportedExtension = 0x0300091b,
-    TLSErrorAlertReceivedCertificateUnobtainable = 0x0300091c,
-    TLSErrorAlertReceivedUnrecognisedName = 0x0300091d,
-    TLSErrorAlertReceivedBadCertificateStatusResponse = 0x0300091e,
-    TLSErrorAlertReceivedBadCertificateHashValue = 0x0300091f,
-    TLSErrorAlertReceivedUnknownPSKIdentity = 0x03000920,
-    TLSErrorAlertReceivedCertificateRequired = 0x03000921,
-    TLSErrorAlertReceivedNoApplicationProtocol = 0x03000922,
-    TLSErrorAlertReceivedUnknown = 0x030009ff,
-    TLSErrorWebpkiBadDER = 0x03000a01,
-    TLSErrorWebpkiBadDERTime = 0x03000a02,
-    TLSErrorWebpkiCAUsedAsEndEntity = 0x03000a03,
-    TLSErrorWebpkiCertExpired = 0x03000a04,
-    TLSErrorWebpkiCertNotValidForName = 0x03000a05,
-    TLSErrorWebpkiCertNotValidYet = 0x03000a06,
-    TLSErrorWebpkiEndEntityUsedAsCA = 0x03000a07,
-    TLSErrorWebpkiExtensionValueInvalid = 0x03000a08,
-    TLSErrorWebpkiInvalidCertValidity = 0x03000a09,
-    TLSErrorWebpkiInvalidSignatureForPublicKey = 0x03000a0a,
-    TLSErrorWebpkiNameConstraintViolation = 0x03000a0b,
-    TLSErrorWebpkiPathLenConstraintViolated = 0x03000a0c,
-    TLSErrorWebpkiSignatureAlgorithmMismatch = 0x03000a0d,
-    TLSErrorWebpkiRequiredEKUNotFound = 0x03000a0e,
-    TLSErrorWebpkiUnknownIssuer = 0x03000a0f,
-    TLSErrorWebpkiUnsupportedCertVersion = 0x03000a10,
-    TLSErrorWebpkiUnsupportedCriticalExtension = 0x03000a11,
-    TLSErrorWebpkiUnsupportedSignatureAlgorithmForPublicKey = 0x03000a12,
-    TLSErrorWebpkiUnsupportedSignatureAlgorithm = 0x03000a13,
-    TLSErrorInvalidSCT = 0x03000b00,
-    TLSErrorGeneral = 0x03000c00,
-    TLSErrorFailedToGetCurrentTime = 0x03000d00,
-    TLSErrorInvalidDNSName = 0x03000e00,
-    TLSErrorHandshakeNotComplete = 0x03000f00,
-    TLSErrorPeerSentOversizedRecord = 0x03001000,
-    UndefinedError = 0x0eeeeeee,
+    TLSErrorInappropriateMessage = 0x0300_0100,
+    TLSErrorInappropriateHandshakeMessage = 0x0300_0200,
+    TLSErrorCorruptMessage = 0x0300_0300,
+    TLSErrorCorruptMessagePayload = 0x0300_0400,
+    TLSErrorCorruptMessagePayloadAlert = 0x0300_0401,
+    TLSErrorCorruptMessagePayloadChangeCipherSpec = 0x0300_0402,
+    TLSErrorCorruptMessagePayloadHandshake = 0x0300_0403,
+    TLSErrorNoCertificatesPresented = 0x0300_0500,
+    TLSErrorDecryptError = 0x0300_0600,
+    TLSErrorPeerIncompatibleError = 0x0300_0700,
+    TLSErrorPeerMisbehavedError = 0x0300_0800,
+    TLSErrorAlertReceivedCloseNotify = 0x0300_0901,
+    TLSErrorAlertReceivedUnexpectedMessage = 0x0300_0902,
+    TLSErrorAlertReceivedBadRecordMac = 0x0300_0903,
+    TLSErrorAlertReceivedDecryptionFailed = 0x0300_0904,
+    TLSErrorAlertReceivedRecordOverflow = 0x0300_0905,
+    TLSErrorAlertReceivedDecompressionFailure = 0x0300_0906,
+    TLSErrorAlertReceivedHandshakeFailure = 0x0300_0907,
+    TLSErrorAlertReceivedNoCertificate = 0x0300_0908,
+    TLSErrorAlertReceivedBadCertificate = 0x0300_0909,
+    TLSErrorAlertReceivedUnsupportedCertificate = 0x0300_090a,
+    TLSErrorAlertReceivedCertificateRevoked = 0x0300_090b,
+    TLSErrorAlertReceivedCertificateExpired = 0x0300_090c,
+    TLSErrorAlertReceivedCertificateUnknown = 0x0300_090d,
+    TLSErrorAlertReceivedIllegalParameter = 0x0300_090e,
+    TLSErrorAlertReceivedUnknownCA = 0x0300_090f,
+    TLSErrorAlertReceivedAccessDenied = 0x0300_0910,
+    TLSErrorAlertReceivedDecodeError = 0x0300_0911,
+    TLSErrorAlertReceivedDecryptError = 0x0300_0912,
+    TLSErrorAlertReceivedExportRestriction = 0x0300_0913,
+    TLSErrorAlertReceivedProtocolVersion = 0x0300_0914,
+    TLSErrorAlertReceivedInsufficientSecurity = 0x0300_0915,
+    TLSErrorAlertReceivedInternalError = 0x0300_0916,
+    TLSErrorAlertReceivedInappropriateFallback = 0x0300_0917,
+    TLSErrorAlertReceivedUserCanceled = 0x0300_0918,
+    TLSErrorAlertReceivedNoRenegotiation = 0x0300_0919,
+    TLSErrorAlertReceivedMissingExtension = 0x0300_091a,
+    TLSErrorAlertReceivedUnsupportedExtension = 0x0300_091b,
+    TLSErrorAlertReceivedCertificateUnobtainable = 0x0300_091c,
+    TLSErrorAlertReceivedUnrecognisedName = 0x0300_091d,
+    TLSErrorAlertReceivedBadCertificateStatusResponse = 0x0300_091e,
+    TLSErrorAlertReceivedBadCertificateHashValue = 0x0300_091f,
+    TLSErrorAlertReceivedUnknownPSKIdentity = 0x0300_0920,
+    TLSErrorAlertReceivedCertificateRequired = 0x0300_0921,
+    TLSErrorAlertReceivedNoApplicationProtocol = 0x0300_0922,
+    TLSErrorAlertReceivedUnknown = 0x0300_09ff,
+    TLSErrorWebpkiBadDER = 0x0300_0a01,
+    TLSErrorWebpkiBadDERTime = 0x0300_0a02,
+    TLSErrorWebpkiCAUsedAsEndEntity = 0x0300_0a03,
+    TLSErrorWebpkiCertExpired = 0x0300_0a04,
+    TLSErrorWebpkiCertNotValidForName = 0x0300_0a05,
+    TLSErrorWebpkiCertNotValidYet = 0x0300_0a06,
+    TLSErrorWebpkiEndEntityUsedAsCA = 0x0300_0a07,
+    TLSErrorWebpkiExtensionValueInvalid = 0x0300_0a08,
+    TLSErrorWebpkiInvalidCertValidity = 0x0300_0a09,
+    TLSErrorWebpkiInvalidSignatureForPublicKey = 0x0300_0a0a,
+    TLSErrorWebpkiNameConstraintViolation = 0x0300_0a0b,
+    TLSErrorWebpkiPathLenConstraintViolated = 0x0300_0a0c,
+    TLSErrorWebpkiSignatureAlgorithmMismatch = 0x0300_0a0d,
+    TLSErrorWebpkiRequiredEKUNotFound = 0x0300_0a0e,
+    TLSErrorWebpkiUnknownIssuer = 0x0300_0a0f,
+    TLSErrorWebpkiUnsupportedCertVersion = 0x0300_0a10,
+    TLSErrorWebpkiUnsupportedCriticalExtension = 0x0300_0a11,
+    TLSErrorWebpkiUnsupportedSignatureAlgorithmForPublicKey = 0x0300_0a12,
+    TLSErrorWebpkiUnsupportedSignatureAlgorithm = 0x0300_0a13,
+    TLSErrorInvalidSCT = 0x0300_0b00,
+    TLSErrorGeneral = 0x0300_0c00,
+    TLSErrorFailedToGetCurrentTime = 0x0300_0d00,
+    TLSErrorInvalidDNSName = 0x0300_0e00,
+    TLSErrorHandshakeNotComplete = 0x0300_0f00,
+    TLSErrorPeerSentOversizedRecord = 0x0300_1000,
+    UndefinedError = 0x0eee_eeee,
 }
 
 #[doc(hidden)]
 impl ErrorCode {
     #[cfg(feature = "error_strings")]
-    pub fn as_u8_slice(&self) -> &'static [u8] {
+    pub fn as_u8_slice(self) -> &'static [u8] {
         self.enum_to_u8()
     }
 
@@ -392,99 +389,99 @@ impl From<u32> for ErrorCode {
             8 => ErrorCode::MesalinkErrorWantAccept,
             5 => ErrorCode::MesalinkErrorSyscall,
             0x55 => ErrorCode::MesalinkErrorSsl,
-            0xe0 => ErrorCode::MesalinkErrorNullPointer,
+            0xe0 => ErrorCode::MesalinkNullPointer,
             0xe1 => ErrorCode::MesalinkErrorMalformedObject,
             0xe2 => ErrorCode::MesalinkErrorBadFuncArg,
             0xe3 => ErrorCode::MesalinkErrorPanic,
-            0x02000001 => ErrorCode::IoErrorNotFound,
-            0x02000002 => ErrorCode::IoErrorPermissionDenied,
-            0x02000003 => ErrorCode::IoErrorConnectionRefused,
-            0x02000004 => ErrorCode::IoErrorConnectionReset,
-            0x02000005 => ErrorCode::IoErrorConnectionAborted,
-            0x02000006 => ErrorCode::IoErrorNotConnected,
-            0x02000007 => ErrorCode::IoErrorAddrInUse,
-            0x02000008 => ErrorCode::IoErrorAddrNotAvailable,
-            0x02000009 => ErrorCode::IoErrorBrokenPipe,
-            0x0200000a => ErrorCode::IoErrorAlreadyExists,
-            0x0200000b => ErrorCode::IoErrorWouldBlock,
-            0x0200000c => ErrorCode::IoErrorInvalidInput,
-            0x0200000d => ErrorCode::IoErrorInvalidData,
-            0x0200000e => ErrorCode::IoErrorTimedOut,
-            0x0200000f => ErrorCode::IoErrorWriteZero,
-            0x02000010 => ErrorCode::IoErrorInterrupted,
-            0x02000011 => ErrorCode::IoErrorOther,
-            0x02000012 => ErrorCode::IoErrorUnexpectedEof,
-            0x03000100 => ErrorCode::TLSErrorInappropriateMessage,
-            0x03000200 => ErrorCode::TLSErrorInappropriateHandshakeMessage,
-            0x03000300 => ErrorCode::TLSErrorCorruptMessage,
-            0x03000400 => ErrorCode::TLSErrorCorruptMessagePayload,
-            0x03000401 => ErrorCode::TLSErrorCorruptMessagePayloadAlert,
-            0x03000402 => ErrorCode::TLSErrorCorruptMessagePayloadChangeCipherSpec,
-            0x03000403 => ErrorCode::TLSErrorCorruptMessagePayloadHandshake,
-            0x03000500 => ErrorCode::TLSErrorNoCertificatesPresented,
-            0x03000600 => ErrorCode::TLSErrorDecryptError,
-            0x03000700 => ErrorCode::TLSErrorPeerIncompatibleError,
-            0x03000800 => ErrorCode::TLSErrorPeerMisbehavedError,
-            0x03000901 => ErrorCode::TLSErrorAlertReceivedCloseNotify,
-            0x03000902 => ErrorCode::TLSErrorAlertReceivedUnexpectedMessage,
-            0x03000903 => ErrorCode::TLSErrorAlertReceivedBadRecordMac,
-            0x03000904 => ErrorCode::TLSErrorAlertReceivedDecryptionFailed,
-            0x03000905 => ErrorCode::TLSErrorAlertReceivedRecordOverflow,
-            0x03000906 => ErrorCode::TLSErrorAlertReceivedDecompressionFailure,
-            0x03000907 => ErrorCode::TLSErrorAlertReceivedHandshakeFailure,
-            0x03000908 => ErrorCode::TLSErrorAlertReceivedNoCertificate,
-            0x03000909 => ErrorCode::TLSErrorAlertReceivedBadCertificate,
-            0x0300090a => ErrorCode::TLSErrorAlertReceivedUnsupportedCertificate,
-            0x0300090b => ErrorCode::TLSErrorAlertReceivedCertificateRevoked,
-            0x0300090c => ErrorCode::TLSErrorAlertReceivedCertificateExpired,
-            0x0300090d => ErrorCode::TLSErrorAlertReceivedCertificateUnknown,
-            0x0300090e => ErrorCode::TLSErrorAlertReceivedIllegalParameter,
-            0x0300090f => ErrorCode::TLSErrorAlertReceivedUnknownCA,
-            0x03000910 => ErrorCode::TLSErrorAlertReceivedAccessDenied,
-            0x03000911 => ErrorCode::TLSErrorAlertReceivedDecodeError,
-            0x03000912 => ErrorCode::TLSErrorAlertReceivedDecryptError,
-            0x03000913 => ErrorCode::TLSErrorAlertReceivedExportRestriction,
-            0x03000914 => ErrorCode::TLSErrorAlertReceivedProtocolVersion,
-            0x03000915 => ErrorCode::TLSErrorAlertReceivedInsufficientSecurity,
-            0x03000916 => ErrorCode::TLSErrorAlertReceivedInternalError,
-            0x03000917 => ErrorCode::TLSErrorAlertReceivedInappropriateFallback,
-            0x03000918 => ErrorCode::TLSErrorAlertReceivedUserCanceled,
-            0x03000919 => ErrorCode::TLSErrorAlertReceivedNoRenegotiation,
-            0x0300091a => ErrorCode::TLSErrorAlertReceivedMissingExtension,
-            0x0300091b => ErrorCode::TLSErrorAlertReceivedUnsupportedExtension,
-            0x0300091c => ErrorCode::TLSErrorAlertReceivedCertificateUnobtainable,
-            0x0300091d => ErrorCode::TLSErrorAlertReceivedUnrecognisedName,
-            0x0300091e => ErrorCode::TLSErrorAlertReceivedBadCertificateStatusResponse,
-            0x0300091f => ErrorCode::TLSErrorAlertReceivedBadCertificateHashValue,
-            0x03000920 => ErrorCode::TLSErrorAlertReceivedUnknownPSKIdentity,
-            0x03000921 => ErrorCode::TLSErrorAlertReceivedCertificateRequired,
-            0x03000922 => ErrorCode::TLSErrorAlertReceivedNoApplicationProtocol,
-            0x030009ff => ErrorCode::TLSErrorAlertReceivedUnknown,
-            0x03000a01 => ErrorCode::TLSErrorWebpkiBadDER,
-            0x03000a02 => ErrorCode::TLSErrorWebpkiBadDERTime,
-            0x03000a03 => ErrorCode::TLSErrorWebpkiCAUsedAsEndEntity,
-            0x03000a04 => ErrorCode::TLSErrorWebpkiCertExpired,
-            0x03000a05 => ErrorCode::TLSErrorWebpkiCertNotValidForName,
-            0x03000a06 => ErrorCode::TLSErrorWebpkiCertNotValidYet,
-            0x03000a07 => ErrorCode::TLSErrorWebpkiEndEntityUsedAsCA,
-            0x03000a08 => ErrorCode::TLSErrorWebpkiExtensionValueInvalid,
-            0x03000a09 => ErrorCode::TLSErrorWebpkiInvalidCertValidity,
-            0x03000a0a => ErrorCode::TLSErrorWebpkiInvalidSignatureForPublicKey,
-            0x03000a0b => ErrorCode::TLSErrorWebpkiNameConstraintViolation,
-            0x03000a0c => ErrorCode::TLSErrorWebpkiPathLenConstraintViolated,
-            0x03000a0d => ErrorCode::TLSErrorWebpkiSignatureAlgorithmMismatch,
-            0x03000a0e => ErrorCode::TLSErrorWebpkiRequiredEKUNotFound,
-            0x03000a0f => ErrorCode::TLSErrorWebpkiUnknownIssuer,
-            0x03000a10 => ErrorCode::TLSErrorWebpkiUnsupportedCertVersion,
-            0x03000a11 => ErrorCode::TLSErrorWebpkiUnsupportedCriticalExtension,
-            0x03000a12 => ErrorCode::TLSErrorWebpkiUnsupportedSignatureAlgorithmForPublicKey,
-            0x03000a13 => ErrorCode::TLSErrorWebpkiUnsupportedSignatureAlgorithm,
-            0x03000b00 => ErrorCode::TLSErrorInvalidSCT,
-            0x03000c00 => ErrorCode::TLSErrorGeneral,
-            0x03000d00 => ErrorCode::TLSErrorFailedToGetCurrentTime,
-            0x03000e00 => ErrorCode::TLSErrorInvalidDNSName,
-            0x03000f00 => ErrorCode::TLSErrorHandshakeNotComplete,
-            0x03001000 => ErrorCode::TLSErrorPeerSentOversizedRecord,
+            0x0200_0001 => ErrorCode::IoErrorNotFound,
+            0x0200_0002 => ErrorCode::IoErrorPermissionDenied,
+            0x0200_0003 => ErrorCode::IoErrorConnectionRefused,
+            0x0200_0004 => ErrorCode::IoErrorConnectionReset,
+            0x0200_0005 => ErrorCode::IoErrorConnectionAborted,
+            0x0200_0006 => ErrorCode::IoErrorNotConnected,
+            0x0200_0007 => ErrorCode::IoErrorAddrInUse,
+            0x0200_0008 => ErrorCode::IoErrorAddrNotAvailable,
+            0x0200_0009 => ErrorCode::IoErrorBrokenPipe,
+            0x0200_000a => ErrorCode::IoErrorAlreadyExists,
+            0x0200_000b => ErrorCode::IoErrorWouldBlock,
+            0x0200_000c => ErrorCode::IoErrorInvalidInput,
+            0x0200_000d => ErrorCode::IoErrorInvalidData,
+            0x0200_000e => ErrorCode::IoErrorTimedOut,
+            0x0200_000f => ErrorCode::IoErrorWriteZero,
+            0x0200_0010 => ErrorCode::IoErrorInterrupted,
+            0x0200_0011 => ErrorCode::IoErrorOther,
+            0x0200_0012 => ErrorCode::IoErrorUnexpectedEof,
+            0x0300_0100 => ErrorCode::TLSErrorInappropriateMessage,
+            0x0300_0200 => ErrorCode::TLSErrorInappropriateHandshakeMessage,
+            0x0300_0300 => ErrorCode::TLSErrorCorruptMessage,
+            0x0300_0400 => ErrorCode::TLSErrorCorruptMessagePayload,
+            0x0300_0401 => ErrorCode::TLSErrorCorruptMessagePayloadAlert,
+            0x0300_0402 => ErrorCode::TLSErrorCorruptMessagePayloadChangeCipherSpec,
+            0x0300_0403 => ErrorCode::TLSErrorCorruptMessagePayloadHandshake,
+            0x0300_0500 => ErrorCode::TLSErrorNoCertificatesPresented,
+            0x0300_0600 => ErrorCode::TLSErrorDecryptError,
+            0x0300_0700 => ErrorCode::TLSErrorPeerIncompatibleError,
+            0x0300_0800 => ErrorCode::TLSErrorPeerMisbehavedError,
+            0x0300_0901 => ErrorCode::TLSErrorAlertReceivedCloseNotify,
+            0x0300_0902 => ErrorCode::TLSErrorAlertReceivedUnexpectedMessage,
+            0x0300_0903 => ErrorCode::TLSErrorAlertReceivedBadRecordMac,
+            0x0300_0904 => ErrorCode::TLSErrorAlertReceivedDecryptionFailed,
+            0x0300_0905 => ErrorCode::TLSErrorAlertReceivedRecordOverflow,
+            0x0300_0906 => ErrorCode::TLSErrorAlertReceivedDecompressionFailure,
+            0x0300_0907 => ErrorCode::TLSErrorAlertReceivedHandshakeFailure,
+            0x0300_0908 => ErrorCode::TLSErrorAlertReceivedNoCertificate,
+            0x0300_0909 => ErrorCode::TLSErrorAlertReceivedBadCertificate,
+            0x0300_090a => ErrorCode::TLSErrorAlertReceivedUnsupportedCertificate,
+            0x0300_090b => ErrorCode::TLSErrorAlertReceivedCertificateRevoked,
+            0x0300_090c => ErrorCode::TLSErrorAlertReceivedCertificateExpired,
+            0x0300_090d => ErrorCode::TLSErrorAlertReceivedCertificateUnknown,
+            0x0300_090e => ErrorCode::TLSErrorAlertReceivedIllegalParameter,
+            0x0300_090f => ErrorCode::TLSErrorAlertReceivedUnknownCA,
+            0x0300_0910 => ErrorCode::TLSErrorAlertReceivedAccessDenied,
+            0x0300_0911 => ErrorCode::TLSErrorAlertReceivedDecodeError,
+            0x0300_0912 => ErrorCode::TLSErrorAlertReceivedDecryptError,
+            0x0300_0913 => ErrorCode::TLSErrorAlertReceivedExportRestriction,
+            0x0300_0914 => ErrorCode::TLSErrorAlertReceivedProtocolVersion,
+            0x0300_0915 => ErrorCode::TLSErrorAlertReceivedInsufficientSecurity,
+            0x0300_0916 => ErrorCode::TLSErrorAlertReceivedInternalError,
+            0x0300_0917 => ErrorCode::TLSErrorAlertReceivedInappropriateFallback,
+            0x0300_0918 => ErrorCode::TLSErrorAlertReceivedUserCanceled,
+            0x0300_0919 => ErrorCode::TLSErrorAlertReceivedNoRenegotiation,
+            0x0300_091a => ErrorCode::TLSErrorAlertReceivedMissingExtension,
+            0x0300_091b => ErrorCode::TLSErrorAlertReceivedUnsupportedExtension,
+            0x0300_091c => ErrorCode::TLSErrorAlertReceivedCertificateUnobtainable,
+            0x0300_091d => ErrorCode::TLSErrorAlertReceivedUnrecognisedName,
+            0x0300_091e => ErrorCode::TLSErrorAlertReceivedBadCertificateStatusResponse,
+            0x0300_091f => ErrorCode::TLSErrorAlertReceivedBadCertificateHashValue,
+            0x0300_0920 => ErrorCode::TLSErrorAlertReceivedUnknownPSKIdentity,
+            0x0300_0921 => ErrorCode::TLSErrorAlertReceivedCertificateRequired,
+            0x0300_0922 => ErrorCode::TLSErrorAlertReceivedNoApplicationProtocol,
+            0x0300_09ff => ErrorCode::TLSErrorAlertReceivedUnknown,
+            0x0300_0a01 => ErrorCode::TLSErrorWebpkiBadDER,
+            0x0300_0a02 => ErrorCode::TLSErrorWebpkiBadDERTime,
+            0x0300_0a03 => ErrorCode::TLSErrorWebpkiCAUsedAsEndEntity,
+            0x0300_0a04 => ErrorCode::TLSErrorWebpkiCertExpired,
+            0x0300_0a05 => ErrorCode::TLSErrorWebpkiCertNotValidForName,
+            0x0300_0a06 => ErrorCode::TLSErrorWebpkiCertNotValidYet,
+            0x0300_0a07 => ErrorCode::TLSErrorWebpkiEndEntityUsedAsCA,
+            0x0300_0a08 => ErrorCode::TLSErrorWebpkiExtensionValueInvalid,
+            0x0300_0a09 => ErrorCode::TLSErrorWebpkiInvalidCertValidity,
+            0x0300_0a0a => ErrorCode::TLSErrorWebpkiInvalidSignatureForPublicKey,
+            0x0300_0a0b => ErrorCode::TLSErrorWebpkiNameConstraintViolation,
+            0x0300_0a0c => ErrorCode::TLSErrorWebpkiPathLenConstraintViolated,
+            0x0300_0a0d => ErrorCode::TLSErrorWebpkiSignatureAlgorithmMismatch,
+            0x0300_0a0e => ErrorCode::TLSErrorWebpkiRequiredEKUNotFound,
+            0x0300_0a0f => ErrorCode::TLSErrorWebpkiUnknownIssuer,
+            0x0300_0a10 => ErrorCode::TLSErrorWebpkiUnsupportedCertVersion,
+            0x0300_0a11 => ErrorCode::TLSErrorWebpkiUnsupportedCriticalExtension,
+            0x0300_0a12 => ErrorCode::TLSErrorWebpkiUnsupportedSignatureAlgorithmForPublicKey,
+            0x0300_0a13 => ErrorCode::TLSErrorWebpkiUnsupportedSignatureAlgorithm,
+            0x0300_0b00 => ErrorCode::TLSErrorInvalidSCT,
+            0x0300_0c00 => ErrorCode::TLSErrorGeneral,
+            0x0300_0d00 => ErrorCode::TLSErrorFailedToGetCurrentTime,
+            0x0300_0e00 => ErrorCode::TLSErrorInvalidDNSName,
+            0x0300_0f00 => ErrorCode::TLSErrorHandshakeNotComplete,
+            0x0300_1000 => ErrorCode::TLSErrorPeerSentOversizedRecord,
             _ => ErrorCode::UndefinedError,
         }
     }
@@ -504,23 +501,21 @@ impl<'a> From<&'a MesalinkError> for ErrorCode {
         use rustls::internal::msgs::enums::{AlertDescription, ContentType};
         use rustls::TLSError;
         match e.error {
-            MesalinkErrorType::BuiltinError(ref e) => match e {
-                &MesalinkBuiltinError::ErrorNone => ErrorCode::MesalinkErrorNone,
-                &MesalinkBuiltinError::ErrorZeroReturn => ErrorCode::MesalinkErrorZeroReturn,
-                &MesalinkBuiltinError::ErrorWantRead => ErrorCode::MesalinkErrorWantRead,
-                &MesalinkBuiltinError::ErrorWantWrite => ErrorCode::MesalinkErrorWantWrite,
-                &MesalinkBuiltinError::ErrorWantConnect => ErrorCode::MesalinkErrorWantConnect,
-                &MesalinkBuiltinError::ErrorWantAccept => ErrorCode::MesalinkErrorWantAccept,
-                &MesalinkBuiltinError::ErrorSyscall => ErrorCode::MesalinkErrorSyscall,
-                &MesalinkBuiltinError::ErrorSsl => ErrorCode::MesalinkErrorSsl,
-                &MesalinkBuiltinError::ErrorNullPointer => ErrorCode::MesalinkErrorNullPointer,
-                &MesalinkBuiltinError::ErrorMalformedObject => {
-                    ErrorCode::MesalinkErrorMalformedObject
-                }
-                &MesalinkBuiltinError::ErrorBadFuncArg => ErrorCode::MesalinkErrorBadFuncArg,
-                &MesalinkBuiltinError::ErrorPanic => ErrorCode::MesalinkErrorPanic,
+            MesalinkErrorType::Builtin(ref e) => match *e {
+                MesalinkBuiltinError::None => ErrorCode::MesalinkErrorNone,
+                MesalinkBuiltinError::ZeroReturn => ErrorCode::MesalinkErrorZeroReturn,
+                MesalinkBuiltinError::WantRead => ErrorCode::MesalinkErrorWantRead,
+                MesalinkBuiltinError::WantWrite => ErrorCode::MesalinkErrorWantWrite,
+                MesalinkBuiltinError::WantConnect => ErrorCode::MesalinkErrorWantConnect,
+                MesalinkBuiltinError::WantAccept => ErrorCode::MesalinkErrorWantAccept,
+                MesalinkBuiltinError::Syscall => ErrorCode::MesalinkErrorSyscall,
+                MesalinkBuiltinError::Ssl => ErrorCode::MesalinkErrorSsl,
+                MesalinkBuiltinError::NullPointer => ErrorCode::MesalinkNullPointer,
+                MesalinkBuiltinError::MalformedObject => ErrorCode::MesalinkErrorMalformedObject,
+                MesalinkBuiltinError::BadFuncArg => ErrorCode::MesalinkErrorBadFuncArg,
+                MesalinkBuiltinError::Panic => ErrorCode::MesalinkErrorPanic,
             },
-            MesalinkErrorType::IoError(ref e) => match e.kind() {
+            MesalinkErrorType::Io(ref e) => match e.kind() {
                 io::ErrorKind::NotFound => ErrorCode::IoErrorNotFound,
                 io::ErrorKind::PermissionDenied => ErrorCode::IoErrorPermissionDenied,
                 io::ErrorKind::ConnectionRefused => ErrorCode::IoErrorConnectionRefused,
@@ -541,17 +536,17 @@ impl<'a> From<&'a MesalinkError> for ErrorCode {
                 io::ErrorKind::UnexpectedEof => ErrorCode::IoErrorUnexpectedEof,
                 _ => ErrorCode::UndefinedError,
             },
-            MesalinkErrorType::TlsError(ref e) => match e {
-                &TLSError::InappropriateMessage {
+            MesalinkErrorType::Tls(ref e) => match *e {
+                TLSError::InappropriateMessage {
                     ref expect_types,
                     ref got_type,
                 } => ErrorCode::TLSErrorInappropriateMessage,
-                &TLSError::InappropriateHandshakeMessage {
+                TLSError::InappropriateHandshakeMessage {
                     ref expect_types,
                     ref got_type,
                 } => ErrorCode::TLSErrorInappropriateHandshakeMessage,
-                &TLSError::CorruptMessage => ErrorCode::TLSErrorCorruptMessage,
-                &TLSError::CorruptMessagePayload(c) => match c {
+                TLSError::CorruptMessage => ErrorCode::TLSErrorCorruptMessage,
+                TLSError::CorruptMessagePayload(c) => match c {
                     ContentType::Alert => ErrorCode::TLSErrorCorruptMessagePayloadAlert,
                     ContentType::ChangeCipherSpec => {
                         ErrorCode::TLSErrorCorruptMessagePayloadChangeCipherSpec
@@ -559,11 +554,11 @@ impl<'a> From<&'a MesalinkError> for ErrorCode {
                     ContentType::Handshake => ErrorCode::TLSErrorCorruptMessagePayloadHandshake,
                     _ => ErrorCode::TLSErrorCorruptMessagePayload,
                 },
-                &TLSError::NoCertificatesPresented => ErrorCode::TLSErrorNoCertificatesPresented,
-                &TLSError::DecryptError => ErrorCode::TLSErrorDecryptError,
-                &TLSError::PeerIncompatibleError(_) => ErrorCode::TLSErrorPeerIncompatibleError,
-                &TLSError::PeerMisbehavedError(_) => ErrorCode::TLSErrorPeerMisbehavedError,
-                &TLSError::AlertReceived(alert) => match alert {
+                TLSError::NoCertificatesPresented => ErrorCode::TLSErrorNoCertificatesPresented,
+                TLSError::DecryptError => ErrorCode::TLSErrorDecryptError,
+                TLSError::PeerIncompatibleError(_) => ErrorCode::TLSErrorPeerIncompatibleError,
+                TLSError::PeerMisbehavedError(_) => ErrorCode::TLSErrorPeerMisbehavedError,
+                TLSError::AlertReceived(alert) => match alert {
                     AlertDescription::CloseNotify => ErrorCode::TLSErrorAlertReceivedCloseNotify,
                     AlertDescription::UnexpectedMessage => {
                         ErrorCode::TLSErrorAlertReceivedUnexpectedMessage
@@ -654,7 +649,7 @@ impl<'a> From<&'a MesalinkError> for ErrorCode {
                     }
                     AlertDescription::Unknown(_) => ErrorCode::TLSErrorAlertReceivedUnknown,
                 },
-                &TLSError::WebPKIError(pki_err) => match pki_err {
+                TLSError::WebPKIError(pki_err) => match pki_err {
                     webpki::Error::BadDER => ErrorCode::TLSErrorWebpkiBadDER,
                     webpki::Error::BadDERTime => ErrorCode::TLSErrorWebpkiBadDERTime,
                     webpki::Error::CAUsedAsEndEntity => ErrorCode::TLSErrorWebpkiCAUsedAsEndEntity,
@@ -699,12 +694,12 @@ impl<'a> From<&'a MesalinkError> for ErrorCode {
                         ErrorCode::TLSErrorWebpkiUnsupportedSignatureAlgorithm
                     }
                 },
-                &TLSError::InvalidSCT(_) => ErrorCode::TLSErrorInvalidSCT,
-                &TLSError::General(_) => ErrorCode::TLSErrorGeneral,
-                &TLSError::FailedToGetCurrentTime => ErrorCode::TLSErrorFailedToGetCurrentTime,
-                &TLSError::InvalidDNSName(_) => ErrorCode::TLSErrorInvalidDNSName,
-                &TLSError::HandshakeNotComplete => ErrorCode::TLSErrorHandshakeNotComplete,
-                &TLSError::PeerSentOversizedRecord => ErrorCode::TLSErrorPeerSentOversizedRecord,
+                TLSError::InvalidSCT(_) => ErrorCode::TLSErrorInvalidSCT,
+                TLSError::General(_) => ErrorCode::TLSErrorGeneral,
+                TLSError::FailedToGetCurrentTime => ErrorCode::TLSErrorFailedToGetCurrentTime,
+                TLSError::InvalidDNSName(_) => ErrorCode::TLSErrorInvalidDNSName,
+                TLSError::HandshakeNotComplete => ErrorCode::TLSErrorHandshakeNotComplete,
+                TLSError::PeerSentOversizedRecord => ErrorCode::TLSErrorPeerSentOversizedRecord,
             },
         }
     }
@@ -744,29 +739,26 @@ pub extern "C" fn mesalink_ERR_free_error_strings() {
 /// void ERR_error_string_n(unsigned long e, char *buf, size_t len);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_ERR_error_string_n(
+pub unsafe extern "C" fn mesalink_ERR_error_string_n(
     error_code: c_ulong,
     buf_ptr: *mut c_char,
     buf_len: size_t,
 ) -> *const c_char {
-    use std::mem;
     let error_string: &'static [u8] = ErrorCode::from(error_code).as_u8_slice();
     let error_string_len = error_string.len();
     let buf_len: usize = buf_len;
-    unsafe {
-        let error_string: &'static [c_char] = mem::transmute::<&[u8], &[c_char]>(error_string);
-        if buf_ptr.is_null() {
-            return error_string.as_ptr() as *const c_char;
-        }
-        let buf = slice::from_raw_parts_mut(buf_ptr, buf_len);
-        if error_string_len > buf_len {
-            buf.copy_from_slice(&error_string[0..buf_len]);
-            buf[buf_len - 1] = 0;
-        } else {
-            buf[0..error_string_len].copy_from_slice(error_string);
-        }
-        buf_ptr
+    let error_string: &'static [c_char] = &*(error_string as *const [u8] as *const [c_char]);
+    if buf_ptr.is_null() {
+        return error_string.as_ptr() as *const c_char;
     }
+    let buf = slice::from_raw_parts_mut(buf_ptr, buf_len);
+    if error_string_len > buf_len {
+        buf.copy_from_slice(&error_string[0..buf_len]);
+        buf[buf_len - 1] = 0;
+    } else {
+        buf[0..error_string_len].copy_from_slice(error_string);
+    }
+    buf_ptr
 }
 
 /// `ERR_error_reason_error_string` - returns a human-readable string representing
@@ -787,7 +779,7 @@ pub extern "C" fn mesalink_ERR_reason_error_string(e: c_ulong) -> *const c_char 
 pub(crate) struct ErrorQueue {}
 
 impl ErrorQueue {
-    pub fn push_error<'a>(e: MesalinkError) {
+    pub fn push_error(e: MesalinkError) {
         ERROR_QUEUE.with(|q| {
             if ErrorCode::from(&e) != ErrorCode::MesalinkErrorNone {
                 q.borrow_mut().push_back(e);
@@ -853,18 +845,18 @@ pub extern "C" fn mesalink_ERR_clear_error() {
 /// void ERR_print_errors_fp(FILE *fp);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
+pub unsafe extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
     use std::io::Write;
     use std::os::unix::io::FromRawFd;
     use std::{fs, str};
     if fp.is_null() {
         return;
     }
-    let fd = unsafe { libc::fileno(fp) };
+    let fd = libc::fileno(fp);
     if fd < 0 {
         return;
     }
-    let mut file = unsafe { fs::File::from_raw_fd(fd) };
+    let mut file = fs::File::from_raw_fd(fd);
     ERROR_QUEUE.with(|q| {
         let mut queue = q.borrow_mut();
         for e in queue.drain(0..) {
@@ -888,7 +880,7 @@ mod tests {
 
     macro_rules! error {
         ($code:expr) => {{
-            use ssl::err::MesalinkError;
+            use libssl::err::MesalinkError;
             MesalinkError::new($code, call_site!())
         }};
     }
@@ -901,15 +893,15 @@ mod tests {
 
     #[test]
     fn push() {
-        let error_code = ErrorCode::MesalinkErrorNullPointer;
-        ErrorQueue::push_error(error!(MesalinkBuiltinError::ErrorNullPointer.into()));
+        let error_code = ErrorCode::MesalinkNullPointer;
+        ErrorQueue::push_error(error!(MesalinkBuiltinError::NullPointer.into()));
         assert_eq!(error_code, ErrorCode::from(mesalink_ERR_get_error()));
         mesalink_ERR_clear_error();
     }
 
     #[test]
     fn clear() {
-        ErrorQueue::push_error(error!(MesalinkBuiltinError::ErrorNullPointer.into()));
+        ErrorQueue::push_error(error!(MesalinkBuiltinError::NullPointer.into()));
         mesalink_ERR_clear_error();
         assert_eq!(0, mesalink_ERR_get_error());
         mesalink_ERR_clear_error();
@@ -917,7 +909,7 @@ mod tests {
 
     #[test]
     fn get_should_remove_error() {
-        ErrorQueue::push_error(error!(MesalinkBuiltinError::ErrorNullPointer.into()));
+        ErrorQueue::push_error(error!(MesalinkBuiltinError::NullPointer.into()));
         let _ = mesalink_ERR_get_error();
         assert_eq!(0, mesalink_ERR_get_error());
         mesalink_ERR_clear_error();
@@ -925,8 +917,8 @@ mod tests {
 
     #[test]
     fn peek_should_not_remove_error() {
-        let error_code = ErrorCode::MesalinkErrorNullPointer;
-        ErrorQueue::push_error(error!(MesalinkBuiltinError::ErrorNullPointer.into()));
+        let error_code = ErrorCode::MesalinkNullPointer;
+        ErrorQueue::push_error(error!(MesalinkBuiltinError::NullPointer.into()));
         let _ = mesalink_ERR_peek_last_error();
         assert_eq!(error_code, ErrorCode::from(mesalink_ERR_get_error()));
         mesalink_ERR_clear_error();
@@ -935,10 +927,10 @@ mod tests {
     #[test]
     fn error_queue_is_thread_local() {
         let thread = thread::spawn(|| {
-            ErrorQueue::push_error(error!(MesalinkBuiltinError::ErrorNullPointer.into()));
+            ErrorQueue::push_error(error!(MesalinkBuiltinError::NullPointer.into()));
             ErrorCode::from(mesalink_ERR_get_error())
         });
-        ErrorQueue::push_error(error!(MesalinkBuiltinError::ErrorMalformedObject.into()));
+        ErrorQueue::push_error(error!(MesalinkBuiltinError::MalformedObject.into()));
 
         let main_thread_error_code = ErrorCode::from(mesalink_ERR_get_error());
         let sub_thread_error_code = thread.join().unwrap();
@@ -970,7 +962,7 @@ mod tests {
         ErrorCode::MesalinkErrorWantAccept,
         ErrorCode::MesalinkErrorSyscall,
         ErrorCode::MesalinkErrorSsl,
-        ErrorCode::MesalinkErrorNullPointer,
+        ErrorCode::MesalinkNullPointer,
         ErrorCode::MesalinkErrorMalformedObject,
         ErrorCode::MesalinkErrorBadFuncArg,
         ErrorCode::IoErrorNotFound,
@@ -1075,20 +1067,20 @@ mod tests {
     #[test]
     fn mesalink_error_code_conversion() {
         let mesalink_errors: [MesalinkBuiltinError; 10] = [
-            MesalinkBuiltinError::ErrorZeroReturn,
-            MesalinkBuiltinError::ErrorWantRead,
-            MesalinkBuiltinError::ErrorWantWrite,
-            MesalinkBuiltinError::ErrorWantConnect,
-            MesalinkBuiltinError::ErrorWantAccept,
-            MesalinkBuiltinError::ErrorSyscall,
-            MesalinkBuiltinError::ErrorSsl,
-            MesalinkBuiltinError::ErrorNullPointer,
-            MesalinkBuiltinError::ErrorMalformedObject,
-            MesalinkBuiltinError::ErrorBadFuncArg,
+            MesalinkBuiltinError::ZeroReturn,
+            MesalinkBuiltinError::WantRead,
+            MesalinkBuiltinError::WantWrite,
+            MesalinkBuiltinError::WantConnect,
+            MesalinkBuiltinError::WantAccept,
+            MesalinkBuiltinError::Syscall,
+            MesalinkBuiltinError::Ssl,
+            MesalinkBuiltinError::NullPointer,
+            MesalinkBuiltinError::MalformedObject,
+            MesalinkBuiltinError::BadFuncArg,
         ];
 
         for error in mesalink_errors.into_iter() {
-            let mesalink_error = error!(MesalinkErrorType::BuiltinError(error.clone()));
+            let mesalink_error = error!(MesalinkErrorType::Builtin(error.clone()));
             let error_code = ErrorCode::from(&mesalink_error);
             assert_eq!(true, 0 == error_code as c_ulong >> 24);
             assert_eq!(true, 0 != error_code as c_ulong & 0xFFFFFF);
@@ -1120,7 +1112,7 @@ mod tests {
 
         for error_kind in io_errors.into_iter() {
             let io_error = io::Error::from(*error_kind);
-            let mesalink_error = error!(MesalinkErrorType::IoError(io_error));
+            let mesalink_error = error!(MesalinkErrorType::Io(io_error));
             let error_code = ErrorCode::from(&mesalink_error);
             assert_eq!(true, 2 == error_code as c_ulong >> 24);
             assert_eq!(true, 0 != error_code as c_ulong & 0xFFFFFF);
@@ -1155,7 +1147,7 @@ mod tests {
         ];
 
         for error in tls_errors.into_iter() {
-            let mesalink_error = error!(MesalinkErrorType::TlsError(error.clone()));
+            let mesalink_error = error!(MesalinkErrorType::Tls(error.clone()));
             let error_code = ErrorCode::from(&mesalink_error);
             assert_eq!(true, 3 == error_code as c_ulong >> 24);
             assert_eq!(true, 0 != error_code as c_ulong & 0xFFFFFF);
@@ -1188,7 +1180,7 @@ mod tests {
 
         for pki_error in webpki_errors.into_iter() {
             let error = rustls::TLSError::WebPKIError(*pki_error);
-            let mesalink_error = error!(MesalinkErrorType::TlsError(error));
+            let mesalink_error = error!(MesalinkErrorType::Tls(error));
             let error_code = ErrorCode::from(&mesalink_error);
             assert_eq!(true, 3 == error_code as c_ulong >> 24);
             assert_eq!(true, 0 != error_code as c_ulong & 0xFFFFFF);
@@ -1237,7 +1229,7 @@ mod tests {
 
         for alert in alerts.into_iter() {
             let error = rustls::TLSError::AlertReceived(*alert);
-            let mesalink_error = error!(MesalinkErrorType::TlsError(error));
+            let mesalink_error = error!(MesalinkErrorType::Tls(error));
             let error_code = ErrorCode::from(&mesalink_error);
             assert_eq!(true, 3 == error_code as c_ulong >> 24);
             assert_eq!(true, 0 != error_code as c_ulong & 0xFFFFFF);
@@ -1264,7 +1256,7 @@ mod tests {
             let builtin_error_string_ptr: *const c_char =
                 mesalink_ERR_reason_error_string(*code as c_ulong);
             let buf_error_string_ptr =
-                mesalink_ERR_error_string_n(*code as c_ulong, buf_ptr, buf.len());
+                unsafe { mesalink_ERR_error_string_n(*code as c_ulong, buf_ptr, buf.len()) };
             let builtin_error_string_len = unsafe { libc::strlen(builtin_error_string_ptr) };
             let buf_error_string_len = unsafe { libc::strlen(buf_error_string_ptr) };
             assert_eq!(buf_error_string_len, builtin_error_string_len);
@@ -1288,7 +1280,7 @@ mod tests {
             let builtin_error_string_ptr: *const c_char =
                 mesalink_ERR_reason_error_string(*code as c_ulong);
             let buf_error_string_ptr =
-                mesalink_ERR_error_string_n(*code as c_ulong, buf_ptr, buf.len());
+                unsafe { mesalink_ERR_error_string_n(*code as c_ulong, buf_ptr, buf.len()) };
             let buf_error_string_len = unsafe { libc::strlen(buf_error_string_ptr) };
             //assert_eq!(buf_error_string_len, buf_error_string_len);
             assert_eq!(0, unsafe {
@@ -1307,8 +1299,9 @@ mod tests {
         for code in ERROR_CODES.into_iter() {
             let builtin_error_string_ptr: *const c_char =
                 mesalink_ERR_reason_error_string(*code as c_ulong);
-            let buf_error_string_ptr =
-                mesalink_ERR_error_string_n(*code as c_ulong, ptr::null_mut() as *mut c_char, 0);
+            let buf_error_string_ptr = unsafe {
+                mesalink_ERR_error_string_n(*code as c_ulong, ptr::null_mut() as *mut c_char, 0)
+            };
 
             let builtin_error_string_len = unsafe { libc::strlen(builtin_error_string_ptr) };
             let buf_error_string_len = unsafe { libc::strlen(buf_error_string_ptr) };
@@ -1330,13 +1323,15 @@ mod tests {
         use std::os::unix::io::AsRawFd;
 
         mesalink_ERR_load_error_strings();
-        ErrorQueue::push_error(error!(MesalinkBuiltinError::ErrorNone.into()));
-        ErrorQueue::push_error(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()));
-        ErrorQueue::push_error(error!(MesalinkBuiltinError::ErrorMalformedObject.into()));
+        ErrorQueue::push_error(error!(MesalinkBuiltinError::None.into()));
+        ErrorQueue::push_error(error!(MesalinkBuiltinError::BadFuncArg.into()));
+        ErrorQueue::push_error(error!(MesalinkBuiltinError::MalformedObject.into()));
         let fd = io::stderr().as_raw_fd();
         let mode = b"wb\0".as_ptr() as *const c_char;
         let file = unsafe { libc::fdopen(fd, mode) };
-        mesalink_ERR_print_errors_fp(file);
+        unsafe {
+            mesalink_ERR_print_errors_fp(file);
+        }
         mesalink_ERR_clear_error();
         mesalink_ERR_free_error_strings();
     }

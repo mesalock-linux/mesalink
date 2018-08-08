@@ -18,18 +18,33 @@ matrix:
     - os: osx
       rust: nightly
       env: ARCH=x86_64_macos
-    - sudo: required
+    - name: "cargo-clippy"
+      rust: nightly
+      before_install:
+      install:
+      before_script:
+        - rustup component add clippy-preview --toolchain=nightly
+      script:
+        - cargo +nightly clippy
+    - name: "cargo-fmt and cargo-tarpaulin"
+      sudo: required
       rust: stable
-      env: COVERAGE=yes
+      before_install:
+      install:
+      before_script:
+        - rustup component add rustfmt-preview
+      script:
+        - cargo fmt --all -- --check `find src -iname "*.rs"`
+        - docker run --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID
   allow_failures:
     - rust: nightly
   fast_finish: true
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -qq; fi
-install: ./ci-scripts/install.sh
+install:
+  - ./ci-scripts/install.sh
+  - if [[ "$TARGET" = *"android"* ]]; then export PATH="$PATH:$PWD/cross/bin"; fi
 script: ./ci-scripts/script.sh
-after_success:
-- if [[ "$COVERAGE" == "yes" ]]; then docker run --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID ; fi
 before_deploy: ./ci-scripts/before_deploy.sh
 # Commands to release binaries to Github
 deploy:

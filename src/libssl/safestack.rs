@@ -14,11 +14,11 @@
  */
 
 use libc::c_int;
-use ssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
-use ssl::error_san::*;
-use ssl::x509::{MESALINK_X509, MESALINK_X509_NAME};
-use ssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
-use ssl::{SSL_FAILURE, SSL_SUCCESS};
+use libssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
+use libssl::error_san::*;
+use libssl::x509::{MESALINK_X509, MESALINK_X509_NAME};
+use libssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
+use libssl::{SSL_FAILURE, SSL_SUCCESS};
 use std::ptr;
 
 // ---------------------------------------
@@ -83,7 +83,7 @@ fn inner_mesalink_sk_X509_value(
     let item = stack
         .stack
         .get(index as usize)
-        .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
+        .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     Ok(item as *const MESALINK_X509)
 }
 
@@ -190,7 +190,7 @@ fn inner_mesalink_sk_X509_NAME_value(
     let item = stack
         .stack
         .get(index as usize)
-        .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
+        .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     Ok(item as *const MESALINK_X509_NAME)
 }
 
@@ -233,9 +233,8 @@ fn inner_mesalink_sk_X509_NAME_free(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use libssl::SSL_SUCCESS;
     use rustls::internal::pemfile;
-    use ssl::x509::{MESALINK_X509, MESALINK_X509_NAME};
-    use ssl::SSL_SUCCESS;
     use std::fs::File;
     use std::io::BufReader;
 

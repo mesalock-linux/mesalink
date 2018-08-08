@@ -304,8 +304,7 @@
 
 #![deny(trivial_numeric_casts, unused_qualifications)]
 #![forbid(
-    anonymous_parameters, unused_extern_crates, unused_import_braces, unused_results,
-    variant_size_differences, warnings
+    anonymous_parameters, unused_import_braces, unused_results, variant_size_differences, warnings
 )]
 
 // libc for libc bindings
@@ -358,7 +357,7 @@ mod macros {
 }
 
 /// The ssl module is the counterpart of the OpenSSL ssl library.
-pub mod ssl;
+pub mod libssl;
 
 /// The crypo module is the counterpart of the OpenSSL crypto library.
-pub mod crypto;
+pub mod libcrypto;

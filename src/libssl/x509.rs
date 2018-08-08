@@ -14,13 +14,13 @@
  */
 
 use libc::{c_char, c_int};
+use libssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
+use libssl::error_san::*;
+use libssl::safestack::MESALINK_STACK_MESALINK_X509_NAME;
+use libssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
+use libssl::{SSL_FAILURE, SSL_SUCCESS};
 use ring::der;
 use rustls;
-use ssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
-use ssl::error_san::*;
-use ssl::safestack::MESALINK_STACK_MESALINK_X509_NAME;
-use ssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
-use ssl::{SSL_FAILURE, SSL_SUCCESS};
 use std::{ptr, slice, str};
 use untrusted;
 use webpki;
@@ -112,14 +112,15 @@ fn inner_mesalink_x509_get_alt_subject_names(
     let cert_der = untrusted::Input::from(&cert.cert_data.0);
     let x509 = webpki::EndEntityCert::from(cert_der)
         .map_err(|e| error!(rustls::TLSError::WebPKIError(e).into()))?;
-    let subject_alt_name = x509.inner
+    let subject_alt_name = x509
+        .inner
         .subject_alt_name
-        .ok_or(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
+        .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     let mut reader = untrusted::Reader::new(subject_alt_name);
     let mut stack = MESALINK_STACK_MESALINK_X509_NAME::new(Vec::new());
     while !reader.at_end() {
         let (tag, value) = der::read_tag_and_get_value(&mut reader)
-            .map_err(|_| error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
+            .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
         if tag == 0x82 {
             let x509_name = MESALINK_X509_NAME::new(value.as_slice_less_safe());
             stack.stack.push(x509_name);
@@ -189,67 +190,55 @@ fn inner_mesalink_x509_get_subject_name(
 
     let mut subject_name = String::new();
 
-    let _ = x509.inner
+    let _ = x509
+        .inner
         .subject
-        .read_all(
-            error!(MesalinkBuiltinError::ErrorBadFuncArg.into()),
-            |subject| {
-                while !subject.at_end() {
-                    let (maybe_asn_set_tag, sequence) = der::read_tag_and_get_value(subject)
-                        .map_err(|_| error!(MesalinkBuiltinError::ErrorBadFuncArg.into()))?;
-                    if (maybe_asn_set_tag as usize) != 0x31 {
-                        // Subject should be an ASN.1 SET
-                        return Err(error!(MesalinkBuiltinError::ErrorBadFuncArg.into()));
-                    }
-                    let _ = sequence.read_all(
-                        error!(MesalinkBuiltinError::ErrorBadFuncArg.into()),
-                        |seq| {
-                            let oid_and_data =
-                                der::expect_tag_and_get_value(seq, der::Tag::Sequence).map_err(
-                                    |_| error!(MesalinkBuiltinError::ErrorBadFuncArg.into()),
-                                )?;
-                            oid_and_data.read_all(
-                                error!(MesalinkBuiltinError::ErrorBadFuncArg.into()),
-                                |oid_and_data| {
-                                    let oid =
-                                        der::expect_tag_and_get_value(oid_and_data, der::Tag::OID)
-                                            .map_err(|_| {
-                                                error!(MesalinkBuiltinError::ErrorBadFuncArg.into())
-                                            })?;
-                                    let (_, value) = der::read_tag_and_get_value(oid_and_data)
-                                        .map_err(|_| {
-                                            error!(MesalinkBuiltinError::ErrorBadFuncArg.into())
-                                        })?;
-
-                                    let keyword = match oid.as_slice_less_safe().last().unwrap() {
-                                        // RFC 1779, X.500 attrinutes, oid 2.5.4
-                                        3 => "CN",  // CommonName
-                                        7 => "L",   // LocalityName
-                                        8 => "ST",  // StateOrProvinceName
-                                        10 => "O",  // OrganizationName
-                                        11 => "OU", // OrganizationalUnitName
-                                        6 => "C",   // CountryName
-                                        _ => "",
-                                    };
-
-                                    if keyword.len() > 0 {
-                                        if let Ok(s) = str::from_utf8(value.as_slice_less_safe()) {
-                                            subject_name.push_str("/");
-                                            subject_name.push_str(keyword);
-                                            subject_name.push_str("=");
-                                            subject_name.push_str(s);
-                                        }
-                                    }
-                                    Ok(())
-                                },
-                            )
-                        },
-                    );
+        .read_all(error!(MesalinkBuiltinError::BadFuncArg.into()), |subject| {
+            while !subject.at_end() {
+                let (maybe_asn_set_tag, sequence) = der::read_tag_and_get_value(subject)
+                    .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+                if (maybe_asn_set_tag as usize) != 0x31 {
+                    // Subject should be an ASN.1 SET
+                    return Err(error!(MesalinkBuiltinError::BadFuncArg.into()));
                 }
-                Ok(())
-            },
-        )
-        .map_err(|_| error!(MesalinkBuiltinError::ErrorBadFuncArg.into()));
+                let _ = sequence.read_all(error!(MesalinkBuiltinError::BadFuncArg.into()), |seq| {
+                    let oid_and_data = der::expect_tag_and_get_value(seq, der::Tag::Sequence)
+                        .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+                    oid_and_data.read_all(
+                        error!(MesalinkBuiltinError::BadFuncArg.into()),
+                        |oid_and_data| {
+                            let oid = der::expect_tag_and_get_value(oid_and_data, der::Tag::OID)
+                                .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+                            let (_, value) = der::read_tag_and_get_value(oid_and_data)
+                                .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+
+                            let keyword = match oid.as_slice_less_safe().last().unwrap() {
+                                // RFC 1779, X.500 attrinutes, oid 2.5.4
+                                3 => "CN",  // CommonName
+                                7 => "L",   // LocalityName
+                                8 => "ST",  // StateOrProvinceName
+                                10 => "O",  // OrganizationName
+                                11 => "OU", // OrganizationalUnitName
+                                6 => "C",   // CountryName
+                                _ => "",
+                            };
+
+                            if keyword.is_empty() {
+                                if let Ok(s) = str::from_utf8(value.as_slice_less_safe()) {
+                                    subject_name.push_str("/");
+                                    subject_name.push_str(keyword);
+                                    subject_name.push_str("=");
+                                    subject_name.push_str(s);
+                                }
+                            }
+                            Ok(())
+                        },
+                    )
+                });
+            }
+            Ok(())
+        })
+        .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()));
 
     let x509_name = MESALINK_X509_NAME::new(subject_name.as_bytes());
     Ok(Box::into_raw(Box::new(x509_name)) as *mut MESALINK_X509_NAME)
@@ -272,14 +261,13 @@ fn inner_mesalink_x509_name_oneline(
     buf_ptr: *mut c_char,
     buf_len: c_int,
 ) -> MesalinkInnerResult<*mut c_char> {
-    use std::mem;
     let x509_name = sanitize_ptr_for_ref(x509_name_ptr)?;
     let buf_len: usize = buf_len as usize;
     unsafe {
-        let name: &[c_char] = mem::transmute::<&[u8], &[c_char]>(&x509_name.name);
+        let name: &[c_char] = &*(x509_name.name.as_slice() as *const [u8] as *const [c_char]);
         let name_len: usize = name.len();
         if buf_ptr.is_null() {
-            return Err(error!(MesalinkBuiltinError::ErrorNullPointer.into()));
+            return Err(error!(MesalinkBuiltinError::NullPointer.into()));
         }
         let buf = slice::from_raw_parts_mut(buf_ptr, buf_len);
         if name_len + 1 > buf_len {
@@ -296,8 +284,8 @@ fn inner_mesalink_x509_name_oneline(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use libssl::safestack::*;
     use rustls::internal::pemfile;
-    use ssl::safestack::*;
     use std::fs::File;
     use std::io::BufReader;
 

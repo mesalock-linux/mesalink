@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -ev
+set -xev
 
 if [[ x"$ARCH" != "x" ] && [ $"TRAVIS_RUST_VERSION" == "stable" ]]
 then

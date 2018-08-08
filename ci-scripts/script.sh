@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -ev
+set -xev
 
 # Skip building MesaLink if testing for coverage only
 if [[ "$COVERAGE" == "yes" ]]
@@ -21,7 +21,7 @@ make DESTDIR=$TRAVIS_BUILD_DIR/inst install-strip
 du -sh $TRAVIS_BUILD_DIR/inst/usr/local/lib/libmesalink.*
 
 # Only stable x86_64_macos and x86_64_linux builds run tests
-if [[ x"$TARGET" == "x" ] && [ "$TRAVIS_RUST_VERSION" == "stable" ]]
+if [[ x"$TARGET" == "x" ]]
 then
     ./examples/client/client google.com
     RUST_BACKTRACE=1 cargo test
