@@ -496,6 +496,7 @@ impl From<u64> for ErrorCode {
 
 #[doc(hidden)]
 #[allow(unused_variables)]
+#[cfg_attr(rustfmt, rustfmt_skip)]
 impl<'a> From<&'a MesalinkError> for ErrorCode {
     fn from(e: &'a MesalinkError) -> ErrorCode {
         use rustls::internal::msgs::enums::{AlertDescription, ContentType};
@@ -548,9 +549,7 @@ impl<'a> From<&'a MesalinkError> for ErrorCode {
                 TLSError::CorruptMessage => ErrorCode::TLSErrorCorruptMessage,
                 TLSError::CorruptMessagePayload(c) => match c {
                     ContentType::Alert => ErrorCode::TLSErrorCorruptMessagePayloadAlert,
-                    ContentType::ChangeCipherSpec => {
-                        ErrorCode::TLSErrorCorruptMessagePayloadChangeCipherSpec
-                    }
+                    ContentType::ChangeCipherSpec => ErrorCode::TLSErrorCorruptMessagePayloadChangeCipherSpec,
                     ContentType::Handshake => ErrorCode::TLSErrorCorruptMessagePayloadHandshake,
                     _ => ErrorCode::TLSErrorCorruptMessagePayload,
                 },
@@ -560,93 +559,39 @@ impl<'a> From<&'a MesalinkError> for ErrorCode {
                 TLSError::PeerMisbehavedError(_) => ErrorCode::TLSErrorPeerMisbehavedError,
                 TLSError::AlertReceived(alert) => match alert {
                     AlertDescription::CloseNotify => ErrorCode::TLSErrorAlertReceivedCloseNotify,
-                    AlertDescription::UnexpectedMessage => {
-                        ErrorCode::TLSErrorAlertReceivedUnexpectedMessage
-                    }
+                    AlertDescription::UnexpectedMessage => ErrorCode::TLSErrorAlertReceivedUnexpectedMessage,
                     AlertDescription::BadRecordMac => ErrorCode::TLSErrorAlertReceivedBadRecordMac,
-                    AlertDescription::DecryptionFailed => {
-                        ErrorCode::TLSErrorAlertReceivedDecryptionFailed
-                    }
-                    AlertDescription::RecordOverflow => {
-                        ErrorCode::TLSErrorAlertReceivedRecordOverflow
-                    }
-                    AlertDescription::DecompressionFailure => {
-                        ErrorCode::TLSErrorAlertReceivedDecompressionFailure
-                    }
-                    AlertDescription::HandshakeFailure => {
-                        ErrorCode::TLSErrorAlertReceivedHandshakeFailure
-                    }
-                    AlertDescription::NoCertificate => {
-                        ErrorCode::TLSErrorAlertReceivedNoCertificate
-                    }
-                    AlertDescription::BadCertificate => {
-                        ErrorCode::TLSErrorAlertReceivedBadCertificate
-                    }
-                    AlertDescription::UnsupportedCertificate => {
-                        ErrorCode::TLSErrorAlertReceivedUnsupportedCertificate
-                    }
-                    AlertDescription::CertificateRevoked => {
-                        ErrorCode::TLSErrorAlertReceivedCertificateRevoked
-                    }
-                    AlertDescription::CertificateExpired => {
-                        ErrorCode::TLSErrorAlertReceivedCertificateExpired
-                    }
-                    AlertDescription::CertificateUnknown => {
-                        ErrorCode::TLSErrorAlertReceivedCertificateUnknown
-                    }
-                    AlertDescription::IllegalParameter => {
-                        ErrorCode::TLSErrorAlertReceivedIllegalParameter
-                    }
+                    AlertDescription::DecryptionFailed => ErrorCode::TLSErrorAlertReceivedDecryptionFailed,
+                    AlertDescription::RecordOverflow => ErrorCode::TLSErrorAlertReceivedRecordOverflow,
+                    AlertDescription::DecompressionFailure => ErrorCode::TLSErrorAlertReceivedDecompressionFailure,
+                    AlertDescription::HandshakeFailure => ErrorCode::TLSErrorAlertReceivedHandshakeFailure,
+                    AlertDescription::NoCertificate => ErrorCode::TLSErrorAlertReceivedNoCertificate,
+                    AlertDescription::BadCertificate => ErrorCode::TLSErrorAlertReceivedBadCertificate,
+                    AlertDescription::UnsupportedCertificate => ErrorCode::TLSErrorAlertReceivedUnsupportedCertificate,
+                    AlertDescription::CertificateRevoked => ErrorCode::TLSErrorAlertReceivedCertificateRevoked,
+                    AlertDescription::CertificateExpired => ErrorCode::TLSErrorAlertReceivedCertificateExpired,
+                    AlertDescription::CertificateUnknown => ErrorCode::TLSErrorAlertReceivedCertificateUnknown,
+                    AlertDescription::IllegalParameter => ErrorCode::TLSErrorAlertReceivedIllegalParameter,
                     AlertDescription::UnknownCA => ErrorCode::TLSErrorAlertReceivedUnknownCA,
                     AlertDescription::AccessDenied => ErrorCode::TLSErrorAlertReceivedAccessDenied,
                     AlertDescription::DecodeError => ErrorCode::TLSErrorAlertReceivedDecodeError,
                     AlertDescription::DecryptError => ErrorCode::TLSErrorAlertReceivedDecryptError,
-                    AlertDescription::ExportRestriction => {
-                        ErrorCode::TLSErrorAlertReceivedExportRestriction
-                    }
-                    AlertDescription::ProtocolVersion => {
-                        ErrorCode::TLSErrorAlertReceivedProtocolVersion
-                    }
-                    AlertDescription::InsufficientSecurity => {
-                        ErrorCode::TLSErrorAlertReceivedInsufficientSecurity
-                    }
-                    AlertDescription::InternalError => {
-                        ErrorCode::TLSErrorAlertReceivedInternalError
-                    }
-                    AlertDescription::InappropriateFallback => {
-                        ErrorCode::TLSErrorAlertReceivedInappropriateFallback
-                    }
+                    AlertDescription::ExportRestriction => ErrorCode::TLSErrorAlertReceivedExportRestriction,
+                    AlertDescription::ProtocolVersion => ErrorCode::TLSErrorAlertReceivedProtocolVersion,
+                    AlertDescription::InsufficientSecurity => ErrorCode::TLSErrorAlertReceivedInsufficientSecurity,
+                    AlertDescription::InternalError => ErrorCode::TLSErrorAlertReceivedInternalError,
+                    AlertDescription::InappropriateFallback => ErrorCode::TLSErrorAlertReceivedInappropriateFallback,
                     AlertDescription::UserCanceled => ErrorCode::TLSErrorAlertReceivedUserCanceled,
-                    AlertDescription::NoRenegotiation => {
-                        ErrorCode::TLSErrorAlertReceivedNoRenegotiation
-                    }
-                    AlertDescription::MissingExtension => {
-                        ErrorCode::TLSErrorAlertReceivedMissingExtension
-                    }
-                    AlertDescription::UnsupportedExtension => {
-                        ErrorCode::TLSErrorAlertReceivedUnsupportedExtension
-                    }
-                    AlertDescription::CertificateUnobtainable => {
-                        ErrorCode::TLSErrorAlertReceivedCertificateUnobtainable
-                    }
-                    AlertDescription::UnrecognisedName => {
-                        ErrorCode::TLSErrorAlertReceivedUnrecognisedName
-                    }
-                    AlertDescription::BadCertificateStatusResponse => {
-                        ErrorCode::TLSErrorAlertReceivedBadCertificateStatusResponse
-                    }
-                    AlertDescription::BadCertificateHashValue => {
-                        ErrorCode::TLSErrorAlertReceivedBadCertificateHashValue
-                    }
-                    AlertDescription::UnknownPSKIdentity => {
-                        ErrorCode::TLSErrorAlertReceivedUnknownPSKIdentity
-                    }
-                    AlertDescription::CertificateRequired => {
-                        ErrorCode::TLSErrorAlertReceivedCertificateRequired
-                    }
-                    AlertDescription::NoApplicationProtocol => {
-                        ErrorCode::TLSErrorAlertReceivedNoApplicationProtocol
-                    }
+                    AlertDescription::NoRenegotiation => ErrorCode::TLSErrorAlertReceivedNoRenegotiation,
+                    AlertDescription::MissingExtension => ErrorCode::TLSErrorAlertReceivedMissingExtension,
+                    AlertDescription::UnsupportedExtension => ErrorCode::TLSErrorAlertReceivedUnsupportedExtension,
+                    AlertDescription::CertificateUnobtainable => ErrorCode::TLSErrorAlertReceivedCertificateUnobtainable,
+                    AlertDescription::UnrecognisedName => ErrorCode::TLSErrorAlertReceivedUnrecognisedName,
+                    AlertDescription::BadCertificateStatusResponse => ErrorCode::TLSErrorAlertReceivedBadCertificateStatusResponse,
+                    AlertDescription::BadCertificateHashValue => ErrorCode::TLSErrorAlertReceivedBadCertificateHashValue,
+                    AlertDescription::UnknownPSKIdentity => ErrorCode::TLSErrorAlertReceivedUnknownPSKIdentity,
+                    AlertDescription::CertificateRequired => ErrorCode::TLSErrorAlertReceivedCertificateRequired,
+                    AlertDescription::NoApplicationProtocol => ErrorCode::TLSErrorAlertReceivedNoApplicationProtocol,
                     AlertDescription::Unknown(_) => ErrorCode::TLSErrorAlertReceivedUnknown,
                 },
                 TLSError::WebPKIError(pki_err) => match pki_err {
@@ -654,45 +599,21 @@ impl<'a> From<&'a MesalinkError> for ErrorCode {
                     webpki::Error::BadDERTime => ErrorCode::TLSErrorWebpkiBadDERTime,
                     webpki::Error::CAUsedAsEndEntity => ErrorCode::TLSErrorWebpkiCAUsedAsEndEntity,
                     webpki::Error::CertExpired => ErrorCode::TLSErrorWebpkiCertExpired,
-                    webpki::Error::CertNotValidForName => {
-                        ErrorCode::TLSErrorWebpkiCertNotValidForName
-                    }
+                    webpki::Error::CertNotValidForName => ErrorCode::TLSErrorWebpkiCertNotValidForName,
                     webpki::Error::CertNotValidYet => ErrorCode::TLSErrorWebpkiCertNotValidYet,
                     webpki::Error::EndEntityUsedAsCA => ErrorCode::TLSErrorWebpkiEndEntityUsedAsCA,
-                    webpki::Error::ExtensionValueInvalid => {
-                        ErrorCode::TLSErrorWebpkiExtensionValueInvalid
-                    }
-                    webpki::Error::InvalidCertValidity => {
-                        ErrorCode::TLSErrorWebpkiInvalidCertValidity
-                    }
-                    webpki::Error::InvalidSignatureForPublicKey => {
-                        ErrorCode::TLSErrorWebpkiInvalidSignatureForPublicKey
-                    }
-                    webpki::Error::NameConstraintViolation => {
-                        ErrorCode::TLSErrorWebpkiNameConstraintViolation
-                    }
-                    webpki::Error::PathLenConstraintViolated => {
-                        ErrorCode::TLSErrorWebpkiPathLenConstraintViolated
-                    }
-                    webpki::Error::SignatureAlgorithmMismatch => {
-                        ErrorCode::TLSErrorWebpkiSignatureAlgorithmMismatch
-                    }
-                    webpki::Error::RequiredEKUNotFound => {
-                        ErrorCode::TLSErrorWebpkiRequiredEKUNotFound
-                    }
+                    webpki::Error::ExtensionValueInvalid => ErrorCode::TLSErrorWebpkiExtensionValueInvalid,
+                    webpki::Error::InvalidCertValidity => ErrorCode::TLSErrorWebpkiInvalidCertValidity,
+                    webpki::Error::InvalidSignatureForPublicKey => ErrorCode::TLSErrorWebpkiInvalidSignatureForPublicKey,
+                    webpki::Error::NameConstraintViolation => ErrorCode::TLSErrorWebpkiNameConstraintViolation,
+                    webpki::Error::PathLenConstraintViolated => ErrorCode::TLSErrorWebpkiPathLenConstraintViolated,
+                    webpki::Error::SignatureAlgorithmMismatch => ErrorCode::TLSErrorWebpkiSignatureAlgorithmMismatch,
+                    webpki::Error::RequiredEKUNotFound => ErrorCode::TLSErrorWebpkiRequiredEKUNotFound,
                     webpki::Error::UnknownIssuer => ErrorCode::TLSErrorWebpkiUnknownIssuer,
-                    webpki::Error::UnsupportedCertVersion => {
-                        ErrorCode::TLSErrorWebpkiUnsupportedCertVersion
-                    }
-                    webpki::Error::UnsupportedCriticalExtension => {
-                        ErrorCode::TLSErrorWebpkiUnsupportedCriticalExtension
-                    }
-                    webpki::Error::UnsupportedSignatureAlgorithmForPublicKey => {
-                        ErrorCode::TLSErrorWebpkiUnsupportedSignatureAlgorithmForPublicKey
-                    }
-                    webpki::Error::UnsupportedSignatureAlgorithm => {
-                        ErrorCode::TLSErrorWebpkiUnsupportedSignatureAlgorithm
-                    }
+                    webpki::Error::UnsupportedCertVersion => ErrorCode::TLSErrorWebpkiUnsupportedCertVersion,
+                    webpki::Error::UnsupportedCriticalExtension => ErrorCode::TLSErrorWebpkiUnsupportedCriticalExtension,
+                    webpki::Error::UnsupportedSignatureAlgorithmForPublicKey => ErrorCode::TLSErrorWebpkiUnsupportedSignatureAlgorithmForPublicKey,
+                    webpki::Error::UnsupportedSignatureAlgorithm => ErrorCode::TLSErrorWebpkiUnsupportedSignatureAlgorithm,
                 },
                 TLSError::InvalidSCT(_) => ErrorCode::TLSErrorInvalidSCT,
                 TLSError::General(_) => ErrorCode::TLSErrorGeneral,

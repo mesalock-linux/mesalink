@@ -2700,5 +2700,36 @@ mod tests {
             SSL_FAILURE,
             mesalink_SSL_write_early_data(ptr::null_mut(), ptr::null_mut(), 100, ptr::null_mut())
         );
+        let buf = [0u8; 10];
+        assert_eq!(
+            SSL_FAILURE,
+            mesalink_SSL_write_early_data(
+                ptr::null_mut(),
+                buf.as_ptr() as *const c_uchar,
+                10,
+                ptr::null_mut()
+            )
+        );
+    }
+
+    #[test]
+    fn test_io_before_full_handshake() {
+        let ctx = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
+        let ssl = mesalink_SSL_new(ctx);
+        let mut buf = [0u8; 10];
+        assert_eq!(
+            SSL_FAILURE,
+            mesalink_SSL_read(ssl, buf.as_mut_ptr() as *mut c_uchar, 10)
+        );
+        assert_eq!(
+            SSL_FAILURE,
+            mesalink_SSL_write(ssl, buf.as_ptr() as *const c_uchar, 10)
+        );
+        let wr_len_ptr = Box::into_raw(Box::new(0));
+        assert_eq!(
+            SSL_FAILURE,
+            mesalink_SSL_write_early_data(ssl, buf.as_ptr() as *const c_uchar, 10, wr_len_ptr)
+        );
+        let _ = unsafe { Box::from_raw(wr_len_ptr) };
     }
 }
