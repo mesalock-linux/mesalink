@@ -35,10 +35,10 @@
 
 extern crate env_logger;
 extern crate libc;
-extern crate mesalink_internals;
+extern crate mesalink;
 
-use mesalink_internals::libssl::err::ErrorCode;
-use mesalink_internals::libssl::{err, ssl};
+use mesalink::libssl::err::ErrorCode;
+use mesalink::libssl::{err, ssl};
 use std::env;
 use std::ffi::CString;
 use std::io::Write;

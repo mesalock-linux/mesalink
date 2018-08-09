@@ -15,7 +15,7 @@ build = "build.rs"
 travis-ci = { repository = "mesalock-linux/mesalink", branch = "master"  }
 
 [lib]
-name = "mesalink_internals"
+name = "mesalink"
 crate-type = ["lib", "staticlib"]
 
 [features]

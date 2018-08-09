@@ -65,10 +65,9 @@ fn generate_la(lib: &str) -> std::io::Result<()> {
 
 fn main() {
     let lib_name = format!(
-        "{}{}{}",
+        "{}{}",
         "lib",
         env::var("CARGO_PKG_NAME").unwrap(),
-        "_internals"
     );
     let _ = generate_la(lib_name.as_str());
 }
