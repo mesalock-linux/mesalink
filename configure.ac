@@ -104,12 +104,19 @@ else
     CARGO_TARGET_SUBDIR_ENV_VAR="CARGO_TARGET_SUBDIR=$CARGO_TARGET_SUBDIR"
 fi
 
+RUSTC_VERSION=$( rustc --version | perl -pe '($_)=/([0-9]+([.][0-9]+)+)/' )
+AX_COMPARE_VERSION($RUSTC_VERSION, ge, "1.28.0")
+
 IS_NIGHTLY=$( rustc --version | grep nightly )
 RUST_IS_NIGHTLY="no"
 if test "x$IS_NIGHTLY" != "x"
 then
     RUST_IS_NIGHTLY="yes"
     CARGO_FEATURES=$CARGO_FEATURES" nightly"
+fi
+
+if test "$ax_compare_version" || test "$RUST_IS_NIGHTLY" == "yes"
+then
     CARGO_RUSTC_ARGS="$CARGO_RUSTC_ARGS -C opt-level=z"
 fi
 
