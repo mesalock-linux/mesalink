@@ -66,9 +66,6 @@ CARGO_RUSTC_ARGS="-- -C overflow-checks=yes"
 OPTIMIZE_CFLAGS="-Os -fvisibility=hidden -ffunction-sections -fdata-sections"
 DEBUG_CFLAGS="-g -ggdb -O0 -Wall"
 
-AX_HARDEN_CC_COMPILER_FLAGS
-AX_HARDEN_LINKER_FLAGS
-
 AX_DEBUG
 
 if test "$ax_enable_debug" = "yes"
