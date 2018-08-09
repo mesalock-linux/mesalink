@@ -1,46 +1,61 @@
 <p align="center"><img src="logo.png" height="86" /></p>
 
-# MesaLink: A memory-safe and OpenSSL-compatible TLS library
+<h1 align="center"> A memory-safe and OpenSSL-compatible TLS library </h1>
 
-[![Build Status](https://travis-ci.org/mesalock-linux/mesalink.svg?branch=master)](https://travis-ci.org/mesalock-linux/mesalink)
+# Status
+
+[![Build Status](https://travis-ci.com/mesalock-linux/mesalink.svg?branch=master)](https://travis-ci.org/mesalock-linux/mesalink)
 [![Coverage Status](https://coveralls.io/repos/github/mesalock-linux/mesalink/badge.svg?branch=master)](https://coveralls.io/github/mesalock-linux/mesalink?branch=master)
 [![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](https://mesalock-linux.github.io/mesalink-doc/doc/mesalink_internals/index.html)
 [![Release](https://img.shields.io/github/release/mesalock-linux/mesalink.svg)](https://github.com/mesalock-linux/mesalink/releases)
 [![License](https://img.shields.io/badge/license-BSD-blue.svg)](LICENSE)
 
-MesaLink is a memory-safe and OpenSSL-compatible TLS library. Since 2014, the
-industry has seen a huge loss due to memory vulnerabilities in TLS
-stacks, such as the infamous "Heartbleed" bug. MesaLink is created with the goal of
-eliminating memory vulnerabilities in TLS stacks. MesaLink is written in Rust, a
-programming language that guarantees memory safety. This significantly reduces
-the attack surfaces, which facilitates auditing and restricting the
-remaining attack surfaces. MesaLink is cross-platform and provides
-OpenSSL-compatible APIs. It works seamlessly in desktop, mobile, and IoT
-devices. With the growth of the ecosystem, MesaLink would also be adopted in the
-server environment in the future.
+MesaLink is a memory-safe and OpenSSL-compatible TLS library. To achieve better
+security, we apply [Non-bypassable Security Paradigm
+(NbSP)](https://github.com/baidu/rust-sgx-sdk/blob/master/documents/nbsp.pdf) to
+the system design and implementation.
 
-To get better functionality and strong security guarantees, MesaLink
-follows three rules-of-thumb for designing a hybrid, memory-safe architecture,
-as proposed by the [Rust SGX SDK](https://github.com/baidu/rust-sgx-sdk)
-project:
+## Release history
 
-1. Unsafe components must not taint safe components, especially for public APIs
-   and data structures.
-2. Unsafe components should be as small as possible and decoupled from safe
-   components.
-3. Unsafe components should be explicitly marked during deployment and ready to
-   upgrade.
+* 0.7.0 (08-14-2018)
+  - TLS 1.3 draft 28
+  - Client-side support for TLS 1.3 0-RTT ([rustls PR
+    #185](https://github.com/ctz/rustls/pull/185))
+  - SSL_connect and SSL_do_handshake
+  - X509 and STACK APIs
+  - Non-blocking socket support
+  - Refactored thread-local error queue
+  - `catch_unwind` at FFI boundaries
+  - Link time optimization if built with nightly Rust or stable Rust >1.28
+  - Curl support; use the patch in the `patches` directory
+  - `cargo-fmt` and `cargo-clippy` lint checks
+
+* 0.6.1 (04-09-2018)
+  - TLS 1.3 Draft 23
+  - Coverage tests with `cargo tarpaulin`
+
+* 0.6.0 (04-02-2018)
+  - First public release
+  - TLS 1.2 and TLS 1.3 Draft 22
+  - SSL_CTX and METHOD APIs
+  - SSL APIs
+  - Dynamic pointer sanity checks for opaque pointer types
+  - Autotools
+  - Configurable ciphersuites, curves, and TLS versions
+  - Linux, macOS, and Android builds on x86_64/arm/arm64
+  - Unit tests and BoringSSL BoGo tests
+  - Crypto benchmarks
 
 ## Feature highlights
 
  * **Memory safety**. MesaLink and its dependencies are written in
    [Rust](https://www.rust-lang.org), a programming language that guarantees
-   memory safety. This extremely reduces the attack surfaces of an exposed TLS stack,
-   leaving the remaining attack surfaces auditable and restricted.
+   memory safety. This extremely reduces the attack surfaces of an exposed TLS
+   stack, leaving the remaining attack surfaces auditable and restricted.
  * **Flexibility**. MesaLink offers flexible configurations tailored to various
    needs, such as IoT, connected home, automobiles, the cloud and more.
  * **Simplicity**. MesaLink does not support obsolete or legacy TLS features to
- prevent misconfigurations that can introduce vulnerabilities.
+   prevent misconfigurations that can introduce vulnerabilities.
  * **Compatibility**. MesaLink provides OpenSSL-compatible APIs. This makes it a
    breeze to port an existing OpenSSL project.
  * **Future proof**. MesaLink will support quantum-safe ciphersuites,
@@ -50,42 +65,31 @@ MesaLink depends on two Rust crates: [rustls](https://github.com/ctz/rustls) and
 [sct](https://github.com/ctz/sct.rs). With them, MesaLink provides the following
 features that are considered secure for most use cases:
 
-* TLS 1.2 and TLS 1.3 draft 22
-* ALPN and SNI support
+* TLS 1.2 and TLS 1.3 draft 23
+* ECDSA or RSA server authentication
 * Forced hostname validation
+* Forward secrecy using ECDHE; with curve25519, nistp256 or nistp384 curves.
 * Safe and fast crypto primitives from BoringSSL
-* ECDHE key exchange with forwarding secrecy
-* AES-256-GCM and Chacha20-Poly1305 bulk encryption
+* AES-128-GCM, AES-256-GCM and Chacha20-Poly1305 bulk encryption
 * Built-in Mozilla's CA root certificates
 
-## Building the MesaLink library from source
+## Building instructions
 
-MesaLink is currently only available on Linux, Android and macOS. We will
-introduce support for other platforms in future releases.
+MesaLink currently supports Linux, Android and macOS. We will introduce support
+for other platforms in future releases.
 
-To build MesaLink from source, the following tools are needed:
-
-  * m4
-  * autoconf
-  * automake
-  * libtool
-  * curl
-  * make
-  * gcc
-  * rustc
-  * cargo
-
-On Ubuntu, you can install them with:
+Firsrm, install the build dependencies:
 
 ```
 $ sudo apt-get install m4 autoconf automake libtool make gcc curl
-$ curl https://sh.rustup.rs -sSf | sh
 ```
 
-On other platforms, please use the corresponding package managing tool to
-install them before proceeding. Note that MesaLink always targets the
-**current** stable and nightly release of Rust. We do not guarantee backward
-compatibility with older releases.
+Then install the Rust tool chain. Note that MesaLink always targets the
+**current** stable and nightly release of Rust.
+
+```
+$ curl https://sh.rustup.rs -sSf | sh
+```
 
 The source code can be downloaded from Github:
 
@@ -96,7 +100,7 @@ $ git clone https://github.com/mesalock-linux/mesalink.git
 To configure MesaLink, execute the following:
 
 ```
-$ ./autogen.sh [OPTIONS]
+$ ./autogen.sh --enable-examples
 ```
 
 By default, `autogen.sh` generates the `configure` script and runs it with the
@@ -126,20 +130,23 @@ either of these scripts are shown as follows:
                           exchange (default: enabled)
   --enable-ecdsa          Enable curve secp256r1 and secp384r1 for signature
                           verification (default: enabled)
+  --enable-examples       Enable examples (default: disabled)
 ```
 
 At the end of the configuration, a configuration summary is shown. For example,
 
 ```
-Configuration summary for mesalink version 0.6.0
+Configuration summary for mesalink version 0.7.0
 
    * Installation prefix:        /usr/local
-   * Host:                       x86_64-apple-darwin17.4.0
+   * Host:                       x86_64-apple-darwin17.7.0
    * Rust Host:
    * C Compiler:                 gcc
    * C Compiler vendor:          clang
-   * C Flags:                    -Os -ffunction-sections -fdata-sections  -Werror -Wno-pragmas -Wall -Wno-strict-aliasing -Wextra -Wunknown-pragmas --param=ssp-buffer-size=1 -Waddress -Warray-bounds -Wbad-function-cast -Wchar-subscripts -Wcomment -Wfloat-equal -Wformat-security -Wformat=2 -Wmissing-field-initializers -Wmissing-noreturn -Wmissing-prototypes -Wnested-externs -Wpointer-arith -Wpointer-sign -Wredundant-decls -Wshadow -Wshorten-64-to-32 -Wsign-compare -Wstrict-overflow=1 -Wstrict-prototypes -Wswitch-enum -Wundef -Wunused -Wunused-result -Wunused-variable -Wwrite-strings -fwrapv
+   * C Flags:                    -Os -fvisibility=hidden -ffunction-sections -fdata-sections  -Werror -Wno-pragmas -Wall -Wno-strict-aliasing -Wextra -Wunknown-pragmas --param=ssp-buffer-size=1 -Waddress -Warray-bounds -Wbad-function-cast -Wchar-subscripts -Wcomment -Wfloat-equal -Wformat-security -Wformat=2 -Wmissing-field-initializers -Wmissing-noreturn -Wmissing-prototypes -Wnested-externs -Wpointer-arith -Wpointer-sign -Wredundant-decls -Wshadow -Wshorten-64-to-32 -Wsign-compare -Wstrict-overflow=1 -Wstrict-prototypes -Wswitch-enum -Wundef -Wunused -Wunused-result -Wunused-variable -Wwrite-strings -fwrapv
    * Debug enabled:              no
+   * Nightly Rust:               no
+   * Examples:                   yes
 
    Features
    * Logging and error strings:  yes
@@ -152,7 +159,7 @@ Configuration summary for mesalink version 0.6.0
    * EC signature verification:  yes
 ```
 
-Finally, simple run `make` to compile the MesaLink library.
+Finally, simple run `make` to compile the MesaLink library and examples
 
 ```
 $ make
@@ -168,6 +175,8 @@ response.
 ```
 $ ./examples/client/client api.ipify.org
 [+] Negotiated ciphersuite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, enc_length=16, version=TLS1.2
+[+] Subject name: /OU=Domain Control Validated/OU=PositiveSSL Wildcard/CN=*.ipify.org
+[+] Subject alternative names:*.ipify.org ipify.org
 [+] Sent 85 bytes
 
 GET / HTTP/1.0
@@ -175,17 +184,19 @@ Host: api.ipify.org
 Connection: close
 Accept-Encoding: identity
 
+
 HTTP/1.1 200 OK
 Server: Cowboy
 Connection: close
 Content-Type: text/plain
 Vary: Origin
-Date: Thu, 15 Feb 2018 23:58:39 GMT
+Date: Thu, 09 Aug 2018 21:44:35 GMT
 Content-Length: 10
 Via: 1.1 vegur
 
-1.2.3.4
+12.1.72.44
 [+] TLS protocol version: TLS1.2
+
 [+] Received 177 bytes
 ```
 
@@ -216,14 +227,9 @@ Accept-Language: en-US,en;q=0.9
 ```
 
 ## Unit tests
-MesaLink uses cargo for unit tests. The test cases are designed for the
-default configuration of MesaLink, in which all the optional features are
-enabled. So before running the test cases, please rebuild MesaLink with the
-default configuration:
+MesaLink uses cargo for unit tests. Simply run `cargo test`.
 
 ```
-$ ./configure
-$ make
 $ cargo test
 ```
 
@@ -233,8 +239,7 @@ protocol level test suite. We have ported BoGo for testing the functionality and
 compatibility of MesaLink. To run BoGo test cases, run the following:
 
 ```
-$ cargo build --release --examples
-$ (cd bogo && ./fetch-and-build && ./runme)
+$ cd bogo && ./runme
 ```
 
 ## Crypto benchmarks
@@ -253,8 +258,8 @@ the available benchmarks is shown as follows:
 | ECDH (suite B) key exchange         |  ✔️   |                  |         |
 | X25519 (Curve25519) key exchange    |  ✔️   |                  |         |
 
-To run the benchmarks, run the following command with nightly Rust. Note you
-must have OpenSSL/LibreSSL or wolfSSL installed to run the corresponding
+To run the benchmarks, run the following command with *nightly* Rust. Note you
+would need OpenSSL/LibreSSL and/or wolfSSL installed to run the corresponding
 benchmarks.
 
 ```
@@ -264,8 +269,9 @@ $ cd crypto-bench && ./bench_all
 ```
 
 ## Acknowledgments
-The MesaLink project would not have been possible without the following high-quality
-open source projects in the Rust community. Thanks for code and inspiration!
+The MesaLink project would not have been possible without the following
+high-quality open source projects in the Rust community. Thanks for code and
+inspiration!
 
   * `rustls`: A modern TLS library in Rust, maintained by Joseph Birr-Pixton
     [@ctz](https://github.com/ctz)
@@ -273,8 +279,8 @@ open source projects in the Rust community. Thanks for code and inspiration!
     maintained by Joseph Birr-Pixton [@ctz](https://github.com/ctz)
   * `ring`: Safe, fast, small crypto using Rust, by Brian Smith
     [@briansmith](https://github.com/briansmith)
-  * `webpki`: WebPKI X.509 Certificate Validation in Rust, maintained by Brian Smith
-    [@briansmith](https://github.com/briansmith)
+  * `webpki`: WebPKI X.509 Certificate Validation in Rust, maintained by Brian
+    Smith [@briansmith](https://github.com/briansmith)
   * `crypto-bench`: Benchmarks for crypto libraries, maintained by Brian Smith
     [@briansmith](https://github.com/briansmith)
   * Special thanks to Brian Smith for insights and valuable discussion

@@ -1,0 +1,856 @@
+diff --git a/.travis.yml b/.travis.yml
+index 0045c5e0b..b35e18f5d 100644
+--- a/.travis.yml
++++ b/.travis.yml
+@@ -6,6 +6,7 @@ cache:
+         - $HOME/mbedtls-mbedtls-2.8.0
+         - $HOME/libidn2-2.0.4
+         - $HOME/wolfssl-3.14.0-stable
++        - $HOME/mesalink-0.7.0
+ 
+ env:
+     global:
+@@ -67,6 +68,10 @@ matrix:
+           compiler: gcc
+           dist: trusty
+           env: T=debug-wolfssl C="--with-wolfssl --without-ssl"
++        - os: linux
++          compiler: gcc
++          dist: trusty
++          env: T=debug C="--with-mesalink --without-ssl"
+         - os: linux
+           compiler: clang
+           dist: trusty
+@@ -217,12 +222,27 @@ before_script:
+           make)
+         fi
+       fi
++    - |
++      if [ $TRAVIS_OS_NAME = linux ]; then
++        if [ ! -e $HOME/mesalink-0.7.0/Makefile ]; then
++          (cd $HOME && \
++          curl https://sh.rustup.rs -sSf | sh -s -- -y && \
++          source $HOME/.cargo/env && \
++          curl -LO https://github.com/mesalock-linux/mesalink/archive/v0.7.0.tar.gz && \
++          tar -xzf v0.7.0.tar.gz && \
++          cd mesalink-0.7.0 && \
++          ./autogen.sh && \
++          ./configure --enable-tls13  && \
++          make)
++        fi
++      fi
+     - |
+       if [ $TRAVIS_OS_NAME = linux ]; then
+         (cd $HOME/libidn2-2.0.4 && sudo make install)
+         (cd $HOME/libpsl-0.20.1 && sudo make install)
+         (cd $HOME/mbedtls-mbedtls-2.8.0 && sudo make install)
+         (cd $HOME/wolfssl-3.14.0-stable && sudo make install)
++        (cd $HOME/mesalink-0.7.0 && sudo make install)
+       fi
+ 
+ script:
+diff --git a/configure.ac b/configure.ac
+index 22280a5e9..60cddebfa 100755
+--- a/configure.ac
++++ b/configure.ac
+@@ -151,7 +151,7 @@ AC_SUBST(PKGADD_VENDOR)
+ 
+ dnl
+ dnl initialize all the info variables
+-    curl_ssl_msg="no      (--with-{ssl,gnutls,nss,polarssl,mbedtls,cyassl,axtls,winssl,darwinssl} )"
++    curl_ssl_msg="no      (--with-{ssl,gnutls,nss,polarssl,mbedtls,cyassl,axtls,winssl,darwinssl,mesalink} )"
+     curl_ssh_msg="no      (--with-libssh2)"
+    curl_zlib_msg="no      (--with-zlib)"
+  curl_brotli_msg="no      (--with-brotli)"
+@@ -2385,6 +2385,98 @@ if test -z "$ssl_backends" -o "x$OPT_CYASSL" != xno; then
+   test -z "$ssl_msg" || ssl_backends="${ssl_backends:+$ssl_backends, }$ssl_msg"
+ fi
+ 
++dnl ----------------------------------------------------
++dnl check for MesaLink
++dnl ----------------------------------------------------
++
++dnl Default to compiler & linker defaults for MesaLink files & libraries.
++OPT_MESALINK=no
++
++_cppflags=$CPPFLAGS
++_ldflags=$LDFLAGS
++AC_ARG_WITH(mesalink,dnl
++AC_HELP_STRING([--with-mesalink=PATH],[where to look for MesaLink, PATH points to the installation root])
++AC_HELP_STRING([--without-mesalink], [disable MesaLink detection]),
++  OPT_MESALINK=$withval)
++
++if test -z "$ssl_backends" -o "x$OPT_MESALINK" != xno; then
++  ssl_msg=
++
++  if test X"$OPT_MESALINK" != Xno; then
++
++    if test "$OPT_MESALINK" = "yes"; then
++      OPT_MESALINK=""
++    fi
++
++    if test -z "$OPT_MESALINK" ; then
++      dnl check for lib first without setting any new path
++
++      AC_CHECK_LIB(mesalink, mesalink_library_init,
++      dnl libmesalink found, set the variable
++       [
++         AC_DEFINE(USE_MESALINK, 1, [if MesaLink is enabled])
++         AC_SUBST(USE_MESALINK, [1])
++         MESALINK_ENABLED=1
++         USE_MESALINK="yes"
++         ssl_msg="MesaLink"
++	 test mesalink != "$DEFAULT_SSL_BACKEND" || VALID_DEFAULT_SSL_BACKEND=yes
++        ])
++    fi
++
++    addld=""
++    addlib=""
++    addcflags=""
++    mesalinklib=""
++
++    if test "x$USE_MESALINK" != "xyes"; then
++      dnl add the path and test again
++      addld=-L$OPT_MESALINK/lib$libsuff
++      addcflags=-I$OPT_MESALINK/include
++      mesalinklib=$OPT_MESALINK/lib$libsuff
++
++      LDFLAGS="$LDFLAGS $addld"
++      if test "$addcflags" != "-I/usr/include"; then
++         CPPFLAGS="$CPPFLAGS $addcflags"
++      fi
++
++      AC_CHECK_LIB(mesalink, mesalink_library_init,
++       [
++       AC_DEFINE(USE_MESALINK, 1, [if MesaLink is enabled])
++       AC_SUBST(USE_MESALINK, [1])
++       MESALINK_ENABLED=1
++       USE_MESALINK="yes"
++       ssl_msg="MesaLink"
++       test mesalink != "$DEFAULT_SSL_BACKEND" || VALID_DEFAULT_SSL_BACKEND=yes
++       ],
++       [
++         CPPFLAGS=$_cppflags
++         LDFLAGS=$_ldflags
++       ])
++    fi
++
++    if test "x$USE_MESALINK" = "xyes"; then
++      AC_MSG_NOTICE([detected MesaLink])
++
++      LIBS="-lmesalink $LIBS"
++
++      if test -n "$mesalinklib"; then
++        dnl when shared libs were found in a path that the run-time
++        dnl linker doesn't search through, we need to add it to
++        dnl LD_LIBRARY_PATH to prevent further configure tests to fail
++        dnl due to this
++        if test "x$cross_compiling" != "xyes"; then
++          LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$mesalinklib"
++          export LD_LIBRARY_PATH
++          AC_MSG_NOTICE([Added $mesalinklib to LD_LIBRARY_PATH])
++        fi
++      fi
++    fi
++
++  fi dnl MesaLink not disabled
++
++  test -z "$ssl_msg" || ssl_backends="${ssl_backends:+$ssl_backends, }$ssl_msg"
++fi
++
+ dnl ----------------------------------------------------
+ dnl NSS. Only check if GnuTLS and OpenSSL are not enabled
+ dnl ----------------------------------------------------
+@@ -2575,10 +2667,10 @@ if test -z "$ssl_backends" -o "x$OPT_AXTLS" != xno; then
+   test -z "$ssl_msg" || ssl_backends="${ssl_backends:+$ssl_backends, }$ssl_msg"
+ fi
+ 
+-case "x$OPENSSL_ENABLED$GNUTLS_ENABLED$NSS_ENABLED$POLARSSL_ENABLED$MBEDTLS_ENABLED$AXTLS_ENABLED$CYASSL_ENABLED$WINSSL_ENABLED$DARWINSSL_ENABLED" in
++case "x$OPENSSL_ENABLED$GNUTLS_ENABLED$NSS_ENABLED$POLARSSL_ENABLED$MBEDTLS_ENABLED$AXTLS_ENABLED$CYASSL_ENABLED$WINSSL_ENABLED$DARWINSSL_ENABLED$MESALINK_ENABLED" in
+ x)
+   AC_MSG_WARN([SSL disabled, you will not be able to use HTTPS, FTPS, NTLM and more.])
+-  AC_MSG_WARN([Use --with-ssl, --with-gnutls, --with-polarssl, --with-cyassl, --with-nss, --with-axtls, --with-winssl, or --with-darwinssl to address this.])
++  AC_MSG_WARN([Use --with-ssl, --with-gnutls, --with-polarssl, --with-cyassl, --with-nss, --with-axtls, --with-winssl, --with-darwinssl, or --with-mesalink to address this.])
+   ;;
+ x1)
+   # one SSL backend is enabled
+diff --git a/lib/Makefile.inc b/lib/Makefile.inc
+index 76ca6d041..b2106a818 100644
+--- a/lib/Makefile.inc
++++ b/lib/Makefile.inc
+@@ -30,12 +30,12 @@ LIB_VAUTH_HFILES = vauth/vauth.h vauth/digest.h vauth/ntlm.h
+ LIB_VTLS_CFILES = vtls/openssl.c vtls/gtls.c vtls/vtls.c vtls/nss.c     \
+   vtls/polarssl.c vtls/polarssl_threadlock.c vtls/axtls.c               \
+   vtls/cyassl.c vtls/schannel.c vtls/schannel_verify.c                  \
+-  vtls/darwinssl.c vtls/gskit.c vtls/mbedtls.c
++  vtls/darwinssl.c vtls/gskit.c vtls/mbedtls.c vtls/mesalink.c
+ 
+ LIB_VTLS_HFILES = vtls/openssl.h vtls/vtls.h vtls/gtls.h                \
+   vtls/nssg.h vtls/polarssl.h vtls/polarssl_threadlock.h vtls/axtls.h   \
+   vtls/cyassl.h vtls/schannel.h vtls/darwinssl.h vtls/gskit.h           \
+-  vtls/mbedtls.h
++  vtls/mbedtls.h vtls/mesalink.h
+ 
+ LIB_CFILES = file.c timeval.c base64.c hostip.c progress.c formdata.c   \
+   cookie.c http.c sendf.c ftp.c url.c dict.c if2ip.c speedcheck.c       \
+diff --git a/lib/curl_setup.h b/lib/curl_setup.h
+index 799d5fab9..703b89842 100644
+--- a/lib/curl_setup.h
++++ b/lib/curl_setup.h
+@@ -645,7 +645,7 @@ int netware_init(void);
+ #if defined(USE_GNUTLS) || defined(USE_OPENSSL) || defined(USE_NSS) || \
+     defined(USE_POLARSSL) || defined(USE_AXTLS) || defined(USE_MBEDTLS) || \
+     defined(USE_CYASSL) || defined(USE_SCHANNEL) || \
+-    defined(USE_DARWINSSL) || defined(USE_GSKIT)
++    defined(USE_DARWINSSL) || defined(USE_GSKIT) || defined(USE_MESALINK)
+ #define USE_SSL    /* SSL support has been enabled */
+ #endif
+ 
+diff --git a/lib/vtls/mesalink.c b/lib/vtls/mesalink.c
+new file mode 100644
+index 000000000..0206c5e21
+--- /dev/null
++++ b/lib/vtls/mesalink.c
+@@ -0,0 +1,569 @@
++/***************************************************************************
++ *                                  _   _ ____  _
++ *  Project                     ___| | | |  _ \| |
++ *                             / __| | | | |_) | |
++ *                            | (__| |_| |  _ <| |___
++ *                             \___|\___/|_| \_\_____|
++ *
++ * Copyright (C) 2017-2018, Yiming Jing, <jingyiming@baidu.com>
++ * Copyright (C) 1998 - 2017, Daniel Stenberg, <daniel@haxx.se>, et al.
++ *
++ * This software is licensed as described in the file COPYING, which
++ * you should have received as part of this distribution. The terms
++ * are also available at https://curl.haxx.se/docs/copyright.html.
++ *
++ * You may opt to use, copy, modify, merge, publish, distribute and/or sell
++ * copies of the Software, and permit persons to whom the Software is
++ * furnished to do so, under the terms of the COPYING file.
++ *
++ * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
++ * KIND, either express or implied.
++ *
++ ***************************************************************************/
++
++/*
++ * Source file for all MesaLink-specific code for the TLS/SSL layer. No code
++ * but vtls.c should ever call or use these functions.
++ *
++ */
++
++/*
++ * Based upon the CyaSSL implementation in cyassl.c and cyassl.h:
++ *   Copyright (C) 1998 - 2017, Daniel Stenberg, <daniel@haxx.se>, et al.
++ *
++ * Thanks for code and inspiration!
++ */
++
++#include "curl_setup.h"
++
++#ifdef USE_MESALINK
++
++#include <mesalink/options.h>
++#include <mesalink/version.h>
++
++#include "urldata.h"
++#include "sendf.h"
++#include "inet_pton.h"
++#include "vtls.h"
++#include "parsedate.h"
++#include "connect.h" /* for the connect timeout */
++#include "select.h"
++#include "strcase.h"
++#include "x509asn1.h"
++#include "curl_printf.h"
++
++#include "mesalink.h"
++#include <mesalink/openssl/ssl.h>
++#include <mesalink/openssl/err.h>
++
++/* The last #include files should be: */
++#include "curl_memory.h"
++#include "memdebug.h"
++
++#define MESALINK_MAX_ERROR_SZ 80
++
++struct ssl_backend_data
++{
++  SSL_CTX *ctx;
++  SSL *handle;
++};
++
++#define BACKEND connssl->backend
++
++static Curl_recv mesalink_recv;
++static Curl_send mesalink_send;
++
++/*
++ * This function loads all the client/CA certificates and CRLs. Setup the TLS
++ * layer and do all necessary magic.
++ */
++static CURLcode
++mesalink_connect_step1(struct connectdata *conn, int sockindex)
++{
++  char *ciphers;
++  struct Curl_easy *data = conn->data;
++  struct ssl_connect_data *connssl = &conn->ssl[sockindex];
++  struct in_addr addr4;
++#ifdef ENABLE_IPV6
++  struct in6_addr addr6;
++#endif
++  SSL_METHOD *req_method = NULL;
++  curl_socket_t sockfd = conn->sock[sockindex];
++
++  if(connssl->state == ssl_connection_complete)
++    return CURLE_OK;
++
++  if(SSL_CONN_CONFIG(version_max) != CURL_SSLVERSION_MAX_NONE) {
++    failf(data, "MesaLink does not support to set maximum SSL/TLS version");
++    return CURLE_SSL_CONNECT_ERROR;
++  }
++
++  switch(SSL_CONN_CONFIG(version)) {
++  case CURL_SSLVERSION_SSLv3:
++  case CURL_SSLVERSION_TLSv1:
++  case CURL_SSLVERSION_TLSv1_0:
++  case CURL_SSLVERSION_TLSv1_1:
++    failf(data, "MesaLink does not support SSL 3.0, TLS 1.0, or TLS 1.1");
++    return CURLE_NOT_BUILT_IN;
++  case CURL_SSLVERSION_DEFAULT:
++  case CURL_SSLVERSION_TLSv1_2:
++    req_method = TLSv1_2_client_method();
++    break;
++  case CURL_SSLVERSION_TLSv1_3:
++    req_method = TLSv1_3_client_method();
++    break;
++  case CURL_SSLVERSION_SSLv2:
++    failf(data, "MesaLink does not support SSLv2");
++    return CURLE_SSL_CONNECT_ERROR;
++  default:
++    failf(data, "Unrecognized parameter passed via CURLOPT_SSLVERSION");
++    return CURLE_SSL_CONNECT_ERROR;
++  }
++
++  if(!req_method) {
++    failf(data, "SSL: couldn't create a method!");
++    return CURLE_OUT_OF_MEMORY;
++  }
++
++  if(BACKEND->ctx)
++    SSL_CTX_free(BACKEND->ctx);
++  BACKEND->ctx = SSL_CTX_new(req_method);
++
++  if(!BACKEND->ctx) {
++    failf(data, "SSL: couldn't create a context!");
++    return CURLE_OUT_OF_MEMORY;
++  }
++
++  ciphers = SSL_CONN_CONFIG(cipher_list);
++  if(ciphers) {
++#ifdef MESALINK_HAVE_CIPHER
++    if(!SSL_CTX_set_cipher_list(BACKEND->ctx, ciphers)) {
++      failf(data, "failed setting cipher list: %s", ciphers);
++      return CURLE_SSL_CIPHER;
++    }
++#endif
++    infof(data, "Cipher selection: %s\n", ciphers);
++  }
++
++  if(BACKEND->handle)
++    SSL_free(BACKEND->handle);
++  BACKEND->handle = SSL_new(BACKEND->ctx);
++  if(!BACKEND->handle) {
++    failf(data, "SSL: couldn't create a context (handle)!");
++    return CURLE_OUT_OF_MEMORY;
++  }
++
++  const char *const hostname =
++    SSL_IS_PROXY() ? conn->http_proxy.host.name : conn->host.name;
++  size_t hostname_len = strlen(hostname);
++  if((hostname_len < USHRT_MAX) &&
++     (0 == Curl_inet_pton(AF_INET, hostname, &addr4)) &&
++#ifdef ENABLE_IPV6
++     (0 == Curl_inet_pton(AF_INET6, hostname, &addr6)) &&
++#endif
++     (SSL_set_tlsext_host_name(BACKEND->handle, hostname) != SSL_SUCCESS)) {
++    infof(data,
++          "WARNING: failed to configure server name indication (SNI) "
++          "TLS extension\n");
++  }
++
++#ifdef MESALINK_HAVE_SESSION
++  if(SSL_SET_OPTION(primary.sessionid)) {
++    void *ssl_sessionid = NULL;
++
++    Curl_ssl_sessionid_lock(conn);
++    if(!Curl_ssl_getsessionid(conn, &ssl_sessionid, NULL, sockindex)) {
++      /* we got a session id, use it! */
++      if(!SSL_set_session(BACKEND->handle, ssl_sessionid)) {
++        Curl_ssl_sessionid_unlock(conn);
++        failf(
++          data,
++          "SSL: SSL_set_session failed: %s",
++          ERR_error_string(SSL_get_error(BACKEND->handle, 0), error_buffer));
++        return CURLE_SSL_CONNECT_ERROR;
++      }
++      /* Informational message */
++      infof(data, "SSL re-using session ID\n");
++    }
++    Curl_ssl_sessionid_unlock(conn);
++  }
++#endif /* MESALINK_HAVE_SESSION */
++
++  if(SSL_set_fd(BACKEND->handle, (int)sockfd) != SSL_SUCCESS) {
++    failf(data, "SSL: SSL_set_fd failed");
++    return CURLE_SSL_CONNECT_ERROR;
++  }
++
++  connssl->connecting_state = ssl_connect_2;
++  return CURLE_OK;
++}
++
++static CURLcode
++mesalink_connect_step2(struct connectdata *conn, int sockindex)
++{
++  int ret = -1;
++  struct Curl_easy *data = conn->data;
++  struct ssl_connect_data *connssl = &conn->ssl[sockindex];
++
++  conn->recv[sockindex] = mesalink_recv;
++  conn->send[sockindex] = mesalink_send;
++
++  ret = SSL_connect0(BACKEND->handle);
++  if(ret != SSL_SUCCESS) {
++    char error_buffer[MESALINK_MAX_ERROR_SZ];
++    int detail = SSL_get_error(BACKEND->handle, ret);
++
++    if(SSL_ERROR_WANT_READ == detail) {
++      connssl->connecting_state = ssl_connect_2_reading;
++      return CURLE_OK;
++    }
++    else if(SSL_ERROR_WANT_WRITE == detail) {
++      connssl->connecting_state = ssl_connect_2_writing;
++      return CURLE_OK;
++    }
++    else {
++      failf(data,
++            "SSL_connect failed with error %d: %s",
++            detail,
++            ERR_error_string_n(detail, error_buffer, sizeof(error_buffer)));
++      ERR_print_errors_fp(stderr);
++      return CURLE_SSL_CONNECT_ERROR;
++    }
++  }
++
++  connssl->connecting_state = ssl_connect_3;
++  infof(data,
++        "SSL connection using %s / %s\n",
++        SSL_get_version(BACKEND->handle),
++        SSL_get_cipher_name(BACKEND->handle));
++
++  return CURLE_OK;
++}
++
++static CURLcode
++mesalink_connect_step3(struct connectdata *conn, int sockindex)
++{
++  CURLcode result = CURLE_OK;
++  struct ssl_connect_data *connssl = &conn->ssl[sockindex];
++
++  DEBUGASSERT(ssl_connect_3 == connssl->connecting_state);
++
++#ifdef MESALINK_HAVE_SESSION
++  if(SSL_SET_OPTION(primary.sessionid)) {
++    bool incache;
++    SSL_SESSION *our_ssl_sessionid;
++    void *old_ssl_sessionid = NULL;
++
++    our_ssl_sessionid =
++      SSL_get_session(BACKEND->handle);
++
++    Curl_ssl_sessionid_lock(conn);
++    incache =
++      !(Curl_ssl_getsessionid(conn, &old_ssl_sessionid, NULL, sockindex));
++    if(incache) {
++      if(old_ssl_sessionid != our_ssl_sessionid) {
++        infof(data, "old SSL session ID is stale, removing\n");
++        Curl_ssl_delsessionid(conn, old_ssl_sessionid);
++        incache = FALSE;
++      }
++    }
++
++    if(!incache) {
++      result = Curl_ssl_addsessionid(
++        conn, our_ssl_sessionid, 0 /* unknown size */, sockindex);
++      if(result) {
++        Curl_ssl_sessionid_unlock(conn);
++        failf(data, "failed to store ssl session");
++        return result;
++      }
++    }
++    Curl_ssl_sessionid_unlock(conn);
++  }
++#endif /* MESALINK_HAVE_SESSION */
++
++  connssl->connecting_state = ssl_connect_done;
++
++  return result;
++}
++
++static ssize_t
++mesalink_send(struct connectdata *conn, int sockindex, const void *mem,
++              size_t len, CURLcode *curlcode)
++{
++  struct ssl_connect_data *connssl = &conn->ssl[sockindex];
++  char error_buffer[MESALINK_MAX_ERROR_SZ];
++  int memlen = (len > (size_t)INT_MAX) ? INT_MAX : (int)len;
++  int rc = SSL_write(BACKEND->handle, mem, memlen);
++
++  if(rc < 0) {
++    int err = SSL_get_error(BACKEND->handle, rc);
++    switch(err) {
++    case SSL_ERROR_WANT_READ:
++    case SSL_ERROR_WANT_WRITE:
++      /* there's data pending, re-invoke SSL_write() */
++      *curlcode = CURLE_AGAIN;
++      return -1;
++    default:
++      failf(conn->data,
++            "SSL write: %s, errno %d",
++            ERR_error_string_n(err, error_buffer, sizeof(error_buffer)),
++            SOCKERRNO);
++      *curlcode = CURLE_SEND_ERROR;
++      return -1;
++    }
++  }
++  return rc;
++}
++
++static void
++Curl_mesalink_close(struct connectdata *conn, int sockindex)
++{
++  struct ssl_connect_data *connssl = &conn->ssl[sockindex];
++
++  if(BACKEND->handle) {
++    (void)SSL_shutdown(BACKEND->handle);
++    SSL_free(BACKEND->handle);
++    BACKEND->handle = NULL;
++  }
++  if(BACKEND->ctx) {
++    SSL_CTX_free(BACKEND->ctx);
++    BACKEND->ctx = NULL;
++  }
++}
++
++static ssize_t
++mesalink_recv(struct connectdata *conn, int num, char *buf, size_t buffersize,
++              CURLcode *curlcode)
++{
++  struct ssl_connect_data *connssl = &conn->ssl[num];
++  char error_buffer[MESALINK_MAX_ERROR_SZ];
++  int buffsize = (buffersize > (size_t)INT_MAX) ? INT_MAX : (int)buffersize;
++  int nread = SSL_read(BACKEND->handle, buf, buffsize);
++
++  if(nread < 0) {
++    int err = SSL_get_error(BACKEND->handle, nread);
++
++    switch(err) {
++    case SSL_ERROR_ZERO_RETURN: /* no more data */
++      break;
++    case SSL_ERROR_WANT_READ:
++    case SSL_ERROR_WANT_WRITE:
++      /* there's data pending, re-invoke SSL_read() */
++      *curlcode = CURLE_AGAIN;
++      return -1;
++    default:
++      failf(conn->data,
++            "SSL read: %s, errno %d",
++            ERR_error_string_n(err, error_buffer, sizeof(error_buffer)),
++            SOCKERRNO);
++      *curlcode = CURLE_RECV_ERROR;
++      return -1;
++    }
++  }
++  return nread;
++}
++
++static size_t
++Curl_mesalink_version(char *buffer, size_t size)
++{
++  return snprintf(buffer, size, "MesaLink/%s", MESALINK_VERSION_STRING);
++}
++
++static int
++Curl_mesalink_init(void)
++{
++  return (SSL_library_init() == SSL_SUCCESS);
++}
++
++/*
++ * This function is called to shut down the SSL layer but keep the
++ * socket open (CCC - Clear Command Channel)
++ */
++static int
++Curl_mesalink_shutdown(struct connectdata *conn, int sockindex)
++{
++  int retval = 0;
++  struct ssl_connect_data *connssl = &conn->ssl[sockindex];
++
++  if(BACKEND->handle) {
++    SSL_free(BACKEND->handle);
++    BACKEND->handle = NULL;
++  }
++  return retval;
++}
++
++static CURLcode
++mesalink_connect_common(struct connectdata *conn, int sockindex,
++                        bool nonblocking, bool *done)
++{
++  CURLcode result;
++  struct Curl_easy *data = conn->data;
++  struct ssl_connect_data *connssl = &conn->ssl[sockindex];
++  curl_socket_t sockfd = conn->sock[sockindex];
++  time_t timeout_ms;
++  int what;
++
++  /* check if the connection has already been established */
++  if(ssl_connection_complete == connssl->state) {
++    *done = TRUE;
++    return CURLE_OK;
++  }
++
++  if(ssl_connect_1 == connssl->connecting_state) {
++    /* Find out how much more time we're allowed */
++    timeout_ms = Curl_timeleft(data, NULL, TRUE);
++
++    if(timeout_ms < 0) {
++      /* no need to continue if time already is up */
++      failf(data, "SSL connection timeout");
++      return CURLE_OPERATION_TIMEDOUT;
++    }
++
++    result = mesalink_connect_step1(conn, sockindex);
++    if(result)
++      return result;
++  }
++
++  while(ssl_connect_2 == connssl->connecting_state ||
++        ssl_connect_2_reading == connssl->connecting_state ||
++        ssl_connect_2_writing == connssl->connecting_state) {
++
++    /* check allowed time left */
++    timeout_ms = Curl_timeleft(data, NULL, TRUE);
++
++    if(timeout_ms < 0) {
++      /* no need to continue if time already is up */
++      failf(data, "SSL connection timeout");
++      return CURLE_OPERATION_TIMEDOUT;
++    }
++
++    /* if ssl is expecting something, check if it's available. */
++    if(connssl->connecting_state == ssl_connect_2_reading ||
++       connssl->connecting_state == ssl_connect_2_writing) {
++
++      curl_socket_t writefd =
++        ssl_connect_2_writing == connssl->connecting_state ? sockfd
++                                                           : CURL_SOCKET_BAD;
++      curl_socket_t readfd = ssl_connect_2_reading == connssl->connecting_state
++                               ? sockfd
++                               : CURL_SOCKET_BAD;
++
++      what = Curl_socket_check(
++        readfd, CURL_SOCKET_BAD, writefd, nonblocking ? 0 : timeout_ms);
++      if(what < 0) {
++        /* fatal error */
++        failf(data, "select/poll on SSL socket, errno: %d", SOCKERRNO);
++        return CURLE_SSL_CONNECT_ERROR;
++      }
++      else if(0 == what) {
++        if(nonblocking) {
++          *done = FALSE;
++          return CURLE_OK;
++        }
++        else {
++          /* timeout */
++          failf(data, "SSL connection timeout");
++          return CURLE_OPERATION_TIMEDOUT;
++        }
++      }
++      /* socket is readable or writable */
++    }
++
++    /* Run transaction, and return to the caller if it failed or if
++     * this connection is part of a multi handle and this loop would
++     * execute again. This permits the owner of a multi handle to
++     * abort a connection attempt before step2 has completed while
++     * ensuring that a client using select() or epoll() will always
++     * have a valid fdset to wait on.
++     */
++    result = mesalink_connect_step2(conn, sockindex);
++
++    if(result ||
++       (nonblocking && (ssl_connect_2 == connssl->connecting_state ||
++                        ssl_connect_2_reading == connssl->connecting_state ||
++                        ssl_connect_2_writing == connssl->connecting_state))) {
++      return result;
++    }
++  } /* repeat step2 until all transactions are done. */
++
++  if(ssl_connect_3 == connssl->connecting_state) {
++    result = mesalink_connect_step3(conn, sockindex);
++    if(result)
++      return result;
++  }
++
++  if(ssl_connect_done == connssl->connecting_state) {
++    connssl->state = ssl_connection_complete;
++    conn->recv[sockindex] = mesalink_recv;
++    conn->send[sockindex] = mesalink_send;
++    *done = TRUE;
++  }
++  else
++    *done = FALSE;
++
++  /* Reset our connect state machine */
++  connssl->connecting_state = ssl_connect_1;
++
++  return CURLE_OK;
++}
++
++static CURLcode
++Curl_mesalink_connect_nonblocking(struct connectdata *conn, int sockindex,
++                                  bool *done)
++{
++  return mesalink_connect_common(conn, sockindex, TRUE, done);
++}
++
++static CURLcode
++Curl_mesalink_connect(struct connectdata *conn, int sockindex)
++{
++  CURLcode result;
++  bool done = FALSE;
++
++  result = mesalink_connect_common(conn, sockindex, FALSE, &done);
++  if(result)
++    return result;
++
++  DEBUGASSERT(done);
++
++  return CURLE_OK;
++}
++
++static void *
++Curl_mesalink_get_internals(struct ssl_connect_data *connssl,
++                            CURLINFO info UNUSED_PARAM)
++{
++  (void)info;
++  return BACKEND->handle;
++}
++
++const struct Curl_ssl Curl_ssl_mesalink = {
++  { CURLSSLBACKEND_WOLFSSL, "MesaLink" }, /* info */
++
++  SSLSUPP_SSL_CTX,
++
++  sizeof(struct ssl_backend_data),
++
++  Curl_mesalink_init, /* init */
++  Curl_none_cleanup, /* cleanup */
++  Curl_mesalink_version, /* version */
++  Curl_none_check_cxn, /* check_cxn */
++  Curl_mesalink_shutdown, /* shutdown */
++  Curl_none_data_pending, /* data_pending */
++  Curl_none_random, /* random */
++  Curl_none_cert_status_request, /* cert_status_request */
++  Curl_mesalink_connect, /* connect */
++  Curl_mesalink_connect_nonblocking, /* connect_nonblocking */
++  Curl_mesalink_get_internals, /* get_internals */
++  Curl_mesalink_close, /* close_one */
++  Curl_none_close_all, /* close_all */
++  Curl_none_session_free, /* session_free */
++  Curl_none_set_engine, /* set_engine */
++  Curl_none_set_engine_default, /* set_engine_default */
++  Curl_none_engines_list, /* engines_list */
++  Curl_none_false_start, /* false_start */
++  Curl_none_md5sum, /* md5sum */
++  NULL /* sha256sum */
++};
++
++#endif
+diff --git a/lib/vtls/mesalink.h b/lib/vtls/mesalink.h
+new file mode 100644
+index 000000000..54cb94ad3
+--- /dev/null
++++ b/lib/vtls/mesalink.h
+@@ -0,0 +1,32 @@
++#ifndef HEADER_CURL_MESALINK_H
++#define HEADER_CURL_MESALINK_H
++/***************************************************************************
++ *                                  _   _ ____  _
++ *  Project                     ___| | | |  _ \| |
++ *                             / __| | | | |_) | |
++ *                            | (__| |_| |  _ <| |___
++ *                             \___|\___/|_| \_\_____|
++ *
++ * Copyright (C) 2017-2018, Yiming Jing, <jingyiming@baidu.com>
++ * Copyright (C) 1998 - 2017, Daniel Stenberg, <daniel@haxx.se>, et al.
++ *
++ * This software is licensed as described in the file COPYING, which
++ * you should have received as part of this distribution. The terms
++ * are also available at https://curl.haxx.se/docs/copyright.html.
++ *
++ * You may opt to use, copy, modify, merge, publish, distribute and/or sell
++ * copies of the Software, and permit persons to whom the Software is
++ * furnished to do so, under the terms of the COPYING file.
++ *
++ * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
++ * KIND, either express or implied.
++ *
++ ***************************************************************************/
++#include "curl_setup.h"
++
++#ifdef USE_MESALINK
++
++extern const struct Curl_ssl Curl_ssl_mesalink;
++
++#endif /* USE_MESALINK */
++#endif /* HEADER_CURL_MESALINK_H */
+diff --git a/lib/vtls/vtls.c b/lib/vtls/vtls.c
+index bf96518bc..29d5324ae 100644
+--- a/lib/vtls/vtls.c
++++ b/lib/vtls/vtls.c
+@@ -1187,6 +1187,8 @@ const struct Curl_ssl *Curl_ssl =
+   &Curl_ssl_polarssl;
+ #elif defined(USE_SCHANNEL)
+   &Curl_ssl_schannel;
++#elif defined(USE_MESALINK)
++  &Curl_ssl_mesalink;
+ #else
+ #error "Missing struct Curl_ssl for selected SSL backend"
+ #endif
+@@ -1221,6 +1223,9 @@ static const struct Curl_ssl *available_backends[] = {
+ #endif
+ #if defined(USE_SCHANNEL)
+   &Curl_ssl_schannel,
++#endif
++#if defined(USE_MESALINK)
++  &Curl_ssl_mesalink,
+ #endif
+   NULL
+ };
+diff --git a/lib/vtls/vtls.h b/lib/vtls/vtls.h
+index 40f9d7479..5cd11602e 100644
+--- a/lib/vtls/vtls.h
++++ b/lib/vtls/vtls.h
+@@ -108,6 +108,7 @@ CURLcode Curl_none_md5sum(unsigned char *input, size_t inputlen,
+ #include "schannel.h"       /* Schannel SSPI version */
+ #include "darwinssl.h"      /* SecureTransport (Darwin) version */
+ #include "mbedtls.h"        /* mbedTLS versions */
++#include "mesalink.h"       /* MesaLink versions */
+ 
+ #ifndef MAX_PINNED_PUBKEY_SIZE
+ #define MAX_PINNED_PUBKEY_SIZE 1048576 /* 1MB */
