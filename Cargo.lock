@@ -105,9 +105,9 @@ dependencies = [
  "libc 0.2.42 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "ring 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustls 0.13.0 (git+https://github.com/mesalock-linux/rustls?branch=develop)",
+ "rustls 0.13.0 (git+https://github.com/mesalock-linux/rustls?branch=mesalink)",
  "untrusted 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "webpki 0.18.1 (git+https://github.com/mesalock-linux/webpki?branch=develop)",
+ "webpki 0.18.1 (git+https://github.com/mesalock-linux/webpki?branch=mesalink)",
  "webpki-roots 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -168,14 +168,14 @@ dependencies = [
 [[package]]
 name = "rustls"
 version = "0.13.0"
-source = "git+https://github.com/mesalock-linux/rustls?branch=develop#bd152d399abafa053526e7c1ccec6bb62c7d5cfe"
+source = "git+https://github.com/mesalock-linux/rustls?branch=mesalink#bd152d399abafa053526e7c1ccec6bb62c7d5cfe"
 dependencies = [
  "base64 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "ring 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "sct 0.4.0 (git+https://github.com/mesalock-linux/sct.rs?branch=develop)",
+ "sct 0.4.0 (git+https://github.com/mesalock-linux/sct.rs?branch=mesalink)",
  "untrusted 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "webpki 0.18.1 (git+https://github.com/mesalock-linux/webpki?branch=develop)",
+ "webpki 0.18.1 (git+https://github.com/mesalock-linux/webpki?branch=mesalink)",
 ]
 
 [[package]]
@@ -186,7 +186,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "sct"
 version = "0.4.0"
-source = "git+https://github.com/mesalock-linux/sct.rs?branch=develop#b16a8613506dc587d3cfc478d90ed0a223e8a244"
+source = "git+https://github.com/mesalock-linux/sct.rs?branch=mesalink#b16a8613506dc587d3cfc478d90ed0a223e8a244"
 dependencies = [
  "ring 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "untrusted 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -273,7 +273,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "webpki"
 version = "0.18.1"
-source = "git+https://github.com/mesalock-linux/webpki?branch=develop#53a944e8d12f78d1332f5e9d38a5fe386692e8ae"
+source = "git+https://github.com/mesalock-linux/webpki?branch=mesalink#53a944e8d12f78d1332f5e9d38a5fe386692e8ae"
 dependencies = [
  "ring 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "untrusted 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -285,7 +285,7 @@ version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "untrusted 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "webpki 0.18.1 (git+https://github.com/mesalock-linux/webpki?branch=develop)",
+ "webpki 0.18.1 (git+https://github.com/mesalock-linux/webpki?branch=mesalink)",
 ]
 
 [[package]]
@@ -336,9 +336,9 @@ dependencies = [
 "checksum regex 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "5bbbea44c5490a1e84357ff28b7d518b4619a159fed5d25f6c1de2d19cc42814"
 "checksum regex-syntax 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "747ba3b235651f6e2f67dfa8bcdcd073ddb7c243cb21c442fc12395dfcac212d"
 "checksum ring 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)" = "dbe642b9dd1ba0038d78c4a3999d1ee56178b4d415c1e1fbaba83b06dce012f0"
-"checksum rustls 0.13.0 (git+https://github.com/mesalock-linux/rustls?branch=develop)" = "<none>"
+"checksum rustls 0.13.0 (git+https://github.com/mesalock-linux/rustls?branch=mesalink)" = "<none>"
 "checksum safemem 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e27a8b19b835f7aea908818e871f5cc3a5a186550c30773be987e155e8163d8f"
-"checksum sct 0.4.0 (git+https://github.com/mesalock-linux/sct.rs?branch=develop)" = "<none>"
+"checksum sct 0.4.0 (git+https://github.com/mesalock-linux/sct.rs?branch=mesalink)" = "<none>"
 "checksum syn 0.11.11 (registry+https://github.com/rust-lang/crates.io-index)" = "d3b891b9015c88c576343b9b3e41c2c11a51c219ef067b264bd9c8aa9b441dad"
 "checksum synom 0.11.3 (registry+https://github.com/rust-lang/crates.io-index)" = "a393066ed9010ebaed60b9eafa373d4b1baac186dd7e008555b0f702b51945b6"
 "checksum termcolor 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "722426c4a0539da2c4ffd9b419d90ad540b4cff4a053be9069c908d4d07e2836"
@@ -350,7 +350,7 @@ dependencies = [
 "checksum untrusted 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "55cd1f4b4e96b46aeb8d4855db4a7a9bd96eeeb5c6a1ab54593328761642ce2f"
 "checksum utf8-ranges 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "662fab6525a98beff2921d7f61a39e7d59e0b425ebc7d0d9e66d316e55124122"
 "checksum void 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "6a02e4885ed3bc0f2de90ea6dd45ebcbb66dacffe03547fadbb0eeae2770887d"
-"checksum webpki 0.18.1 (git+https://github.com/mesalock-linux/webpki?branch=develop)" = "<none>"
+"checksum webpki 0.18.1 (git+https://github.com/mesalock-linux/webpki?branch=mesalink)" = "<none>"
 "checksum webpki-roots 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)" = "85d1f408918fd590908a70d36b7ac388db2edc221470333e4d6e5b598e44cabf"
 "checksum winapi 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)" = "773ef9dcc5f24b7d850d0ff101e542ff24c3b090a9768e03ff889fdef41f00fd"
 "checksum winapi-i686-pc-windows-gnu 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
