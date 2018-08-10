@@ -2,8 +2,6 @@
 
 <h1 align="center"> A memory-safe and OpenSSL-compatible TLS library </h1>
 
-# Status
-
 [![Build Status](https://travis-ci.com/mesalock-linux/mesalink.svg?branch=master)](https://travis-ci.org/mesalock-linux/mesalink)
 [![Coverage Status](https://coveralls.io/repos/github/mesalock-linux/mesalink/badge.svg?branch=master)](https://coveralls.io/github/mesalock-linux/mesalink?branch=master)
 [![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](https://mesalock-linux.github.io/mesalink-doc/doc/mesalink_internals/index.html)

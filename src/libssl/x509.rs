@@ -49,7 +49,6 @@ impl MESALINK_X509 {
     }
 }
 
-
 /// `X509_free` - free up a X509 structure. If a is NULL nothing is done.
 ///
 /// ```c

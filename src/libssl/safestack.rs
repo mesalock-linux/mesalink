@@ -61,7 +61,6 @@ pub extern "C" fn mesalink_sk_X509_new_null() -> *mut MESALINK_STACK_MESALINK_X5
     Box::into_raw(Box::new(stack)) as *mut MESALINK_STACK_MESALINK_X509
 }
 
-
 /// `sk_X509_num` - returns the number of elements in sk or -1 if sk is NULL.
 ///
 /// ```c
