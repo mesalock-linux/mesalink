@@ -2,9 +2,9 @@
 
 <h1 align="center"> A memory-safe and OpenSSL-compatible TLS library </h1>
 
-[![Build Status](https://travis-ci.com/mesalock-linux/mesalink.svg?branch=master)](https://travis-ci.org/mesalock-linux/mesalink)
+[![Build Status](https://travis-ci.com/mesalock-linux/mesalink.svg?branch=master)](https://travis-ci.com/mesalock-linux/mesalink)
 [![Coverage Status](https://coveralls.io/repos/github/mesalock-linux/mesalink/badge.svg?branch=master)](https://coveralls.io/github/mesalock-linux/mesalink?branch=master)
-[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](https://mesalock-linux.github.io/mesalink-doc/doc/mesalink_internals/index.html)
+[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](https://mesalock-linux.github.io/mesalink-doc/doc/mesalink/index.html)
 [![Release](https://img.shields.io/github/release/mesalock-linux/mesalink.svg)](https://github.com/mesalock-linux/mesalink/releases)
 [![License](https://img.shields.io/badge/license-BSD-blue.svg)](LICENSE)
 
@@ -134,6 +134,7 @@ either of these scripts are shown as follows:
 At the end of the configuration, a configuration summary is shown. For example,
 
 ```
+---
 Configuration summary for mesalink version 0.7.0
 
    * Installation prefix:        /usr/local
@@ -141,10 +142,10 @@ Configuration summary for mesalink version 0.7.0
    * Rust Host:
    * C Compiler:                 gcc
    * C Compiler vendor:          clang
-   * C Flags:                    -Os -fvisibility=hidden -ffunction-sections -fdata-sections  -Werror -Wno-pragmas -Wall -Wno-strict-aliasing -Wextra -Wunknown-pragmas --param=ssp-buffer-size=1 -Waddress -Warray-bounds -Wbad-function-cast -Wchar-subscripts -Wcomment -Wfloat-equal -Wformat-security -Wformat=2 -Wmissing-field-initializers -Wmissing-noreturn -Wmissing-prototypes -Wnested-externs -Wpointer-arith -Wpointer-sign -Wredundant-decls -Wshadow -Wshorten-64-to-32 -Wsign-compare -Wstrict-overflow=1 -Wstrict-prototypes -Wswitch-enum -Wundef -Wunused -Wunused-result -Wunused-variable -Wwrite-strings -fwrapv
+   * C Flags:                    -Os -fvisibility=hidden -ffunction-sections -fdata-sections
    * Debug enabled:              no
    * Nightly Rust:               no
-   * Examples:                   yes
+   * Examples:                   no
 
    Features
    * Logging and error strings:  yes
@@ -155,6 +156,8 @@ Configuration summary for mesalink version 0.7.0
    * EC key exchange:            yes
    * RSA signature verification: yes
    * EC signature verification:  yes
+
+---
 ```
 
 Finally, simple run `make` to compile the MesaLink library and examples
