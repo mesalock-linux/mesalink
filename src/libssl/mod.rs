@@ -43,6 +43,7 @@ pub mod err;
 
 #[macro_use]
 mod macros {
+    #[doc(hidden)]
     #[macro_export]
     macro_rules! error {
         ($code:expr) => {{
@@ -55,6 +56,7 @@ mod macros {
     // returned value. This macro also catches panics and prevents unwinding across
     // FFI boundaries. Note that the panic mode must be set to `unwind` in
     // Cargo.toml.
+    #[doc(hidden)]
     #[macro_export]
     macro_rules! check_inner_result {
         ($inner:expr, $err_ret:expr) => {{

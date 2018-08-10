@@ -27,7 +27,7 @@
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //! |     source    |     unused    |     errno     |   sub errno   |
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! ```text
+//! ```
 //!
 //! The highest 8 bits represent the source of the error. 0x1: the error comes
 //! from MesaLink itself. For example, a NULL or malformed SSL_CTX pointer is

@@ -39,6 +39,7 @@ impl MesalinkOpaquePointerType for MESALINK_X509 {
     }
 }
 
+#[doc(hidden)]
 impl MESALINK_X509 {
     pub(crate) fn new(cert: rustls::Certificate) -> MESALINK_X509 {
         MESALINK_X509 {
@@ -48,6 +49,15 @@ impl MESALINK_X509 {
     }
 }
 
+
+/// `X509_free` - free up a X509 structure. If a is NULL nothing is done.
+///
+/// ```c
+/// #include <mesalink/openssl/x509.h>
+///
+/// void X509_free(X509 *a);
+/// ```
+///
 #[no_mangle]
 pub extern "C" fn mesalink_X509_free(x509_ptr: *mut MESALINK_X509) {
     let _ = check_inner_result!(inner_mesalink_x509_free(x509_ptr), SSL_FAILURE);
@@ -82,6 +92,15 @@ impl<'a> MESALINK_X509_NAME {
     }
 }
 
+/// `X509_NAME_free` - free up a X509_NAME structure. If a is NULL nothing is
+/// done.
+///
+/// ```c
+/// #include <mesalink/openssl/x509.h>
+///
+/// void X509_free(X509 *a);
+/// ```
+///
 #[no_mangle]
 pub extern "C" fn mesalink_X509_NAME_free(x509_name_ptr: *mut MESALINK_X509_NAME) {
     let _ = check_inner_result!(inner_mesalink_x509_name_free(x509_name_ptr), SSL_FAILURE);
@@ -95,6 +114,16 @@ fn inner_mesalink_x509_name_free(
     Ok(SSL_SUCCESS)
 }
 
+/// `X509_get_alt_subject_names` - returns the alternative subject names of
+/// certificate x. The returned value is a STACK pointer which MUST be freed by
+/// `sk_X509_NAME_free`.
+///
+/// ```c
+/// #include <mesalink/openssl/x509.h>
+///
+/// STACK_OF(X509_NAME) *X509_get_alt_subject_names(const X509 *x);;
+/// ```
+///
 #[no_mangle]
 pub extern "C" fn mesalink_X509_get_alt_subject_names(
     x509_ptr: *mut MESALINK_X509,
@@ -129,6 +158,16 @@ fn inner_mesalink_x509_get_alt_subject_names(
     Ok(Box::into_raw(Box::new(stack)) as *mut MESALINK_STACK_MESALINK_X509_NAME)
 }
 
+/// `X509_get_subject` - returns the DER bytes of the subject of x as a
+/// `X509_NAME`. The returned value is a X509_NAME pointer which MUST be freed
+/// by `X509_NAME_free`.
+///
+/// ```c
+/// #include <mesalink/openssl/x509.h>
+///
+/// X509_NAME *X509_get_subject(const X509 *x);;
+/// ```
+///
 #[no_mangle]
 pub extern "C" fn mesalink_X509_get_subject(
     x509_ptr: *mut MESALINK_X509,
@@ -170,6 +209,16 @@ fn inner_mesalink_x509_get_subject(
     Ok(Box::into_raw(Box::new(x509_name)) as *mut MESALINK_X509_NAME)
 }
 
+/// `X509_get_subject_name` - returns the subject of x as a human readable
+/// `X509_NAME`. The returned value is a X509_NAME pointer which MUST be freed
+/// by `X509_NAME_free`.
+///
+/// ```c
+/// #include <mesalink/openssl/x509.h>
+///
+/// X509_NAME *X509_get_subject_name(const X509 *x);;
+/// ```
+///
 #[no_mangle]
 pub extern "C" fn mesalink_X509_get_subject_name(
     x509_ptr: *mut MESALINK_X509,
@@ -244,6 +293,17 @@ fn inner_mesalink_x509_get_subject_name(
     Ok(Box::into_raw(Box::new(x509_name)) as *mut MESALINK_X509_NAME)
 }
 
+/// `X509_NAME_oneline` - prints an ASCII version of a to buf. If buf is NULL
+/// then a buffer is dynamically allocated and returned, and size is ignored.
+/// Otherwise, at most size bytes will be written, including the ending '\0',
+/// and buf is returned.
+///
+/// ```c
+/// #include <mesalink/openssl/x509.h>
+///
+/// char * X509_NAME_oneline(X509_NAME *a,char *buf,int size);
+/// ```
+///
 #[no_mangle]
 pub extern "C" fn mesalink_X509_NAME_oneline(
     x509_name_ptr: *mut MESALINK_X509_NAME,

@@ -17,6 +17,7 @@
 #include <mesalink/openssl/err.h>
 #include <mesalink/openssl/ssl.h>
 #include <mesalink/openssl/x509.h>
+#include <mesalink/openssl/safestack.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
@@ -115,7 +116,7 @@ tls_client(SSL_CTX *ctx, const char *hostname)
     if(total_recvlen > 0) {
       const char *tls_version;
       if((tls_version = SSL_get_version(ssl))) {
-        printf("[+] TLS protocol version: %s\n", tls_version);
+        printf("\n[+] TLS protocol version: %s\n", tls_version);
       }
 
       printf("\n[+] Received %d bytes\n", total_recvlen);
@@ -157,7 +158,7 @@ main(int argc, char *argv[])
   ERR_load_crypto_strings();
   // SSL_load_error_strings(); // Uncomment this line to see SSL logs
 
-  ctx = SSL_CTX_new(TLSv1_2_client_method());
+  ctx = SSL_CTX_new(SSLv23_client_method());
 
   if(ctx == NULL) {
     fprintf(stderr, "[-] Failed to create SSL_CTX\n");

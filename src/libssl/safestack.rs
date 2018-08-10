@@ -25,6 +25,7 @@ use std::ptr;
 // STACK for MESALINK_X509
 // ---------------------------------------
 
+/// An OpenSSL STACK_OF(X509) object
 #[repr(C)]
 #[allow(non_camel_case_types)]
 pub struct MESALINK_STACK_MESALINK_X509 {
@@ -47,12 +48,27 @@ impl MESALINK_STACK_MESALINK_X509 {
     }
 }
 
+/// `sk_X509_new_null` - allocates a new stack of X509.
+///
+/// ```c
+/// #include <mesalink/openssl/x509.h>
+///
+/// STACK_OF(X509) *sk_X509_new_null(void);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_sk_X509_new_null() -> *mut MESALINK_STACK_MESALINK_X509 {
     let stack = MESALINK_STACK_MESALINK_X509::new(vec![]);
     Box::into_raw(Box::new(stack)) as *mut MESALINK_STACK_MESALINK_X509
 }
 
+
+/// `sk_X509_num` - returns the number of elements in sk or -1 if sk is NULL.
+///
+/// ```c
+/// #include <mesalink/openssl/safestack.h>
+///
+/// int sk_X509_num(const STACK_OF(X509) *sk);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_sk_X509_num(stack_ptr: *const MESALINK_STACK_MESALINK_X509) -> c_int {
     check_inner_result!(inner_mesalink_sk_X509_num(stack_ptr), SSL_FAILURE)
@@ -66,6 +82,14 @@ fn inner_mesalink_sk_X509_num(
     Ok(stack.stack.len() as c_int)
 }
 
+/// `sk_X509_value` - returns element idx in sk, where idx starts at zero. If
+/// idx is out of range then NULL is returned.
+///
+/// ```c
+/// #include <mesalink/openssl/safestack.h>
+///
+/// X509 *sk_X509_value(const STACK_OF(X509) *sk, int idx);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_sk_X509_value(
     stack_ptr: *const MESALINK_STACK_MESALINK_X509,
@@ -87,6 +111,13 @@ fn inner_mesalink_sk_X509_value(
     Ok(item as *const MESALINK_X509)
 }
 
+/// `sk_X509_push` - appends ptr to sk.
+///
+/// ```c
+/// #include <mesalink/openssl/safestack.h>
+///
+/// int sk_X509_push(STACK_OF(X509) *sk, const X509 *ptr);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_sk_X509_push(
     stack_ptr: *mut MESALINK_STACK_MESALINK_X509,
@@ -109,6 +140,14 @@ fn inner_mesalink_sk_X509_push(
     Ok(SSL_SUCCESS)
 }
 
+/// `sk_X509_free` - frees up the sk structure. After this call sk is no longer
+/// valid.
+///
+/// ```c
+/// #include <mesalink/openssl/safestack.h>
+///
+/// void sk_X509_free(const STACK_OF(X509) *sk);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_sk_X509_free(stack_ptr: *mut MESALINK_STACK_MESALINK_X509) {
     let _ = check_inner_result!(inner_mesalink_sk_X509_free(stack_ptr), SSL_FAILURE);
@@ -127,6 +166,7 @@ fn inner_mesalink_sk_X509_free(
 // STACK for MESALINK_X509_NAME
 // ---------------------------------------
 
+/// An OpenSSL STACK_OF(X509_NAME) object
 #[repr(C)]
 #[allow(non_camel_case_types)]
 pub struct MESALINK_STACK_MESALINK_X509_NAME {
@@ -149,12 +189,26 @@ impl MESALINK_STACK_MESALINK_X509_NAME {
     }
 }
 
+/// `sk_X509_NAME_new_null` - allocates a new stack of X509_NAME.
+///
+/// ```c
+/// #include <mesalink/openssl/safestack.h>
+///
+/// STACK_OF(X509_NAME) *sk_X509_NAME_new_null(void);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_sk_X509_NAME_new_null() -> *mut MESALINK_STACK_MESALINK_X509_NAME {
     let stack = MESALINK_STACK_MESALINK_X509_NAME::new(vec![]);
     Box::into_raw(Box::new(stack)) as *mut MESALINK_STACK_MESALINK_X509_NAME
 }
 
+/// `sk_X509_NAME_num` - returns the number of elements in sk or -1 if sk is NULL..
+///
+/// ```c
+/// #include <mesalink/openssl/safestack.h>
+///
+/// int sk_X509_NAME_num(const STACK_OF(X509_NAME) *sk);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_sk_X509_NAME_num(
     stack_ptr: *const MESALINK_STACK_MESALINK_X509_NAME,
@@ -170,6 +224,14 @@ fn inner_mesalink_sk_X509_NAME_num(
     Ok(stack.stack.len() as c_int)
 }
 
+/// `sk_X509_NAME_value` - returns element idx in sk, where idx starts at zero.
+/// If idx is out of range then NULL is returned.
+///
+/// ```c
+/// #include <mesalink/openssl/safestack.h>
+///
+/// X509_NAME *sk_X509_NAME_value(const STACK_OF(X509_NAME) *sk, int idx);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_sk_X509_NAME_value(
     stack_ptr: *const MESALINK_STACK_MESALINK_X509_NAME,
@@ -194,6 +256,13 @@ fn inner_mesalink_sk_X509_NAME_value(
     Ok(item as *const MESALINK_X509_NAME)
 }
 
+/// `sk_X509_NAME_push` - appends ptr to sk.
+///
+/// ```c
+/// #include <mesalink/openssl/safestack.h>
+///
+/// int sk_X509_NAME_push(STACK_OF(X509_NAME) *sk, const X509_NAME *ptr);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_sk_X509_NAME_push(
     stack_ptr: *mut MESALINK_STACK_MESALINK_X509_NAME,
@@ -216,6 +285,14 @@ fn inner_mesalink_sk_X509_NAME_push(
     Ok(SSL_SUCCESS)
 }
 
+/// `sk_X509_NAME_free` - frees up the sk structure. After this call sk is no longer
+/// valid.
+///
+/// ```c
+/// #include <mesalink/openssl/safestack.h>
+///
+/// void sk_X509_NAME_free(const STACK_OF(X509_NAME) *sk);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_sk_X509_NAME_free(stack_ptr: *mut MESALINK_STACK_MESALINK_X509_NAME) {
     let _ = check_inner_result!(inner_mesalink_sk_X509_NAME_free(stack_ptr), SSL_FAILURE);
