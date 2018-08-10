@@ -52,28 +52,40 @@ typedef MESALINK_SSL SSL;
 #define OpenSSL_add_ssl_algorithms mesalink_add_ssl_algorithms
 #define SSL_load_error_strings mesalink_SSL_load_error_strings
 
+#define TLS_method mesalink_TLS_method
 #ifdef HAVE_CLIENT
+// Version-flexible methods
+#define TLS_client_method mesalink_TLS_client_method
+#define SSLv23_client_method mesalink_SSLv23_client_method
+
+// Not supported
 #define SSLv3_client_method mesalink_SSLv3_client_method
-#define SSLv23_client_method mesalink_SSLv3_client_method
 #define TLSv1_client_method mesalink_TLSv1_client_method
 #define TLSv1_1_client_method mesalink_TLSv1_1_client_method
+
+// Version-specific methods
 #define TLSv1_2_client_method mesalink_TLSv1_2_client_method
 #ifdef HAVE_TLS13
 #define TLSv1_3_client_method mesalink_TLSv1_3_client_method
 #endif
-#define TLS_client_method mesalink_TLS_client_method
 #endif
 
 #ifdef HAVE_SERVER
+// Version-flexible methods
+#define TLS_server_method mesalink_TLS_server_method
+#define SSLv23_server_method mesalink_SSLv23_server_method
+
+// Not supported
 #define SSLv3_server_method mesalink_SSLv3_server_method
-#define SSLv23_server_method mesalink_SSLv3_server_method
 #define TLSv1_server_method mesalink_TLSv1_server_method
 #define TLSv1_1_server_method mesalink_TLSv1_1_server_method
+
+// Version-specific methods
 #define TLSv1_2_server_method mesalink_TLSv1_2_server_method
 #ifdef HAVE_TLS13
 #define TLSv1_3_server_method mesalink_TLSv1_3_server_method
 #endif
-#define TLS_server_method mesalink_TLS_server_method
+
 #endif
 
 #define SSL_CTX_new mesalink_SSL_CTX_new

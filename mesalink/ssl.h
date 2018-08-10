@@ -66,11 +66,18 @@ MESALINK_API void mesalink_ERR_load_error_strings(void);
 MESALINK_API void mesalink_ERR_free_error_strings(void);
 
 typedef MESALINK_METHOD *(*mesalink_method_func)(void);
+MESALINK_API MESALINK_METHOD *mesalink_TLS_method(void);
 #ifdef HAVE_CLIENT
-MESALINK_API MESALINK_METHOD *mesalink_SSLv3_client_method(void);
+// Version-flexible methods
+MESALINK_API MESALINK_METHOD *mesalink_TLS_client_method(void);
 MESALINK_API MESALINK_METHOD *mesalink_SSLv23_client_method(void);
+
+// Not supported
+MESALINK_API MESALINK_METHOD *mesalink_SSLv3_client_method(void);
 MESALINK_API MESALINK_METHOD *mesalink_TLSv1_client_method(void);
 MESALINK_API MESALINK_METHOD *mesalink_TLSv1_1_client_method(void);
+
+// Version-specific methods
 MESALINK_API MESALINK_METHOD *mesalink_TLSv1_2_client_method(void);
 #ifdef HAVE_TLS13
 MESALINK_API MESALINK_METHOD *mesalink_TLSv1_3_client_method(void);
@@ -79,15 +86,20 @@ MESALINK_API MESALINK_METHOD *mesalink_TLS_client_method(void);
 #endif
 
 #ifdef HAVE_SERVER
-MESALINK_API MESALINK_METHOD *mesalink_SSLv3_server_method(void);
+// Version-flexible methods
 MESALINK_API MESALINK_METHOD *mesalink_SSLv23_server_method(void);
+MESALINK_API MESALINK_METHOD *mesalink_TLSv_server_method(void);
+
+// Not supported
+MESALINK_API MESALINK_METHOD *mesalink_SSLv3_server_method(void);
 MESALINK_API MESALINK_METHOD *mesalink_TLSv1_server_method(void);
 MESALINK_API MESALINK_METHOD *mesalink_TLSv1_1_server_method(void);
+
+// Version-specific methods
 MESALINK_API MESALINK_METHOD *mesalink_TLSv1_2_server_method(void);
 #ifdef HAVE_TLS13
 MESALINK_API MESALINK_METHOD *mesalink_TLSv1_3_server_method(void);
 #endif
-MESALINK_API MESALINK_METHOD *mesalink_TLSv_server_method(void);
 #endif
 
 MESALINK_API MESALINK_CTX *mesalink_SSL_CTX_new(MESALINK_METHOD *);

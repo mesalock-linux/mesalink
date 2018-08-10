@@ -478,15 +478,60 @@ pub extern "C" fn mesalink_SSL_load_error_strings() {
     init_logger();
 }
 
-#[inline(always)]
 fn mesalink_not_available_method() -> *const MESALINK_METHOD {
     let p: *const MESALINK_METHOD = ptr::null();
     p
 }
 
-/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
-/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
-/// pointers. Others simply return NULL.
+/// A general-purpose version-flexible SSL/TLS method. The supported protocols
+/// are TLSv1.2 and TLSv1.3.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const SSL_METHOD *TLS_method(void);
+/// ```
+///
+#[no_mangle]
+pub extern "C" fn mesalink_TLS_method() -> *const MESALINK_METHOD {
+    let method = MESALINK_METHOD::new(vec![
+        rustls::ProtocolVersion::TLSv1_3,
+        rustls::ProtocolVersion::TLSv1_2,
+    ]);
+    Box::into_raw(Box::new(method))
+}
+
+/// A general-purpose version-flexible SSL/TLS method. The supported protocols
+/// are TLSv1.2 and TLSv1.3.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const SSL_METHOD *TLS_client_method(void);
+/// ```
+///
+#[no_mangle]
+#[cfg(feature = "client_apis")]
+pub extern "C" fn mesalink_TLS_client_method() -> *const MESALINK_METHOD {
+    mesalink_TLS_method()
+}
+
+/// A general-purpose version-flexible SSL/TLS method. The supported protocols
+/// are TLSv1.2 and TLSv1.3.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const SSL_METHOD *SSLv23_client_method(void);
+/// ```
+///
+#[no_mangle]
+#[cfg(feature = "client_apis")]
+pub extern "C" fn mesalink_SSLv23_client_method() -> *const MESALINK_METHOD {
+    mesalink_TLS_method()
+}
+
+/// This SSL/TLS version is not supported. Always return NULL.
 ///
 /// ```c
 /// #include <mesalink/openssl/ssl.h>
@@ -500,25 +545,7 @@ pub extern "C" fn mesalink_SSLv3_client_method() -> *const MESALINK_METHOD {
     mesalink_not_available_method()
 }
 
-/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
-/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
-/// pointers. Others simply return NULL.
-///
-/// ```c
-/// #include <mesalink/openssl/ssl.h>
-///
-/// const SSL_METHOD *SSLv23_client_method(void);
-/// ```
-///
-#[no_mangle]
-#[cfg(feature = "client_apis")]
-pub extern "C" fn mesalink_SSLv23_client_method() -> *const MESALINK_METHOD {
-    mesalink_TLS_client_method()
-}
-
-/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
-/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
-/// pointers. Others simply return NULL.
+/// This SSL/TLS version is not supported. Always return NULL.
 ///
 /// ```c
 /// #include <mesalink/openssl/ssl.h>
@@ -532,9 +559,7 @@ pub extern "C" fn mesalink_TLSv1_client_method() -> *const MESALINK_METHOD {
     mesalink_not_available_method()
 }
 
-/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
-/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
-/// pointers. Others simply return NULL.
+/// This SSL/TLS version is not supported. Always return NULL.
 ///
 /// ```c
 /// #include <mesalink/openssl/ssl.h>
@@ -548,14 +573,13 @@ pub extern "C" fn mesalink_TLSv1_1_client_method() -> *const MESALINK_METHOD {
     mesalink_not_available_method()
 }
 
-/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
-/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
-/// pointers. Others simply return NULL.
+/// Version-specific method APIs. A TLS/SSL connection established with these
+/// methods will only understand the TLSv1.2 protocol.
 ///
 /// ```c
 /// #include <mesalink/openssl/ssl.h>
 ///
-/// const SSL_METHOD *SSLv1_2_client_method(void);
+/// const SSL_METHOD *TLSv1_2_client_method(void);
 /// ```
 ///
 #[no_mangle]
@@ -565,9 +589,8 @@ pub extern "C" fn mesalink_TLSv1_2_client_method() -> *const MESALINK_METHOD {
     Box::into_raw(Box::new(method))
 }
 
-/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
-/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
-/// pointers. Others simply return NULL.
+/// Version-specific method APIs. A TLS/SSL connection established with these
+/// methods will only understand the TLSv1.3 protocol.
 ///
 /// ```c
 /// #include <mesalink/openssl/ssl.h>
@@ -582,45 +605,52 @@ pub extern "C" fn mesalink_TLSv1_3_client_method() -> *const MESALINK_METHOD {
     Box::into_raw(Box::new(method))
 }
 
-/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
-/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
-/// pointers. Others simply return NULL.
+/// A general-purpose version-flexible SSL/TLS method. The supported protocols
+/// are TLSv1.2 and TLSv1.3.
 ///
 /// ```c
 /// #include <mesalink/openssl/ssl.h>
 ///
-/// const SSL_METHOD *TLSv1_client_method(void);
+/// const SSL_METHOD *TLS_server_method(void);
 /// ```
 ///
 #[no_mangle]
-#[cfg(all(feature = "tls13", feature = "client_apis"))]
-pub extern "C" fn mesalink_TLS_client_method() -> *const MESALINK_METHOD {
-    let method = MESALINK_METHOD::new(vec![
-        rustls::ProtocolVersion::TLSv1_3,
-        rustls::ProtocolVersion::TLSv1_2,
-    ]);
-    Box::into_raw(Box::new(method))
+#[cfg(all(feature = "tls13", feature = "server_apis"))]
+pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
+    mesalink_TLS_method()
 }
 
-/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
-/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
-/// pointers. Others simply return NULL.
+/// A general-purpose version-flexible SSL/TLS method. The supported protocol is
+/// TLSv1.2.
 ///
 /// ```c
 /// #include <mesalink/openssl/ssl.h>
 ///
-/// const SSL_METHOD *TLSv1_client_method(void);
+/// const SSL_METHOD *TLS_server_method(void);
 /// ```
 ///
 #[no_mangle]
-#[cfg(all(not(feature = "tls13"), feature = "client_apis"))]
-pub extern "C" fn mesalink_TLS_client_method() -> *const MESALINK_METHOD {
-    mesalink_TLSv1_2_client_method()
+#[cfg(all(not(feature = "tls13"), feature = "server_apis"))]
+pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
+    mesalink_TLSv1_2_server_method()
 }
 
-/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
-/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
-/// pointers. Others simply return NULL.
+/// A general-purpose version-flexible SSL/TLS method. The supported protocols
+/// are TLSv1.2 and TLSv1.3.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// const SSL_METHOD *SSLv23_client_method(void);
+/// ```
+///
+#[no_mangle]
+#[cfg(feature = "server_apis")]
+pub extern "C" fn mesalink_SSLv23_server_method() -> *const MESALINK_METHOD {
+    mesalink_TLS_server_method()
+}
+
+/// This SSL/TLS version is not supported. Always return NULL.
 ///
 /// ```c
 /// #include <mesalink/openssl/ssl.h>
@@ -634,25 +664,7 @@ pub extern "C" fn mesalink_SSLv3_server_method() -> *const MESALINK_METHOD {
     mesalink_not_available_method()
 }
 
-/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
-/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
-/// pointers. Others simply return NULL.
-///
-/// ```c
-/// #include <mesalink/openssl/ssl.h>
-///
-/// const SSL_METHOD *SSLv23_server_method(void);
-/// ```
-///
-#[no_mangle]
-#[cfg(feature = "server_apis")]
-pub extern "C" fn mesalink_SSLv23_server_method() -> *const MESALINK_METHOD {
-    mesalink_TLS_server_method()
-}
-
-/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
-/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
-/// pointers. Others simply return NULL.
+/// This SSL/TLS version is not supported. Always return NULL.
 ///
 /// ```c
 /// #include <mesalink/openssl/ssl.h>
@@ -666,9 +678,7 @@ pub extern "C" fn mesalink_TLSv1_server_method() -> *const MESALINK_METHOD {
     mesalink_not_available_method()
 }
 
-/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
-/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
-/// pointers. Others simply return NULL.
+/// This SSL/TLS version is not supported. Always return NULL.
 ///
 /// ```c
 /// #include <mesalink/openssl/ssl.h>
@@ -682,9 +692,8 @@ pub extern "C" fn mesalink_TLSv1_1_server_method() -> *const MESALINK_METHOD {
     mesalink_not_available_method()
 }
 
-/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
-/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
-/// pointers. Others simply return NULL.
+/// Version-specific method APIs. A TLS/SSL connection established with these
+/// methods will only understand the TLSv1.2 protocol.
 ///
 /// ```c
 /// #include <mesalink/openssl/ssl.h>
@@ -699,9 +708,8 @@ pub extern "C" fn mesalink_TLSv1_2_server_method() -> *const MESALINK_METHOD {
     Box::into_raw(Box::new(method))
 }
 
-/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
-/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
-/// pointers. Others simply return NULL.
+/// Version-specific method APIs. A TLS/SSL connection established with these
+/// methods will only understand the TLSv1.3 protocol.
 ///
 /// ```c
 /// #include <mesalink/openssl/ssl.h>
@@ -714,32 +722,6 @@ pub extern "C" fn mesalink_TLSv1_2_server_method() -> *const MESALINK_METHOD {
 pub extern "C" fn mesalink_TLSv1_3_server_method() -> *const MESALINK_METHOD {
     let method = MESALINK_METHOD::new(vec![rustls::ProtocolVersion::TLSv1_3]);
     Box::into_raw(Box::new(method))
-}
-
-/// SSL_METHOD APIs. Note that only TLS1_2_client_method, TLS1_3_client_method,
-/// TLS1_2_server_method, and TLS1_3_server_method return valid SSL_METHOD
-/// pointers. Others simply return NULL.
-///
-/// ```c
-/// #include <mesalink/openssl/ssl.h>
-///
-/// const SSL_METHOD *TLSv1_3_server_method(void);
-/// ```
-///
-#[no_mangle]
-#[cfg(all(feature = "tls13", feature = "server_apis"))]
-pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
-    let method = MESALINK_METHOD::new(vec![
-        rustls::ProtocolVersion::TLSv1_3,
-        rustls::ProtocolVersion::TLSv1_2,
-    ]);
-    Box::into_raw(Box::new(method))
-}
-
-#[no_mangle]
-#[cfg(all(not(feature = "tls13"), feature = "server_apis"))]
-pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
-    mesalink_TLSv1_2_server_method()
 }
 
 /// `SSL_CTX_new` - create a new SSL_CTX object as framework to establish TLS/SSL
