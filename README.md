@@ -13,6 +13,10 @@ security, we apply [Non-bypassable Security Paradigm
 (NbSP)](https://github.com/baidu/rust-sgx-sdk/blob/master/documents/nbsp.pdf) to
 the system design and implementation.
 
+MesaLink is part of [Open AI System Security Alliance](https://oases.io/) and
+[Baidu AIoT Security Solutions](https://aiotsec.baidu.com/). Integration of
+MesaLink into Android apps and Android-based smart TVs is now in progress.
+
 ## Release history
 
 * 0.7.0 (08-14-2018)
@@ -20,12 +24,14 @@ the system design and implementation.
   - Client-side support for TLS 1.3 0-RTT ([rustls PR
     #185](https://github.com/ctz/rustls/pull/185))
   - SSL_connect and SSL_do_handshake
-  - X509 and STACK APIs
+  - Experimental X509 and STACK APIs for Android HostnameVerifier
   - Non-blocking socket support
-  - Refactored thread-local error queue
-  - `catch_unwind` at FFI boundaries
+  - Refactored thread-local error queue, now includes error line numbers for
+    debugging
+  - `catch_unwind` at FFI boundaries to prevent undefined behavior
   - Link time optimization if built with nightly Rust or stable Rust >1.28
-  - Curl support; use the patch in the `patches` directory
+  - Curl support tested with official CI scripts and git 2.18; see the `patches`
+    directory
   - `cargo-fmt` and `cargo-clippy` lint checks
 
 * 0.6.1 (04-09-2018)
@@ -56,8 +62,6 @@ the system design and implementation.
    prevent misconfigurations that can introduce vulnerabilities.
  * **Compatibility**. MesaLink provides OpenSSL-compatible APIs. This makes it a
    breeze to port an existing OpenSSL project.
- * **Future proof**. MesaLink will support quantum-safe ciphersuites,
-   safe-guarding TLS connections against even quantum computers.
 
 MesaLink depends on two Rust crates: [rustls](https://github.com/ctz/rustls) and
 [sct](https://github.com/ctz/sct.rs). With them, MesaLink provides the following
@@ -195,7 +199,7 @@ Date: Thu, 09 Aug 2018 21:44:35 GMT
 Content-Length: 10
 Via: 1.1 vegur
 
-12.1.72.44
+1.2.3.4
 [+] TLS protocol version: TLS1.2
 
 [+] Received 177 bytes
