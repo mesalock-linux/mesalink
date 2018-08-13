@@ -97,7 +97,7 @@ dependencies = [
 
 [[package]]
 name = "mesalink"
-version = "0.6.1"
+version = "0.7.0"
 dependencies = [
  "enum_to_u8_slice_derive 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.5.11 (registry+https://github.com/rust-lang/crates.io-index)",

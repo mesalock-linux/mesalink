@@ -17,6 +17,8 @@ MesaLink is part of [Open AI System Security Alliance](https://oases.io/) and
 [Baidu AIoT Security Solutions](https://aiotsec.baidu.com/). Integration of
 MesaLink into Android apps and Android-based smart TVs is now in progress.
 
+Also visit us on our new website: [https://mesalink.io](https://mesalink.io).
+
 ## Release history
 
 * 0.7.0 (08-14-2018)
