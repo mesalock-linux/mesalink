@@ -1,61 +1,64 @@
 language: rust
 cache: cargo
 rust:
-  - stable
-  - nightly
+- stable
+- nightly
 env:
-  - ARCH=x86_64_linux
-  - ARCH=arm_linux TARGET=arm-linux-gnueabi RUST_TARGET=arm-unknown-linux-gnueabi
-  - ARCH=aarch64_linux TARGET=aarch64-linux-gnu RUST_TARGET=aarch64-unknown-linux-gnu
-  - ARCH=arm_android TARGET=arm-linux-androideabi RUST_TARGET=arm-linux-androideabi NDK_API=19 NDK_ARCH=arm
-  - ARCH=aarch64_android TARGET=aarch64-linux-android RUST_TARGET=aarch64-linux-android NDK_API=21 NDK_ARCH=arm64
-  - ARCH=x86_64_android TARGET=x86_64-linux-android RUST_TARGET=x86_64-linux-android NDK_API=21 NDK_ARCH=x86_64
+- ARCH=x86_64_linux
+- ARCH=arm_linux TARGET=arm-linux-gnueabi RUST_TARGET=arm-unknown-linux-gnueabi
+- ARCH=aarch64_linux TARGET=aarch64-linux-gnu RUST_TARGET=aarch64-unknown-linux-gnu
+- ARCH=arm_android TARGET=arm-linux-androideabi RUST_TARGET=arm-linux-androideabi
+  NDK_API=19 NDK_ARCH=arm
+- ARCH=aarch64_android TARGET=aarch64-linux-android RUST_TARGET=aarch64-linux-android
+  NDK_API=21 NDK_ARCH=arm64
+- ARCH=x86_64_android TARGET=x86_64-linux-android RUST_TARGET=x86_64-linux-android
+  NDK_API=21 NDK_ARCH=x86_64
 matrix:
   include:
-    - os: osx
-      rust: stable
-      env: ARCH=x86_64_macos
-    - os: osx
-      rust: nightly
-      env: ARCH=x86_64_macos
-    - name: "cargo-clippy"
-      rust: nightly
-      env: CLIPPY=yes
-      before_install:
-      install:
-      before_script:
-        - rustup component add clippy-preview --toolchain=nightly
-      script:
-        - cargo +nightly clippy
-    - name: "cargo-fmt and cargo-tarpaulin"
-      sudo: required
-      rust: stable
-      env: COV=yes
-      before_install:
-      install:
-      before_script:
-        - rustup component add rustfmt-preview
-      script:
-        - cargo fmt --all -- --check `find src -iname "*.rs"`
-        - docker run --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID
+  - os: osx
+    rust: stable
+    env: ARCH=x86_64_macos
+  - os: osx
+    rust: nightly
+    env: ARCH=x86_64_macos
+  - name: cargo-clippy
+    rust: nightly
+    env: CLIPPY=yes
+    before_install:
+    install:
+    before_script:
+    - rustup component add clippy-preview --toolchain=nightly
+    script:
+    - cargo +nightly clippy
+  - name: cargo-fmt and cargo-tarpaulin
+    sudo: required
+    rust: stable
+    env: COV=yes
+    before_install:
+    install:
+    before_script:
+    - rustup component add rustfmt-preview
+    script:
+    - cargo fmt --all -- --check `find src -iname "*.rs"`
+    - docker run --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin
+      cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID
   allow_failures:
-    - rust: nightly
+  - rust: nightly
   fast_finish: true
 before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -qq; fi
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -qq; fi
 install:
-  - ./ci-scripts/install.sh
-  - if [[ "$TARGET" = *"android"* ]]; then export PATH="$PATH:$PWD/cross/bin"; fi
-script: ./ci-scripts/script.sh
-before_deploy: ./ci-scripts/before_deploy.sh
+- "./ci-scripts/install.sh"
+- if [[ "$TARGET" = *"android"* ]]; then export PATH="$PATH:$PWD/cross/bin"; fi
+script: "./ci-scripts/script.sh"
+before_deploy: "./ci-scripts/before_deploy.sh"
 notifications:
   email:
     on_success: never
-# Commands to release binaries to Github
 deploy:
   provider: releases
   api_key:
-    secure: ERxVWsaRloWCC+g1E7DRUkLa3fi8gNbHwbAWGJY27VQreuYLl8q7AYTqlHsSvbfUJKG31/6d8csllZMvLAnutxSJ08gNstedwVCvJLBab71ceb1Ap4hhHHSO5nnyGMQLcaQjv2G9mpnjwEuLnUDHuedc0XRJjBsgf9rZ0Qnhbu8Op0Sc9+mai3ArLEzvp1WxcNtNuUkSzeaedPOhk/LTPsySB6Ty1ClG2Tg7ClWwGk3x+W7Y+G7UKSJIvPzxNsD2/MZRy5x8JMr8VkMowTGoASBvxdRVkza5hqEuFOyllk+zNjZ4YNXP8dgsillgajlKzYplSCZevpyr9jySLxorxQV+hIWAhUVG/+3AVzsk/rk8zNVk1vZ3Zpz/P7qhh8rY0WIKWxjIwutlw0SvuLQ4sqDHk9THLNln40/gpSoP46ARVvocrIuMDBIlhs2RBxASIyyMAEu+58cnj0VTOZG3vFJZGgeacYtC2706G+GFmaTU5Z/GU2MlI5Ag5b09rPUAEnzn+2HJ2eDiqjOCtoRCPlGj6zNCEGJMXhMoXQmsDlFxCdrlp96ErZz5OQ21zpKCTpiewNst0gTrNOGGZz1vqMIxa/UcmDtYhDgwD6VZUrLaXsGFbfm7jyjdBRIrPhTgl1F9JhRIWQIaoAy72ixxk/roRWpIFDE0AvcbQs5iZ1I=
+    secure: TU3ZnaluAtciaAvjBseLZvz5WOXd1/FgxngVinXI0ZSbq6yT6RGFbkddjqjTgTL9c0MyPcaHzXhk9r+aCB8iGaNmCfzos0NwpOAtM9Gn/dQZkO2l4FC0QWX2dZUGll9aeNvXdO7Xq8RopWebNvNd3Gntgf9n+G4LjiQKmQRe8JiuDKdABk78tjj0I+9uy6LoJjokewdjEh9wIAP13jYdBtyPbHkpQ0opLrJ4UZHsTWx6Vjj2qOznjcV/BWN2aOEtU4ZLgNGOXg1tQeJo+bq3dmS3GDsE2rAdXIRqBQEuSsgQKBx1EoXKx6VKj8/i1HyAH3JM/s5trnVjxn26CEb5IFfWEk9oVilcO2/vJcP1biMjfYKo4WSwC7e8xONURnJjm/3g7MBLvtKv/kXNmC5YQFf6XAF7OEVD30c0dWvjEJjMz5rZXE3InDjILx8D/Wai70ECUfrJgUnRbexHqk81IwIE6zNmByyEZFH+FlZaruuz5SUeQ2Caa8S7Iqcb8oZhJ9XEmgcnIXZ4N8thAtYd/cWmoJcBH8B4G/11S/TA7qkN2szkPIrd+i+KYhxDh4qHxWkMlnHgJevuwlmYKZn9fnZSxPtqllYTJepRWQ8X7D3R3tgNc+iQJjAjrh8Rehz8mNs7eK0stBlNB33eTq2PtivBC3kZOB8tAiEmQ5ltBTc=
   file: releases/*
   file_glob: true
   skip_cleanup: true
