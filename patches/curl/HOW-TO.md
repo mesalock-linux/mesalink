@@ -7,7 +7,7 @@ $ curl -LO https://raw.githubusercontent.com/mesalock-linux/mesalink/master/patc
 $ tar zxvf curl-7.61.0.tar.gz && cd curl-7.61.0
 $ patch -p1 < ../curl_7.61.0.patch
 $ autoreconf
-$ ./configure --with-mesalink --without-ssl
+$ ./configure --with-mesalink --without-ssl --enable-warnings --enable-werrors
 $ make
 $ sh curl-config --ssl-backends
 ```
