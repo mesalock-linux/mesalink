@@ -82,7 +82,7 @@ features that are considered secure for most use cases:
 MesaLink currently supports Linux, Android and macOS. We will introduce support
 for other platforms in future releases.
 
-Firsrm, install the build dependencies:
+First, install the build dependencies:
 
 ```
 $ sudo apt-get install m4 autoconf automake libtool make gcc curl
