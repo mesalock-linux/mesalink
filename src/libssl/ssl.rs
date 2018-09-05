@@ -44,7 +44,7 @@ use libssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use libssl::{SslSessionCacheModes, SSL_ERROR, SSL_FAILURE, SSL_SUCCESS};
 use rustls;
 use std::sync::Arc;
-use std::{ffi, io, net, ptr, slice};
+use std::{ffi, fs, io, net, path, ptr, slice};
 use webpki;
 
 // Trait imports
@@ -746,6 +746,76 @@ fn inner_mesalink_ssl_ctx_new(
     let context = MESALINK_CTX::new(method);
     let _ = unsafe { Box::from_raw(method_ptr as *mut MESALINK_METHOD) };
     Ok(Box::into_raw(Box::new(Arc::new(context)))) // initialize the referece counter
+}
+
+/// `SSL_CTX_load_verify_locations` - specifies the locations for ctx, at which
+/// CA certificates for verification purposes are located. The certificates
+/// available via CAfile and CApath are trusted.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_CTX_load_verify_locations(SSL_CTX *ctx, const char *CAfile,
+///                                   const char *CApath);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_CTX_load_verified_locations(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    cafile_ptr: *const c_char,
+    capath_ptr: *const c_char,
+) -> c_int {
+    check_inner_result!(
+        inner_mesalink_ssl_ctx_load_verified_locations(ctx_ptr, cafile_ptr, capath_ptr),
+        SSL_FAILURE
+    )
+}
+
+fn inner_mesalink_ssl_ctx_load_verified_locations(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    cafile_ptr: *const c_char,
+    capath_ptr: *const c_char,
+) -> MesalinkInnerResult<c_int> {
+    let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
+    if cafile_ptr.is_null() && capath_ptr.is_null() {
+        return Err(error!(MesalinkBuiltinError::NullPointer.into()));
+    }
+    let ctx = util::get_context_mut(ctx);
+    if !cafile_ptr.is_null() {
+        let cafile = unsafe {
+            ffi::CStr::from_ptr(cafile_ptr)
+                .to_str()
+                .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?
+        };
+        let _ = load_cert_into_root_store(ctx, path::Path::new(cafile))?;
+    }
+    if !capath_ptr.is_null() {
+        let capath = unsafe {
+            ffi::CStr::from_ptr(capath_ptr)
+                .to_str()
+                .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?
+        };
+        let dir = fs::read_dir(path::Path::new(capath))
+            .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+        for file_path in dir {
+            let file_path = file_path.map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+            let _ = load_cert_into_root_store(ctx, &file_path.path())?;
+        }
+    }
+    Ok(SSL_SUCCESS)
+}
+
+fn load_cert_into_root_store(
+    ctx: &mut MESALINK_CTX,
+    path: &path::Path,
+) -> MesalinkInnerResult<(usize, usize)> {
+    let file = fs::File::open(path).map_err(|e| error!(e.into()))?;
+    let mut reader = io::BufReader::new(file);
+    let (valid_count, invalid_count) = ctx
+        .client_config
+        .root_store
+        .add_pem_file(&mut reader)
+        .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+    Ok((valid_count, invalid_count))
 }
 
 /// `SSL_CTX_use_certificate_chain_file` - load a certificate chain from file into
@@ -2367,6 +2437,32 @@ mod tests {
         let ssl_ptr = mesalink_SSL_new(ctx_ptr);
         assert_ne!(ctx_ptr, ptr::null_mut());
         mesalink_SSL_free(ssl_ptr);
+        mesalink_SSL_CTX_free(ctx_ptr);
+    }
+
+    #[test]
+    fn load_verified_locations() {
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
+        assert_eq!(
+            SSL_FAILURE,
+            mesalink_SSL_CTX_load_verified_locations(ctx_ptr, ptr::null(), ptr::null())
+        );
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_load_verified_locations(
+                ctx_ptr,
+                b"tests/root_store/curl-root-ca.crt\0".as_ptr() as *const c_char,
+                ptr::null()
+            )
+        );
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_load_verified_locations(
+                ctx_ptr,
+                ptr::null(),
+                b"tests/root_store\0".as_ptr() as *const c_char,
+            )
+        );
         mesalink_SSL_CTX_free(ctx_ptr);
     }
 
