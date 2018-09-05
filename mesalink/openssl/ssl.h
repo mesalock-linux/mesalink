@@ -89,8 +89,7 @@ typedef MESALINK_SSL SSL;
 #endif
 
 #define SSL_CTX_new mesalink_SSL_CTX_new
-#define SSL_CTX_load_verified_locations                                       \
-  mesalink_SSL_CTX_load_verified_locations
+#define SSL_CTX_load_verify_locations mesalink_SSL_CTX_load_verify_locations
 #ifdef HAVE_SERVER
 #define SSL_CTX_use_certificate_chain_file                                    \
   mesalink_SSL_CTX_use_certificate_chain_file

@@ -103,7 +103,7 @@ MESALINK_API MESALINK_METHOD *mesalink_TLSv1_3_server_method(void);
 #endif
 
 MESALINK_API MESALINK_CTX *mesalink_SSL_CTX_new(MESALINK_METHOD *);
-MESALINK_API int mesalink_SSL_CTX_load_verified_locations(MESALINK_CTX *,
+MESALINK_API int mesalink_SSL_CTX_load_verify_locations(MESALINK_CTX *,
                                                           const char *,
                                                           const char *);
 

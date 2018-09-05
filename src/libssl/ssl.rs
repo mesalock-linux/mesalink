@@ -759,18 +759,18 @@ fn inner_mesalink_ssl_ctx_new(
 ///                                   const char *CApath);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_CTX_load_verified_locations(
+pub extern "C" fn mesalink_SSL_CTX_load_verify_locations(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     cafile_ptr: *const c_char,
     capath_ptr: *const c_char,
 ) -> c_int {
     check_inner_result!(
-        inner_mesalink_ssl_ctx_load_verified_locations(ctx_ptr, cafile_ptr, capath_ptr),
+        inner_mesalink_ssl_ctx_load_verify_locations(ctx_ptr, cafile_ptr, capath_ptr),
         SSL_FAILURE
     )
 }
 
-fn inner_mesalink_ssl_ctx_load_verified_locations(
+fn inner_mesalink_ssl_ctx_load_verify_locations(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     cafile_ptr: *const c_char,
     capath_ptr: *const c_char,
@@ -797,7 +797,8 @@ fn inner_mesalink_ssl_ctx_load_verified_locations(
         let dir = fs::read_dir(path::Path::new(capath))
             .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
         for file_path in dir {
-            let file_path = file_path.map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+            let file_path =
+                file_path.map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
             let _ = load_cert_into_root_store(ctx, &file_path.path())?;
         }
     }
@@ -2441,15 +2442,15 @@ mod tests {
     }
 
     #[test]
-    fn load_verified_locations() {
+    fn load_verify_locations() {
         let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
         assert_eq!(
             SSL_FAILURE,
-            mesalink_SSL_CTX_load_verified_locations(ctx_ptr, ptr::null(), ptr::null())
+            mesalink_SSL_CTX_load_verify_locations(ctx_ptr, ptr::null(), ptr::null())
         );
         assert_eq!(
             SSL_SUCCESS,
-            mesalink_SSL_CTX_load_verified_locations(
+            mesalink_SSL_CTX_load_verify_locations(
                 ctx_ptr,
                 b"tests/root_store/curl-root-ca.crt\0".as_ptr() as *const c_char,
                 ptr::null()
@@ -2457,7 +2458,7 @@ mod tests {
         );
         assert_eq!(
             SSL_SUCCESS,
-            mesalink_SSL_CTX_load_verified_locations(
+            mesalink_SSL_CTX_load_verify_locations(
                 ctx_ptr,
                 ptr::null(),
                 b"tests/root_store\0".as_ptr() as *const c_char,
