@@ -797,8 +797,7 @@ fn inner_mesalink_ssl_ctx_load_verify_locations(
         let dir = fs::read_dir(path::Path::new(capath))
             .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
         for file_path in dir {
-            let file_path =
-                file_path.map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+            let file_path = file_path.map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
             let _ = load_cert_into_root_store(ctx, &file_path.path())?;
         }
     }
