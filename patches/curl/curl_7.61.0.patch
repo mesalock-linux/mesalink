@@ -1,8 +1,8 @@
 diff --git a/configure.ac b/configure.ac
-index 22280a5e9..60cddebfa 100755
+index 1e068cb37..fdfd0897c 100755
 --- a/configure.ac
 +++ b/configure.ac
-@@ -151,7 +151,7 @@ AC_SUBST(PKGADD_VENDOR)
+@@ -158,7 +158,7 @@ AC_SUBST(PKGADD_VENDOR)
  
  dnl
  dnl initialize all the info variables
@@ -11,7 +11,7 @@ index 22280a5e9..60cddebfa 100755
      curl_ssh_msg="no      (--with-libssh2)"
     curl_zlib_msg="no      (--with-zlib)"
   curl_brotli_msg="no      (--with-brotli)"
-@@ -2385,6 +2385,98 @@ if test -z "$ssl_backends" -o "x$OPT_CYASSL" != xno; then
+@@ -2409,6 +2409,98 @@ if test -z "$ssl_backends" -o "x$OPT_CYASSL" != xno; then
    test -z "$ssl_msg" || ssl_backends="${ssl_backends:+$ssl_backends, }$ssl_msg"
  fi
  
@@ -110,7 +110,7 @@ index 22280a5e9..60cddebfa 100755
  dnl ----------------------------------------------------
  dnl NSS. Only check if GnuTLS and OpenSSL are not enabled
  dnl ----------------------------------------------------
-@@ -2575,10 +2667,10 @@ if test -z "$ssl_backends" -o "x$OPT_AXTLS" != xno; then
+@@ -2599,10 +2691,10 @@ if test -z "$ssl_backends" -o "x$OPT_AXTLS" != xno; then
    test -z "$ssl_msg" || ssl_backends="${ssl_backends:+$ssl_backends, }$ssl_msg"
  fi
  
@@ -124,7 +124,7 @@ index 22280a5e9..60cddebfa 100755
  x1)
    # one SSL backend is enabled
 diff --git a/lib/Makefile.inc b/lib/Makefile.inc
-index 76ca6d041..b2106a818 100644
+index 83a27dd0b..4aa042259 100644
 --- a/lib/Makefile.inc
 +++ b/lib/Makefile.inc
 @@ -30,12 +30,12 @@ LIB_VAUTH_HFILES = vauth/vauth.h vauth/digest.h vauth/ntlm.h
@@ -143,7 +143,7 @@ index 76ca6d041..b2106a818 100644
  LIB_CFILES = file.c timeval.c base64.c hostip.c progress.c formdata.c   \
    cookie.c http.c sendf.c ftp.c url.c dict.c if2ip.c speedcheck.c       \
 diff --git a/lib/curl_setup.h b/lib/curl_setup.h
-index 799d5fab9..703b89842 100644
+index 24989874e..6513d30f1 100644
 --- a/lib/curl_setup.h
 +++ b/lib/curl_setup.h
 @@ -645,7 +645,7 @@ int netware_init(void);
@@ -157,10 +157,10 @@ index 799d5fab9..703b89842 100644
  
 diff --git a/lib/vtls/mesalink.c b/lib/vtls/mesalink.c
 new file mode 100644
-index 000000000..0206c5e21
+index 000000000..8198fa1c8
 --- /dev/null
 +++ b/lib/vtls/mesalink.c
-@@ -0,0 +1,569 @@
+@@ -0,0 +1,627 @@
 +/***************************************************************************
 + *                                  _   _ ____  _
 + *  Project                     ___| | | |  _ \| |
@@ -246,6 +246,9 @@ index 000000000..0206c5e21
 +  char *ciphers;
 +  struct Curl_easy *data = conn->data;
 +  struct ssl_connect_data *connssl = &conn->ssl[sockindex];
++  const bool verifypeer = SSL_CONN_CONFIG(verifypeer);
++  const char *const ssl_cafile = SSL_CONN_CONFIG(CAfile);
++  const char *const ssl_capath = SSL_CONN_CONFIG(CApath);
 +  struct in_addr addr4;
 +#ifdef ENABLE_IPV6
 +  struct in6_addr addr6;
@@ -253,6 +256,7 @@ index 000000000..0206c5e21
 +  const char *const hostname =
 +    SSL_IS_PROXY() ? conn->http_proxy.host.name : conn->host.name;
 +  size_t hostname_len = strlen(hostname);
++
 +  SSL_METHOD *req_method = NULL;
 +  curl_socket_t sockfd = conn->sock[sockindex];
 +
@@ -300,6 +304,33 @@ index 000000000..0206c5e21
 +    return CURLE_OUT_OF_MEMORY;
 +  }
 +
++  SSL_CTX_set_verify(
++    BACKEND->ctx, verifypeer ? SSL_VERIFY_PEER : SSL_VERIFY_NONE, NULL);
++
++  if(ssl_cafile || ssl_capath) {
++    if(!SSL_CTX_load_verify_locations(BACKEND->ctx, ssl_cafile, ssl_capath)) {
++      if(verifypeer) {
++        failf(data,
++              "error setting certificate verify locations:\n"
++              "  CAfile: %s\n  CApath: %s",
++              ssl_cafile ? ssl_cafile : "none",
++              ssl_capath ? ssl_capath : "none");
++        return CURLE_SSL_CACERT_BADFILE;
++      }
++      infof(data,
++            "error setting certificate verify locations,"
++            " continuing anyway:\n");
++    }
++    else {
++      infof(data, "successfully set certificate verify locations:\n");
++    }
++    infof(data,
++          "  CAfile: %s\n"
++          "  CApath: %s\n",
++          ssl_cafile ? ssl_cafile : "none",
++          ssl_capath ? ssl_capath : "none");
++  }
++
 +  ciphers = SSL_CONN_CONFIG(cipher_list);
 +  if(ciphers) {
 +#ifdef MESALINK_HAVE_CIPHER
@@ -320,14 +351,38 @@ index 000000000..0206c5e21
 +  }
 +
 +  if((hostname_len < USHRT_MAX) &&
-+     (0 == Curl_inet_pton(AF_INET, hostname, &addr4)) &&
++     (0 == Curl_inet_pton(AF_INET, hostname, &addr4))
 +#ifdef ENABLE_IPV6
-+     (0 == Curl_inet_pton(AF_INET6, hostname, &addr6)) &&
++     && (0 == Curl_inet_pton(AF_INET6, hostname, &addr6))
 +#endif
-+     (SSL_set_tlsext_host_name(BACKEND->handle, hostname) != SSL_SUCCESS)) {
-+    infof(data,
-+          "WARNING: failed to configure server name indication (SNI) "
-+          "TLS extension\n");
++  ) {
++    /* hostname is not a valid IP address */
++    if(SSL_set_tlsext_host_name(BACKEND->handle, hostname) != SSL_SUCCESS) {
++      failf(data,
++            "WARNING: failed to configure server name indication (SNI) "
++            "TLS extension\n");
++      return CURLE_SSL_CONNECT_ERROR;
++    }
++  }
++  else {
++#ifdef CURLDEBUG
++    /* Check if the hostname is 127.0.0.1 or [::1];
++     * otherwise reject because MesaLink always wants a valid DNS Name
++     * specified in RFC 5280 Section 7.2 */
++    if(strncmp(hostname, "127.0.0.1", 9) == 0
++#ifdef ENABLE_IPV6
++       || strncmp(hostname, "[::1]", 5) == 0
++#endif
++    ) {
++      SSL_set_tlsext_host_name(BACKEND->handle, "localhost");
++    }
++    else
++#endif
++    {
++      failf(data,
++            "ERROR: MesaLink does not accept an IP address as a hostname\n");
++      return CURLE_SSL_CONNECT_ERROR;
++    }
 +  }
 +
 +#ifdef MESALINK_HAVE_SESSION
@@ -371,17 +426,13 @@ index 000000000..0206c5e21
 +  conn->recv[sockindex] = mesalink_recv;
 +  conn->send[sockindex] = mesalink_send;
 +
-+  ret = SSL_connect0(BACKEND->handle);
++  ret = SSL_connect(BACKEND->handle);
 +  if(ret != SSL_SUCCESS) {
 +    char error_buffer[MESALINK_MAX_ERROR_SZ];
 +    int detail = SSL_get_error(BACKEND->handle, ret);
 +
-+    if(SSL_ERROR_WANT_READ == detail) {
++    if(SSL_ERROR_WANT_CONNECT == detail) {
 +      connssl->connecting_state = ssl_connect_2_reading;
-+      return CURLE_OK;
-+    }
-+    else if(SSL_ERROR_WANT_WRITE == detail) {
-+      connssl->connecting_state = ssl_connect_2_writing;
 +      return CURLE_OK;
 +    }
 +    else {
@@ -390,6 +441,13 @@ index 000000000..0206c5e21
 +            detail,
 +            ERR_error_string_n(detail, error_buffer, sizeof(error_buffer)));
 +      ERR_print_errors_fp(stderr);
++      if(detail && SSL_CONN_CONFIG(verifypeer)) {
++        detail &= ~0xFF;
++        if(detail == TLS_ERROR_WEBPKI_ERRORS) {
++          failf(data, "Cert verify failed");
++          return CURLE_PEER_FAILED_VERIFICATION;
++        }
++      }
 +      return CURLE_SSL_CONNECT_ERROR;
 +    }
 +  }
@@ -417,8 +475,7 @@ index 000000000..0206c5e21
 +    SSL_SESSION *our_ssl_sessionid;
 +    void *old_ssl_sessionid = NULL;
 +
-+    our_ssl_sessionid =
-+      SSL_get_session(BACKEND->handle);
++    our_ssl_sessionid = SSL_get_session(BACKEND->handle);
 +
 +    Curl_ssl_sessionid_lock(conn);
 +    incache =
@@ -503,11 +560,12 @@ index 000000000..0206c5e21
 +  int buffsize = (buffersize > (size_t)INT_MAX) ? INT_MAX : (int)buffersize;
 +  int nread = SSL_read(BACKEND->handle, buf, buffsize);
 +
-+  if(nread < 0) {
++  if(nread <= 0) {
 +    int err = SSL_get_error(BACKEND->handle, nread);
 +
 +    switch(err) {
 +    case SSL_ERROR_ZERO_RETURN: /* no more data */
++    case IO_ERROR_CONNECTION_ABORTED:
 +      break;
 +    case SSL_ERROR_WANT_READ:
 +    case SSL_ERROR_WANT_WRITE:
@@ -769,10 +827,10 @@ index 000000000..54cb94ad3
 +#endif /* USE_MESALINK */
 +#endif /* HEADER_CURL_MESALINK_H */
 diff --git a/lib/vtls/vtls.c b/lib/vtls/vtls.c
-index bf96518bc..29d5324ae 100644
+index b61c64034..6af39feab 100644
 --- a/lib/vtls/vtls.c
 +++ b/lib/vtls/vtls.c
-@@ -1187,6 +1187,8 @@ const struct Curl_ssl *Curl_ssl =
+@@ -1190,6 +1190,8 @@ const struct Curl_ssl *Curl_ssl =
    &Curl_ssl_polarssl;
  #elif defined(USE_SCHANNEL)
    &Curl_ssl_schannel;
@@ -781,7 +839,7 @@ index bf96518bc..29d5324ae 100644
  #else
  #error "Missing struct Curl_ssl for selected SSL backend"
  #endif
-@@ -1221,6 +1223,9 @@ static const struct Curl_ssl *available_backends[] = {
+@@ -1224,6 +1226,9 @@ static const struct Curl_ssl *available_backends[] = {
  #endif
  #if defined(USE_SCHANNEL)
    &Curl_ssl_schannel,
@@ -803,3 +861,26 @@ index 40f9d7479..5cd11602e 100644
  
  #ifndef MAX_PINNED_PUBKEY_SIZE
  #define MAX_PINNED_PUBKEY_SIZE 1048576 /* 1MB */
+diff --git a/tests/runtests.pl b/tests/runtests.pl
+index de0fd8587..7258fdf31 100755
+--- a/tests/runtests.pl
++++ b/tests/runtests.pl
+@@ -251,6 +251,7 @@ my $has_darwinssl;  # built with DarwinSSL (Secure Transport)
+ my $has_boringssl;  # built with BoringSSL
+ my $has_libressl;   # built with libressl
+ my $has_mbedtls;    # built with mbedTLS
++my $has_mesalink;   # built with MesaLink
+ 
+ my $has_sslpinning; # built with a TLS backend that supports pinning
+ 
+@@ -2747,6 +2748,10 @@ sub checksystem {
+                $has_cares=1;
+                $resolver="c-ares";
+            }
++           if ($libcurl =~ /mesalink/i) {
++               $has_mesalink=1;
++               $ssllib="MesaLink";
++           }
+         }
+         elsif($_ =~ /^Protocols: (.*)/i) {
+             # these are the protocols compiled in to this libcurl
