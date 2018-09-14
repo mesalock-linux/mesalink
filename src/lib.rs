@@ -50,7 +50,11 @@
 
 #![deny(trivial_numeric_casts, unused_qualifications)]
 #![forbid(
-    anonymous_parameters, unused_import_braces, unused_results, variant_size_differences, warnings
+    anonymous_parameters,
+    unused_import_braces,
+    unused_results,
+    variant_size_differences,
+    warnings
 )]
 
 // libc for libc bindings
