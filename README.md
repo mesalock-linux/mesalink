@@ -7,6 +7,7 @@
 [![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](https://mesalock-linux.github.io/mesalink-doc/doc/mesalink/index.html)
 [![Release](https://img.shields.io/github/release/mesalock-linux/mesalink.svg)](https://github.com/mesalock-linux/mesalink/releases)
 [![License](https://img.shields.io/badge/license-BSD-blue.svg)](LICENSE)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fmesalock-linux%2Fmesalink.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fmesalock-linux%2Fmesalink?ref=badge_shield)
 
 MesaLink is a memory-safe and OpenSSL-compatible TLS library. To achieve better
 security, we apply [Non-bypassable Security Paradigm
@@ -304,3 +305,6 @@ inspiration!
 ## License
 MesaLink is provided under the 3-Clause BSD license. For a copy, see the LICENSE
 file.
+
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fmesalock-linux%2Fmesalink.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fmesalock-linux%2Fmesalink?ref=badge_large)
