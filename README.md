@@ -77,6 +77,18 @@ features that are considered secure for most use cases:
 * AES-128-GCM, AES-256-GCM and Chacha20-Poly1305 bulk encryption
 * Built-in Mozilla's CA root certificates
 
+## Supported ciphersuites
+
+* TLS13-CHACHA20-POLY1305-SHA256
+* TLS13-AES-256-GCM-SHA384
+* TLS13-AES-128-GCM_SHA256
+* TLS-ECDHE-ECDSA-WITH-CHACHA20-POLY1305-SHA256
+* TLS-ECDHE-RSA-WITH-CHACHA20-POLY1305-SHA256
+* TLS-ECDHE-ECDSA-WITH-AES-256-GCM-SHA384
+* TLS-ECDHE-ECDSA-WITH-AES-128-GCM-SHA256
+* TLS-ECDHE-RSA-WITH-AES-256-GCM-SHA384
+* TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256
+
 ## Building instructions
 
 MesaLink currently supports Linux, Android and macOS. We will introduce support
