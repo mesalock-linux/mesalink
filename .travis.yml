@@ -22,14 +22,14 @@ matrix:
     rust: nightly
     env: ARCH=x86_64_macos
   - name: cargo-clippy
-    rust: nightly
+    rust: stable
     env: CLIPPY=yes
     before_install:
     install:
     before_script:
-    - rustup component add clippy-preview --toolchain=nightly
+    - rustup component add clippy-preview
     script:
-    - cargo +nightly clippy
+    - cargo clippy
   - name: cargo-fmt and cargo-tarpaulin
     sudo: required
     rust: stable
