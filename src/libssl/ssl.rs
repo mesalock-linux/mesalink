@@ -170,6 +170,7 @@ pub struct MESALINK_CTX {
     server_config: rustls::ServerConfig,
     certificates: Option<Vec<rustls::Certificate>>,
     private_key: Option<rustls::PrivateKey>,
+    ca_roots: rustls::RootCertStore,
     session_cache_mode: SslSessionCacheModes,
 }
 
@@ -212,6 +213,7 @@ impl MESALINK_CTX {
             server_config,
             certificates: None,
             private_key: None,
+            ca_roots: rustls::RootCertStore::empty(),
             session_cache_mode: SslSessionCacheModes::Server,
         }
     }
@@ -424,7 +426,7 @@ impl MESALINK_SSL {
 #[repr(C)]
 pub(self) enum VerifyModes {
     VerifyNone = 0,
-    //VerifyPeer = 1,
+    VerifyPeer = 1,
     //VerifyFailIfNoPeerCert = 2,
 }
 
@@ -802,21 +804,18 @@ fn inner_mesalink_ssl_ctx_load_verify_locations(
             let _ = load_cert_into_root_store(ctx, &file_path.path())?;
         }
     }
+    ctx.client_config.root_store = ctx.ca_roots.clone();
     Ok(SSL_SUCCESS)
 }
 
-fn load_cert_into_root_store(
-    ctx: &mut MESALINK_CTX,
-    path: &path::Path,
-) -> MesalinkInnerResult<(usize, usize)> {
+fn load_cert_into_root_store(ctx: &mut MESALINK_CTX, path: &path::Path) -> MesalinkInnerResult<()> {
     let file = fs::File::open(path).map_err(|e| error!(e.into()))?;
     let mut reader = io::BufReader::new(file);
-    let (valid_count, invalid_count) = ctx
-        .client_config
-        .root_store
+    let _ = ctx
+        .ca_roots
         .add_pem_file(&mut reader)
         .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
-    Ok((valid_count, invalid_count))
+    Ok(())
 }
 
 /// `SSL_CTX_use_certificate_chain_file` - load a certificate chain from file into
@@ -869,8 +868,11 @@ fn inner_mesalink_ssl_ctx_use_certificate_chain_file(
     util::get_context_mut(ctx).certificates = Some(certs);
     if let Ok((certs, priv_key)) = util::try_get_context_certs_and_key(ctx) {
         util::get_context_mut(ctx)
+            .client_config
+            .set_single_client_cert(certs.clone(), priv_key.clone());
+        util::get_context_mut(ctx)
             .server_config
-            .set_single_cert(certs, priv_key)
+            .set_single_cert(certs.clone(), priv_key.clone())
             .map_err(|e| error!(e.into()))?;
     }
     Ok(SSL_SUCCESS)
@@ -930,8 +932,11 @@ fn inner_mesalink_ssl_ctx_use_privatekey_file(
     util::get_context_mut(ctx).private_key = Some(keys[0].clone());
     if let Ok((certs, priv_key)) = util::try_get_context_certs_and_key(ctx) {
         util::get_context_mut(ctx)
+            .client_config
+            .set_single_client_cert(certs.clone(), priv_key.clone());
+        util::get_context_mut(ctx)
             .server_config
-            .set_single_cert(certs, priv_key)
+            .set_single_cert(certs.clone(), priv_key.clone())
             .map_err(|e| error!(e.into()))?;
     }
     Ok(SSL_SUCCESS)
@@ -996,6 +1001,11 @@ fn inner_mesalink_ssl_ctx_set_verify(
             .client_config
             .dangerous()
             .set_certificate_verifier(Arc::new(NoServerAuth {}));
+    } else if mode == VerifyModes::VerifyPeer as c_int {
+        let client_auth = rustls::AllowAnyAuthenticatedClient::new(ctx.ca_roots.clone());
+        util::get_context_mut(ctx)
+            .server_config
+            .verifier = client_auth;
     }
     Ok(SSL_SUCCESS)
 }
@@ -2060,8 +2070,11 @@ mod tests {
     use libssl::x509::*;
     use std::{str, thread};
 
-    const CONST_CHAIN_FILE: &'static [u8] = b"tests/end.fullchain\0";
-    const CONST_KEY_FILE: &'static [u8] = b"tests/end.rsa\0";
+    const CONST_CA_FILE: &'static [u8] = b"tests/ca.cert\0";
+    const CONST_SERVER_CERT_FILE: &'static [u8] = b"tests/end.fullchain\0";
+    const CONST_SERVER_KEY_FILE: &'static [u8] = b"tests/end.key\0";
+    const CONST_CLIENT_CERT_FILE: &'static [u8] = b"tests/client.fullchain\0";
+    const CONST_CLIENT_KEY_FILE: &'static [u8] = b"tests/client.key\0";
     const CONST_SERVER_ADDR: &'static str = "127.0.0.1";
 
     struct MesalinkTestSession {
@@ -2076,13 +2089,35 @@ mod tests {
         ) -> MesalinkTestSession {
             let ctx = mesalink_SSL_CTX_new(method);
             assert_ne!(ctx, ptr::null_mut(), "CTX is null");
-            assert_eq!(
-                SSL_SUCCESS,
-                mesalink_SSL_CTX_set_verify(ctx, 0, None),
-                "Failed to set verify mode"
-            );
             let _ =
                 mesalink_SSL_CTX_set_session_cache_mode(ctx, SslSessionCacheModes::Both as c_long);
+            assert_eq!(
+                SSL_SUCCESS,
+                mesalink_SSL_CTX_use_certificate_chain_file(
+                    ctx,
+                    CONST_CLIENT_CERT_FILE.as_ptr() as *const c_char,
+                    0,
+                ),
+                "Failed to set certificate file"
+            );
+            assert_eq!(
+                SSL_SUCCESS,
+                mesalink_SSL_CTX_use_PrivateKey_file(
+                    ctx,
+                    CONST_CLIENT_KEY_FILE.as_ptr() as *const c_char,
+                    0,
+                ),
+                "Failed to set private key"
+            );
+            assert_eq!(
+                SSL_SUCCESS,
+                mesalink_SSL_CTX_load_verify_locations(
+                    ctx,
+                    CONST_CA_FILE.as_ptr() as *const c_char,
+                    ptr::null_mut(),
+                ),
+                "Failed to load verified locations"
+            );
 
             let ssl = mesalink_SSL_new(ctx);
             assert_ne!(ssl, ptr::null_mut(), "SSL is null");
@@ -2120,14 +2155,18 @@ mod tests {
             assert_ne!(ctx, ptr::null_mut(), "CTX is null");
             assert_eq!(
                 SSL_SUCCESS,
-                mesalink_SSL_CTX_set_verify(ctx, 0, None),
-                "Failed to set verify mode"
+                mesalink_SSL_CTX_load_verify_locations(
+                    ctx,
+                    CONST_CA_FILE.as_ptr() as *const c_char,
+                    ptr::null_mut(),
+                ),
+                "Failed to load verified locations"
             );
             assert_eq!(
                 SSL_SUCCESS,
                 mesalink_SSL_CTX_use_certificate_chain_file(
                     ctx,
-                    CONST_CHAIN_FILE.as_ptr() as *const c_char,
+                    CONST_SERVER_CERT_FILE.as_ptr() as *const c_char,
                     0,
                 ),
                 "Failed to set certificate file"
@@ -2136,10 +2175,15 @@ mod tests {
                 SSL_SUCCESS,
                 mesalink_SSL_CTX_use_PrivateKey_file(
                     ctx,
-                    CONST_KEY_FILE.as_ptr() as *const c_char,
+                    CONST_SERVER_KEY_FILE.as_ptr() as *const c_char,
                     0,
                 ),
                 "Failed to set private key"
+            );
+            assert_eq!(
+                SSL_SUCCESS,
+                mesalink_SSL_CTX_set_verify(ctx, 1, None),
+                "Failed to set verify mode"
             );
             let ssl = mesalink_SSL_new(ctx);
             assert_ne!(ssl, ptr::null_mut(), "SSL is null");
@@ -2243,7 +2287,7 @@ mod tests {
             let cipher_name = unsafe { ffi::CStr::from_ptr(cipher_name_ptr).to_str().unwrap() };
             match version {
                 &TlsVersion::Tlsv12 => {
-                    assert_eq!(cipher_name, "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256")
+                    assert_eq!(cipher_name, "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256")
                 }
                 &TlsVersion::Tlsv13 => assert_eq!(cipher_name, "TLS13_CHACHA20_POLY1305_SHA256"),
                 _ => (),
@@ -2530,7 +2574,7 @@ mod tests {
             SSL_SUCCESS,
             mesalink_SSL_CTX_use_certificate_chain_file(
                 ctx_ptr,
-                CONST_CHAIN_FILE.as_ptr() as *const c_char,
+                CONST_SERVER_CERT_FILE.as_ptr() as *const c_char,
                 0
             )
         );
@@ -2538,7 +2582,7 @@ mod tests {
             SSL_SUCCESS,
             mesalink_SSL_CTX_use_PrivateKey_file(
                 ctx_ptr,
-                CONST_KEY_FILE.as_ptr() as *const c_char,
+                CONST_SERVER_KEY_FILE.as_ptr() as *const c_char,
                 0
             )
         );
