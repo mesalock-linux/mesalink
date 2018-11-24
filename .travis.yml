@@ -5,7 +5,7 @@ rust:
 - nightly
 env:
 - ARCH=x86_64_linux
-- ARCH=arm_linux TARGET=arm-linux-gnueabihf RUST_TARGET=armv7-unknown-linux-gnueabihf
+- ARCH=arm_linux TARGET=arm-linux-gnueabi RUST_TARGET=arm-unknown-linux-gnueabi
 - ARCH=aarch64_linux TARGET=aarch64-linux-gnu RUST_TARGET=aarch64-unknown-linux-gnu
 - ARCH=arm_android TARGET=arm-linux-androideabi RUST_TARGET=armv7-linux-androideabi
   NDK_API=19 NDK_ARCH=arm
