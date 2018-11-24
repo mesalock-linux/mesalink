@@ -788,7 +788,7 @@ fn inner_mesalink_ssl_ctx_load_verify_locations(
                 .to_str()
                 .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?
         };
-        let _ = load_cert_into_root_store(ctx, path::Path::new(cafile))?;
+        load_cert_into_root_store(ctx, path::Path::new(cafile))?;
     }
     if !capath_ptr.is_null() {
         let capath = unsafe {
@@ -801,7 +801,7 @@ fn inner_mesalink_ssl_ctx_load_verify_locations(
         for file_path in dir {
             let file_path =
                 file_path.map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
-            let _ = load_cert_into_root_store(ctx, &file_path.path())?;
+            load_cert_into_root_store(ctx, &file_path.path())?;
         }
     }
     ctx.client_config.root_store = ctx.ca_roots.clone();
@@ -1003,9 +1003,7 @@ fn inner_mesalink_ssl_ctx_set_verify(
             .set_certificate_verifier(Arc::new(NoServerAuth {}));
     } else if mode == VerifyModes::VerifyPeer as c_int {
         let client_auth = rustls::AllowAnyAuthenticatedClient::new(ctx.ca_roots.clone());
-        util::get_context_mut(ctx)
-            .server_config
-            .verifier = client_auth;
+        util::get_context_mut(ctx).server_config.verifier = client_auth;
     }
     Ok(SSL_SUCCESS)
 }
