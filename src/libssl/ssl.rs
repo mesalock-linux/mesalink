@@ -2934,6 +2934,85 @@ mod tests {
     }
 
     #[test]
+    fn verify_key_and_certificate() {
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_server_method());
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_use_PrivateKey_file(
+                ctx_ptr,
+                CONST_SERVER_KEY_FILE.as_ptr() as *const c_char,
+                0
+            )
+        );
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_use_certificate_chain_file(
+                ctx_ptr,
+                CONST_SERVER_CERT_FILE.as_ptr() as *const c_char,
+                0
+            )
+        );
+        assert_eq!(SSL_SUCCESS, mesalink_SSL_CTX_check_private_key(ctx_ptr));
+        mesalink_SSL_CTX_free(ctx_ptr);
+    }
+
+    #[test]
+    fn ssl_ctx_load_certificate_and_private_key_asn1() {
+        let certificate_bytes = include_bytes!("../../tests/end.cert.der");
+        let private_key_bytes = include_bytes!("../../tests/end.key.der");
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_server_method());
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_use_certificate_ASN1(
+                ctx_ptr,
+                certificate_bytes.len() as c_int,
+                certificate_bytes.as_ptr() as *mut c_uchar,
+            )
+        );
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_use_PrivateKey_ASN1(
+                0,
+                ctx_ptr,
+                private_key_bytes.as_ptr() as *mut c_uchar,
+                private_key_bytes.len() as c_long,
+            )
+        );
+        assert_eq!(SSL_SUCCESS, mesalink_SSL_CTX_check_private_key(ctx_ptr));
+        mesalink_SSL_CTX_free(ctx_ptr);
+    }
+
+    #[test]
+    fn ssl_load_certificate_and_private_key_asn1() {
+        let certificate_bytes = include_bytes!("../../tests/end.cert.der");
+        let private_key_bytes = include_bytes!("../../tests/end.key.der");
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_server_method());
+        let ssl_ptr = mesalink_SSL_new(ctx_ptr);
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_use_PrivateKey_ASN1(
+                0,
+                ssl_ptr,
+                private_key_bytes.as_ptr() as *mut c_uchar,
+                private_key_bytes.len() as c_long,
+            )
+        );
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_use_certificate_ASN1(
+                ssl_ptr,
+                certificate_bytes.as_ptr() as *mut c_uchar,
+                certificate_bytes.len() as c_int,
+            )
+        );
+        assert_eq!(SSL_SUCCESS, mesalink_SSL_check_private_key(ssl_ptr));
+        let new_ctx_ptr = mesalink_SSL_get_SSL_CTX(ssl_ptr) as *mut MESALINK_CTX_ARC;
+        assert_eq!(SSL_SUCCESS, mesalink_SSL_CTX_check_private_key(new_ctx_ptr));
+        mesalink_SSL_free(ssl_ptr);
+        mesalink_SSL_CTX_free(ctx_ptr);
+    }
+
+    #[test]
     fn get_ssl_fd() {
         let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
         let ssl_ptr = mesalink_SSL_new(ctx_ptr);
