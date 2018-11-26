@@ -111,11 +111,22 @@ MESALINK_API int mesalink_SSL_CTX_load_verify_locations(MESALINK_CTX *,
 MESALINK_API int mesalink_SSL_CTX_use_certificate_chain_file(MESALINK_CTX *,
                                                              const char *,
                                                              int);
+MESALINK_API int mesalink_SSL_CTX_use_certificate_ASN1(MESALINK_CTX *, int,
+                                                       const unsigned char *);
+MESALINK_API int mesalink_SSL_use_certificate_ASN1(MESALINK_SSL *, int,
+                                                   const unsigned char *);
 MESALINK_API int mesalink_SSL_CTX_use_PrivateKey_file(MESALINK_CTX *,
                                                       const char *, int);
 MESALINK_API int mesalink_SSL_CTX_use_PrivateKey(MESALINK_CTX *,
                                                  MESALINK_EVP_PKEY *);
 MESALINK_API int mesalink_SSL_CTX_check_private_key(const MESALINK_CTX *);
+MESALINK_API int mesalink_SSL_CTX_use_PrivateKey_ASN1(int, MESALINK_CTX *,
+                                                      const unsigned char *,
+                                                      long);
+MESALINK_API int mesalink_SSL_use_PrivateKey_ASN1(int, MESALINK_SSL *,
+                                                  const unsigned char *, long);
+MESALINK_API int mesalink_SSL_CTX_check_private_key(const MESALINK_CTX *);
+MESALINK_API int mesalink_SSL_check_private_key(const MESALINK_SSL *ctx);
 
 MESALINK_API int mesalink_SSL_CTX_set_verify(MESALINK_CTX *, int,
                                              int (*cb)(int, MESALINK_CTX *));

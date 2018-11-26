@@ -94,13 +94,16 @@ extern "C" {
 
 #define SSL_CTX_new mesalink_SSL_CTX_new
 #define SSL_CTX_load_verify_locations mesalink_SSL_CTX_load_verify_locations
-#ifdef HAVE_SERVER
 #define SSL_CTX_use_certificate_chain_file                                    \
   mesalink_SSL_CTX_use_certificate_chain_file
 #define SSL_CTX_use_PrivateKey mesalink_SSL_CTX_use_PrivateKey
+#define SSL_CTX_use_certificate_ASN1 mesalink_SSL_CTX_use_certificate_ASN1
+#define SSL_use_certificate_ASN1 mesalink_SSL_use_certificate_ASN1
 #define SSL_CTX_use_PrivateKey_file mesalink_SSL_CTX_use_PrivateKey_file
+#define SSL_CTX_use_PrivateKey_ASN1 mesalink_SSL_CTX_use_PrivateKey_ASN1
+#define SSL_use_PrivateKey_ASN1 mesalink_SSL_use_PrivateKey_ASN1
 #define SSL_CTX_check_private_key mesalink_SSL_CTX_check_private_key
-#endif
+#define SSL_check_private_key mesalink_SSL_check_private_key
 #define SSL_CTX_set_verify mesalink_SSL_CTX_set_verify
 #define SSL_CTX_set_session_cache_mode mesalink_SSL_CTX_set_session_cache_mode
 #define SSL_CTX_get_session_cache_mode mesalink_SSL_CTX_get_session_cache_mode

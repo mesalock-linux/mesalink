@@ -37,7 +37,6 @@
 
 use error_san::*;
 use libc::{c_char, c_int, c_long, c_uchar, size_t};
-use libcrypto::evp::MESALINK_EVP_PKEY;
 use libssl::err::{ErrorCode, MesalinkBuiltinError, MesalinkError, MesalinkInnerResult};
 use libssl::safestack::MESALINK_STACK_MESALINK_X509;
 use libssl::x509::MESALINK_X509;
@@ -52,8 +51,7 @@ use {MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use std::ops::{Deref, DerefMut};
 use std::os::unix::io::{AsRawFd, FromRawFd};
 
-const CLIENT_CACHE_SIZE: usize = 32;
-const SERVER_CACHE_SIZE: usize = 128;
+const SSL_SESSION_CACHE_MAX_SIZE_DEFAULT: usize = 1024 * 20;
 
 #[cfg(not(feature = "error_strings"))]
 const CONST_NOTBUILTIN_STR: &'static [u8] = b"(Ciphersuite string not built-in)\0";
@@ -173,6 +171,7 @@ pub struct MESALINK_CTX {
     private_key: Option<rustls::PrivateKey>,
     ca_roots: rustls::RootCertStore,
     session_cache_mode: SslSessionCacheModes,
+    session_cache_size: usize,
 }
 
 #[allow(non_camel_case_types)]
@@ -198,8 +197,12 @@ impl MESALINK_CTX {
             server_config.versions.push(*v);
         }
 
-        client_config.set_persistence(Arc::new(rustls::NoClientSessionStorage {}));
-        server_config.set_persistence(rustls::ServerSessionMemoryCache::new(SERVER_CACHE_SIZE));
+        client_config.set_persistence(MesalinkClientSessionCache::with_capacity(
+            SSL_SESSION_CACHE_MAX_SIZE_DEFAULT,
+        ));
+        server_config.set_persistence(rustls::ServerSessionMemoryCache::new(
+            SSL_SESSION_CACHE_MAX_SIZE_DEFAULT,
+        ));
 
         use webpki_roots;
         client_config
@@ -215,7 +218,8 @@ impl MESALINK_CTX {
             certificates: None,
             private_key: None,
             ca_roots: rustls::RootCertStore::empty(),
-            session_cache_mode: SslSessionCacheModes::Server,
+            session_cache_mode: SslSessionCacheModes::Both,
+            session_cache_size: SSL_SESSION_CACHE_MAX_SIZE_DEFAULT,
         }
     }
 }
@@ -833,7 +837,6 @@ fn load_cert_into_root_store(ctx: &mut MESALINK_CTX, path: &path::Path) -> Mesal
 /// int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx, const char *file);
 /// ```
 #[no_mangle]
-#[cfg(feature = "server_apis")]
 pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     filename_ptr: *const c_char,
@@ -845,7 +848,6 @@ pub extern "C" fn mesalink_SSL_CTX_use_certificate_chain_file(
     )
 }
 
-#[cfg(feature = "server_apis")]
 fn inner_mesalink_ssl_ctx_use_certificate_chain_file(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     filename_ptr: *const c_char,
@@ -879,41 +881,90 @@ fn inner_mesalink_ssl_ctx_use_certificate_chain_file(
     Ok(SSL_SUCCESS)
 }
 
-/// `SSL_CTX_use_PrivateKey` - add the private key found in *pkey* to ctx.
+/// `SSL_CTX_use_certificate_ASN1` - load the ASN1 encoded certificate
+/// into ssl_ctx.
 ///
 /// ```c
 /// #include <mesalink/openssl/ssl.h>
 ///
-/// int SSL_CTX_use_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey);
+/// int SSL_CTX_use_certificate_ASN1(SSL_CTX *ctx, int len, unsigned char *d);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey(
+pub extern "C" fn mesalink_SSL_CTX_use_certificate_ASN1(
     ctx_ptr: *mut MESALINK_CTX_ARC,
-    pkey_ptr: *mut MESALINK_EVP_PKEY,
+    len: c_int,
+    d: *mut c_uchar,
 ) -> c_int {
     check_inner_result!(
-        inner_mesalink_ssl_ctx_use_privatekey(ctx_ptr, pkey_ptr),
+        inner_mesalink_ssl_ctx_use_certificate_asn1(ctx_ptr, len, d),
         SSL_FAILURE
     )
 }
 
-fn inner_mesalink_ssl_ctx_use_privatekey(
+fn inner_mesalink_ssl_ctx_use_certificate_asn1(
     ctx_ptr: *mut MESALINK_CTX_ARC,
-    pkey_ptr: *mut MESALINK_EVP_PKEY,
+    len: c_int,
+    d: *mut c_uchar,
 ) -> MesalinkInnerResult<c_int> {
+    if d.is_null() {
+        return Err(error!(MesalinkBuiltinError::NullPointer.into()));
+    }
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
-    let pkey = sanitize_ptr_for_ref(pkey_ptr)?;
-
-    util::get_context_mut(ctx).private_key = Some(pkey.inner.clone());
-    if let Ok((certs, priv_key)) = util::try_get_context_certs_and_key(ctx) {
-        util::get_context_mut(ctx)
+    let buf: &[u8] = unsafe { slice::from_raw_parts_mut(d, len as usize) };
+    let cert = rustls::Certificate(buf.to_vec());
+    let ctx_mut_ref = util::get_context_mut(ctx);
+    if ctx_mut_ref.certificates.is_none() {
+        ctx_mut_ref.certificates = Some(vec![]);
+    }
+    ctx_mut_ref.certificates.as_mut().unwrap().push(cert);
+    if let (Some(certs), Some(priv_key)) = (
+        ctx_mut_ref.certificates.as_ref(),
+        ctx_mut_ref.private_key.as_ref(),
+    ) {
+        ctx_mut_ref
             .client_config
             .set_single_client_cert(certs.clone(), priv_key.clone());
-        util::get_context_mut(ctx)
+        ctx_mut_ref
             .server_config
             .set_single_cert(certs.clone(), priv_key.clone())
             .map_err(|e| error!(e.into()))?;
     }
+    Ok(SSL_SUCCESS)
+}
+
+/// `SSL_use_certificate_ASN1` - load the ASN1 encoded certificate
+/// into ssl.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_use_certificate_ASN1(SSL *ssl, unsigned char *d, int len);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_use_certificate_ASN1(
+    ssl_ptr: *mut MESALINK_SSL,
+    d: *mut c_uchar,
+    len: c_int,
+) -> c_int {
+    check_inner_result!(
+        inner_mesalink_ssl_use_certificate_asn1(ssl_ptr, d, len),
+        SSL_FAILURE
+    )
+}
+
+fn inner_mesalink_ssl_use_certificate_asn1(
+    ssl_ptr: *mut MESALINK_SSL,
+    d: *mut c_uchar,
+    len: c_int,
+) -> MesalinkInnerResult<c_int> {
+    let ssl = sanitize_ptr_for_ref(ssl_ptr)?;
+    let ctx = ssl
+        .context
+        .as_ref()
+        .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+    let ctx_ptr = ctx as *const MESALINK_CTX_ARC as *mut MESALINK_CTX_ARC;
+    let _ = inner_mesalink_ssl_ctx_use_certificate_asn1(ctx_ptr, len, d)?;
+    let _ = inner_mesalink_ssl_set_ssl_ctx(ssl_ptr, ctx_ptr)?;
     Ok(SSL_SUCCESS)
 }
 
@@ -971,6 +1022,92 @@ fn inner_mesalink_ssl_ctx_use_privatekey_file(
     Ok(SSL_SUCCESS)
 }
 
+/// `SSL_CTX_use_PrivateKey_ASN1` - load the ASN1 encoded certificate into
+/// ssl_ctx.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_CTX_use_PrivateKey_ASN1(int pk, SSL_CTX *ctx, unsigned char *d,
+///                               long len);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_ASN1(
+    pk_type: c_int,
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    d: *mut c_uchar,
+    len: c_long,
+) -> c_int {
+    check_inner_result!(
+        inner_mesalink_ssl_ctx_use_privatekey_asn1(pk_type, ctx_ptr, d, len),
+        SSL_FAILURE
+    )
+}
+
+fn inner_mesalink_ssl_ctx_use_privatekey_asn1(
+    _pk_type: c_int,
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    d: *mut c_uchar,
+    len: c_long,
+) -> MesalinkInnerResult<c_int> {
+    if d.is_null() {
+        return Err(error!(MesalinkBuiltinError::NullPointer.into()));
+    }
+    let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
+    let buf: &[u8] = unsafe { slice::from_raw_parts_mut(d, len as usize) };
+    let pkey = rustls::PrivateKey(buf.to_vec());
+    util::get_context_mut(ctx).private_key = Some(pkey);
+    if let Ok((certs, priv_key)) = util::try_get_context_certs_and_key(ctx) {
+        util::get_context_mut(ctx)
+            .client_config
+            .set_single_client_cert(certs.clone(), priv_key.clone());
+        util::get_context_mut(ctx)
+            .server_config
+            .set_single_cert(certs.clone(), priv_key.clone())
+            .map_err(|e| error!(e.into()))?;
+    }
+    Ok(SSL_SUCCESS)
+}
+
+/// `SSL_use_PrivateKey_ASN1` - load the ASN1 encoded certificate into
+/// ssl.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_use_PrivateKey_ASN1(int pk, SSL_CTX *ctx, unsigned char *d,
+///                             long len);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_use_PrivateKey_ASN1(
+    pk_type: c_int,
+    ssl_ptr: *mut MESALINK_SSL,
+    d: *mut c_uchar,
+    len: c_long,
+) -> c_int {
+    check_inner_result!(
+        inner_mesalink_ssl_use_privatekey_asn1(pk_type, ssl_ptr, d, len),
+        SSL_FAILURE
+    )
+}
+
+fn inner_mesalink_ssl_use_privatekey_asn1(
+    pk_type: c_int,
+    ssl_ptr: *mut MESALINK_SSL,
+    d: *mut c_uchar,
+    len: c_long,
+) -> MesalinkInnerResult<c_int> {
+    let ssl = sanitize_ptr_for_ref(ssl_ptr)?;
+    let ctx = ssl
+        .context
+        .as_ref()
+        .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+    let ctx_ptr = ctx as *const MESALINK_CTX_ARC as *mut MESALINK_CTX_ARC;
+    let _ = inner_mesalink_ssl_ctx_use_privatekey_asn1(pk_type, ctx_ptr, d, len)?;
+    let _ = inner_mesalink_ssl_set_ssl_ctx(ssl_ptr, ctx_ptr)?;
+    Ok(SSL_SUCCESS)
+}
+
 /// `SSL_CTX_check_private_key` - check the consistency of a private key with the
 /// corresponding certificate loaded into ctx
 ///
@@ -1003,6 +1140,29 @@ fn inner_mesalink_ssl_ctx_check_private_key(
         }
         _ => Err(error!(MesalinkBuiltinError::BadFuncArg.into())),
     }
+}
+
+/// `SSL_check_private_key` - check the consistency of a private key with the
+/// corresponding certificate loaded into ssl
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_check_private_key(const SSL *ssl);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_check_private_key(ctx_ptr: *mut MESALINK_SSL) -> c_int {
+    check_inner_result!(inner_mesalink_ssl_check_private_key(ctx_ptr), SSL_FAILURE)
+}
+
+fn inner_mesalink_ssl_check_private_key(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
+    let ssl = sanitize_ptr_for_ref(ssl_ptr)?;
+    let ctx = ssl
+        .context
+        .as_ref()
+        .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+    let ctx_ptr = ctx as *const MESALINK_CTX_ARC as *mut MESALINK_CTX_ARC;
+    inner_mesalink_ssl_ctx_check_private_key(ctx_ptr)
 }
 
 #[doc(hidden)]
@@ -1061,6 +1221,7 @@ fn inner_mesalink_ssl_ctx_set_session_cache_mode(
 ) -> MesalinkInnerResult<c_long> {
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     let prev_mode = ctx.session_cache_mode.clone() as c_long;
+    let sess_size = ctx.session_cache_size;
     let ctx_mut = util::get_context_mut(ctx);
     if mode == SslSessionCacheModes::Off as c_long {
         ctx_mut
@@ -1073,7 +1234,7 @@ fn inner_mesalink_ssl_ctx_set_session_cache_mode(
     } else if mode == SslSessionCacheModes::Client as c_long {
         ctx_mut
             .client_config
-            .set_persistence(MesalinkClientSessionCache::with_capacity(CLIENT_CACHE_SIZE));
+            .set_persistence(MesalinkClientSessionCache::with_capacity(sess_size));
         ctx_mut
             .server_config
             .set_persistence(Arc::new(rustls::NoServerSessionStorage {}));
@@ -1084,15 +1245,15 @@ fn inner_mesalink_ssl_ctx_set_session_cache_mode(
             .set_persistence(Arc::new(rustls::NoClientSessionStorage {}));
         ctx_mut
             .server_config
-            .set_persistence(rustls::ServerSessionMemoryCache::new(SERVER_CACHE_SIZE));
+            .set_persistence(rustls::ServerSessionMemoryCache::new(sess_size));
         ctx_mut.session_cache_mode = SslSessionCacheModes::Server;
     } else if mode == SslSessionCacheModes::Both as c_long {
         ctx_mut
             .client_config
-            .set_persistence(MesalinkClientSessionCache::with_capacity(CLIENT_CACHE_SIZE));
+            .set_persistence(MesalinkClientSessionCache::with_capacity(sess_size));
         ctx_mut
             .server_config
-            .set_persistence(rustls::ServerSessionMemoryCache::new(SERVER_CACHE_SIZE));
+            .set_persistence(rustls::ServerSessionMemoryCache::new(sess_size));
         ctx_mut.session_cache_mode = SslSessionCacheModes::Both;
     }
     Ok(prev_mode)
@@ -1122,6 +1283,82 @@ fn inner_mesalink_ssl_ctx_get_session_cache_mode(
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     let prev_mode = ctx.session_cache_mode.clone() as c_long;
     Ok(prev_mode)
+}
+
+/// `SSL_CTX_sess_set_cache_size` -  return the currently session cache size
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// long SSL_CTX_sess_set_cache_size(SSL_CTX ctx, long t);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_CTX_sess_set_cache_size(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    t: c_long,
+) -> c_long {
+    let error_ret: c_long = SSL_ERROR.into();
+    check_inner_result!(
+        inner_mesalink_ssl_ctx_sess_set_cache_size(ctx_ptr, t),
+        error_ret
+    )
+}
+
+fn inner_mesalink_ssl_ctx_sess_set_cache_size(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    t: c_long,
+) -> MesalinkInnerResult<c_long> {
+    let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
+    let prev_size = ctx.session_cache_size;
+    let sess_mode = ctx.session_cache_mode.clone();
+    let ctx_mut = util::get_context_mut(ctx);
+    ctx_mut.session_cache_size = t as usize;
+    match sess_mode {
+        SslSessionCacheModes::Client => {
+            ctx_mut
+                .client_config
+                .set_persistence(MesalinkClientSessionCache::with_capacity(t as usize));
+        }
+        SslSessionCacheModes::Server => {
+            ctx_mut
+                .server_config
+                .set_persistence(rustls::ServerSessionMemoryCache::new(t as usize));
+        }
+        SslSessionCacheModes::Both => {
+            ctx_mut
+                .client_config
+                .set_persistence(MesalinkClientSessionCache::with_capacity(t as usize));
+            ctx_mut
+                .server_config
+                .set_persistence(rustls::ServerSessionMemoryCache::new(t as usize));
+        }
+        _ => (),
+    }
+    Ok(prev_size as c_long)
+}
+
+/// `SSL_CTX_sess_get_cache_size` -  return the currently session cache size
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// long SSL_CTX_sess_get_cache_size(SSL_CTX ctx);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_CTX_sess_get_cache_size(ctx_ptr: *mut MESALINK_CTX_ARC) -> c_long {
+    let error_ret: c_long = SSL_ERROR.into();
+    check_inner_result!(
+        inner_mesalink_ssl_ctx_sess_get_cache_size(ctx_ptr),
+        error_ret
+    )
+}
+
+fn inner_mesalink_ssl_ctx_sess_get_cache_size(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+) -> MesalinkInnerResult<c_long> {
+    let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
+    let prev_size = ctx.session_cache_size;
+    Ok(prev_size as c_long)
 }
 
 /// `SSL_new` - create a new SSL structure which is needed to hold the data for a
@@ -2618,6 +2855,85 @@ mod tests {
     }
 
     #[test]
+    fn verify_key_and_certificate() {
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_server_method());
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_use_PrivateKey_file(
+                ctx_ptr,
+                CONST_SERVER_KEY_FILE.as_ptr() as *const c_char,
+                0
+            )
+        );
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_use_certificate_chain_file(
+                ctx_ptr,
+                CONST_SERVER_CERT_FILE.as_ptr() as *const c_char,
+                0
+            )
+        );
+        assert_eq!(SSL_SUCCESS, mesalink_SSL_CTX_check_private_key(ctx_ptr));
+        mesalink_SSL_CTX_free(ctx_ptr);
+    }
+
+    #[test]
+    fn ssl_ctx_load_certificate_and_private_key_asn1() {
+        let certificate_bytes = include_bytes!("../../tests/end.cert.der");
+        let private_key_bytes = include_bytes!("../../tests/end.key.der");
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_server_method());
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_use_certificate_ASN1(
+                ctx_ptr,
+                certificate_bytes.len() as c_int,
+                certificate_bytes.as_ptr() as *mut c_uchar,
+            )
+        );
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_use_PrivateKey_ASN1(
+                0,
+                ctx_ptr,
+                private_key_bytes.as_ptr() as *mut c_uchar,
+                private_key_bytes.len() as c_long,
+            )
+        );
+        assert_eq!(SSL_SUCCESS, mesalink_SSL_CTX_check_private_key(ctx_ptr));
+        mesalink_SSL_CTX_free(ctx_ptr);
+    }
+
+    #[test]
+    fn ssl_load_certificate_and_private_key_asn1() {
+        let certificate_bytes = include_bytes!("../../tests/end.cert.der");
+        let private_key_bytes = include_bytes!("../../tests/end.key.der");
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_server_method());
+        let ssl_ptr = mesalink_SSL_new(ctx_ptr);
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_use_PrivateKey_ASN1(
+                0,
+                ssl_ptr,
+                private_key_bytes.as_ptr() as *mut c_uchar,
+                private_key_bytes.len() as c_long,
+            )
+        );
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_use_certificate_ASN1(
+                ssl_ptr,
+                certificate_bytes.as_ptr() as *mut c_uchar,
+                certificate_bytes.len() as c_int,
+            )
+        );
+        assert_eq!(SSL_SUCCESS, mesalink_SSL_check_private_key(ssl_ptr));
+        let new_ctx_ptr = mesalink_SSL_get_SSL_CTX(ssl_ptr) as *mut MESALINK_CTX_ARC;
+        assert_eq!(SSL_SUCCESS, mesalink_SSL_CTX_check_private_key(new_ctx_ptr));
+        mesalink_SSL_free(ssl_ptr);
+        mesalink_SSL_CTX_free(ctx_ptr);
+    }
+
+    #[test]
     fn get_ssl_fd() {
         let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
         let ssl_ptr = mesalink_SSL_new(ctx_ptr);
@@ -2686,23 +3002,38 @@ mod tests {
     }
 
     #[test]
-    fn mesalink_ssl_ctx_session_cache_mode() {
+    fn mesalink_ssl_ctx_session_cache_mode_and_size() {
         let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLSv1_2_client_method());
-
+        // Default cache mode is Both
         assert_eq!(
             mesalink_SSL_CTX_get_session_cache_mode(ctx_ptr),
-            SslSessionCacheModes::Server as c_long
+            SslSessionCacheModes::Both as c_long
         );
-
+        // Default cache size is SSL_SESSION_CACHE_MAX_SIZE_DEFAULT
+        assert_eq!(
+            mesalink_SSL_CTX_sess_get_cache_size(ctx_ptr),
+            SSL_SESSION_CACHE_MAX_SIZE_DEFAULT as c_long
+        );
+        // When cache mode is both, set the cache size to 100
+        assert_eq!(
+            mesalink_SSL_CTX_sess_set_cache_size(ctx_ptr, 100),
+            SSL_SESSION_CACHE_MAX_SIZE_DEFAULT as c_long
+        );
+        // Turn off session cache
         assert_eq!(
             mesalink_SSL_CTX_set_session_cache_mode(ctx_ptr, SslSessionCacheModes::Off as c_long),
-            SslSessionCacheModes::Server as c_long
+            SslSessionCacheModes::Both as c_long
         );
+        // Now the cache mode is Off
         assert_eq!(
             mesalink_SSL_CTX_get_session_cache_mode(ctx_ptr),
             SslSessionCacheModes::Off as c_long
         );
-
+        // The cache size to 100
+        assert_eq!(mesalink_SSL_CTX_sess_get_cache_size(ctx_ptr), 100);
+        // When cache mode is Off, set the cache size to 200
+        assert_eq!(mesalink_SSL_CTX_sess_set_cache_size(ctx_ptr, 200), 100);
+        // Set the cache mode to Client
         assert_eq!(
             mesalink_SSL_CTX_set_session_cache_mode(
                 ctx_ptr,
@@ -2714,7 +3045,11 @@ mod tests {
             mesalink_SSL_CTX_get_session_cache_mode(ctx_ptr),
             SslSessionCacheModes::Client as c_long
         );
-
+        // The cache size to 100
+        assert_eq!(mesalink_SSL_CTX_sess_get_cache_size(ctx_ptr), 200);
+        // When cache mode is Client, set the cache size to 300
+        assert_eq!(mesalink_SSL_CTX_sess_set_cache_size(ctx_ptr, 300), 200);
+        // Set the cache mode to Server
         assert_eq!(
             mesalink_SSL_CTX_set_session_cache_mode(
                 ctx_ptr,
@@ -2722,11 +3057,15 @@ mod tests {
             ),
             SslSessionCacheModes::Client as c_long
         );
+        // Now the cache mode is Server
         assert_eq!(
             mesalink_SSL_CTX_get_session_cache_mode(ctx_ptr),
             SslSessionCacheModes::Server as c_long
         );
-
+        // The cache size to 300
+        assert_eq!(mesalink_SSL_CTX_sess_get_cache_size(ctx_ptr), 300);
+        // When cache mode is Server, set the cache size to 400
+        assert_eq!(mesalink_SSL_CTX_sess_set_cache_size(ctx_ptr, 400), 300);
         assert_eq!(
             mesalink_SSL_CTX_set_session_cache_mode(ctx_ptr, SslSessionCacheModes::Both as c_long),
             SslSessionCacheModes::Server as c_long
@@ -2881,5 +3220,67 @@ mod tests {
             mesalink_SSL_write_early_data(ssl, buf.as_ptr() as *const c_uchar, 10, wr_len_ptr)
         );
         let _ = unsafe { Box::from_raw(wr_len_ptr) };
+    }
+
+    #[test]
+    fn test_client_auth() {
+        const HTTP_REQUEST: &[u8; 93] = b"GET / HTTP/1.1\r\n\
+            Host: ota.oss.mosiliang.top\r\n\
+            Connection: close\r\n\
+            Accept-Encoding: identity\r\n\
+            \r\n";
+        let certificate_bytes = include_bytes!("../../tests/mosiliang.cert.der");
+        let private_key_bytes = include_bytes!("../../tests/mosiliang.key.der");
+        let method = mesalink_TLSv1_2_client_method();
+        let ctx = mesalink_SSL_CTX_new(method);
+        let ssl = mesalink_SSL_new(ctx);
+        assert_ne!(ssl, ptr::null_mut(), "SSL is null");
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_set_tlsext_host_name(
+                ssl,
+                b"ota.oss.mosiliang.top\0".as_ptr() as *const c_char
+            ),
+            "Failed to set SNI"
+        );
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_use_certificate_ASN1(
+                ssl,
+                certificate_bytes.as_ptr() as *mut c_uchar,
+                certificate_bytes.len() as c_int,
+            )
+        );
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_use_PrivateKey_ASN1(
+                0,
+                ssl,
+                private_key_bytes.as_ptr() as *mut c_uchar,
+                private_key_bytes.len() as c_long,
+            )
+        );
+        let sock = net::TcpStream::connect("ota.oss.mosiliang.top:443").expect("Failed to connect");
+        assert_eq!(SSL_SUCCESS, mesalink_SSL_set_fd(ssl, sock.as_raw_fd()),);
+
+        if SSL_SUCCESS != mesalink_SSL_connect(ssl) {
+            let error = mesalink_SSL_get_error(ssl, -1);
+            panic!("Connect error: 0x{:X}\n", error);
+        }
+        assert_ne!(
+            SSL_FAILURE,
+            mesalink_SSL_write(ssl, HTTP_REQUEST.as_ptr() as *const c_uchar, 93)
+        );
+        let mut buf = [0u8; 2048];
+        loop {
+            let rd_len =
+                mesalink_SSL_read(ssl, buf.as_mut_ptr() as *mut c_uchar, buf.len() as c_int);
+            println!("Read {} bytes", rd_len);
+            if rd_len <= 0 {
+                break;
+            }
+        }
+        mesalink_SSL_free(ssl);
+        mesalink_SSL_CTX_free(ctx);
     }
 }
