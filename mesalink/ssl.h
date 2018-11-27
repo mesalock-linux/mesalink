@@ -113,8 +113,8 @@ MESALINK_API int mesalink_SSL_CTX_use_certificate_chain_file(MESALINK_CTX *,
                                                              int);
 MESALINK_API int mesalink_SSL_CTX_use_certificate_ASN1(MESALINK_CTX *, int,
                                                        const unsigned char *);
-MESALINK_API int mesalink_SSL_use_certificate_ASN1(MESALINK_SSL *, int,
-                                                   const unsigned char *);
+MESALINK_API int mesalink_SSL_use_certificate_ASN1(MESALINK_SSL *,
+                                                   const unsigned char *, int);
 MESALINK_API int mesalink_SSL_CTX_use_PrivateKey_file(MESALINK_CTX *,
                                                       const char *, int);
 MESALINK_API int mesalink_SSL_CTX_use_PrivateKey(MESALINK_CTX *,
