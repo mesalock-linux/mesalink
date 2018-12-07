@@ -285,7 +285,8 @@ fn inner_mesalink_x509_get_subject_name(
                 });
             }
             Ok(())
-        }).map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()));
+        })
+        .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()));
 
     let x509_name = MESALINK_X509_NAME::new(subject_name.as_bytes());
     Ok(Box::into_raw(Box::new(x509_name)) as *mut MESALINK_X509_NAME)

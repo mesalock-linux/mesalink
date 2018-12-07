@@ -322,10 +322,12 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC, count: usize) 
                     ssl::mesalink_SSL_free(ssl);
                     return;
                 }
-                ErrorCode::IoErrorConnectionReset => if opts.check_close_notify {
-                    cleanup(ssl, ctx);
-                    quit_err(":CLOSE_WITHOUT_CLOSE_NOTIFY:")
-                },
+                ErrorCode::IoErrorConnectionReset => {
+                    if opts.check_close_notify {
+                        cleanup(ssl, ctx);
+                        quit_err(":CLOSE_WITHOUT_CLOSE_NOTIFY:")
+                    }
+                }
                 _ => {
                     ssl::mesalink_SSL_flush(ssl);
                     cleanup(ssl, ctx);

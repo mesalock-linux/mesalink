@@ -126,7 +126,7 @@ struct MesalinkClientSessionCache {
 }
 
 impl MesalinkClientSessionCache {
-    fn new(cache_size: usize) -> Arc<MesalinkClientSessionCache> {
+    fn with_capacity(cache_size: usize) -> Arc<MesalinkClientSessionCache> {
         let session_cache = MesalinkClientSessionCache {
             cache: rustls::ClientSessionMemoryCache::new(cache_size),
         };
@@ -311,9 +311,11 @@ fn complete_io(
             (_, true, false) => return Ok((rdlen, wrlen)),
             (_, false, _) => return Ok((rdlen, wrlen)),
             (true, true, true) => {
-                return Err(error!(
-                    io::Error::new(io::ErrorKind::UnexpectedEof, "Unexpected EOF").into()
-                ))
+                return Err(error!(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "Unexpected EOF"
+                )
+                .into()))
             }
             (..) => (),
         }
@@ -1046,7 +1048,7 @@ fn inner_mesalink_ssl_ctx_set_session_cache_mode(
     } else if mode == SslSessionCacheModes::Client as c_long {
         ctx_mut
             .client_config
-            .set_persistence(MesalinkClientSessionCache::new(CLIENT_CACHE_SIZE));
+            .set_persistence(MesalinkClientSessionCache::with_capacity(CLIENT_CACHE_SIZE));
         ctx_mut
             .server_config
             .set_persistence(Arc::new(rustls::NoServerSessionStorage {}));
@@ -1062,7 +1064,7 @@ fn inner_mesalink_ssl_ctx_set_session_cache_mode(
     } else if mode == SslSessionCacheModes::Both as c_long {
         ctx_mut
             .client_config
-            .set_persistence(MesalinkClientSessionCache::new(CLIENT_CACHE_SIZE));
+            .set_persistence(MesalinkClientSessionCache::with_capacity(CLIENT_CACHE_SIZE));
         ctx_mut
             .server_config
             .set_persistence(rustls::ServerSessionMemoryCache::new(SERVER_CACHE_SIZE));
@@ -1553,17 +1555,19 @@ pub extern "C" fn mesalink_SSL_do_handshake(ssl_ptr: *mut MESALINK_SSL) -> c_int
 fn inner_mesalink_ssl_do_handshake(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     match (ssl.session.as_mut(), ssl.io.as_mut()) {
-        (Some(session), Some(io)) => if session.is_handshaking() {
-            match complete_io(session, io) {
-                Err(e) => {
-                    ssl.error = ErrorCode::from(&e);
-                    Err(e)
+        (Some(session), Some(io)) => {
+            if session.is_handshaking() {
+                match complete_io(session, io) {
+                    Err(e) => {
+                        ssl.error = ErrorCode::from(&e);
+                        Err(e)
+                    }
+                    Ok(_) => Ok(SSL_SUCCESS),
                 }
-                Ok(_) => Ok(SSL_SUCCESS),
+            } else {
+                Ok(SSL_SUCCESS)
             }
-        } else {
-            Ok(SSL_SUCCESS)
-        },
+        }
         _ => Err(error!(MesalinkBuiltinError::BadFuncArg.into())),
     }
 }
