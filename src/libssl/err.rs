@@ -158,6 +158,7 @@ thread_local! {
 #[doc(hidden)]
 #[repr(C)]
 #[derive(PartialEq, Clone, Debug)]
+#[allow(dead_code)]
 pub(crate) enum MesalinkBuiltinError {
     None,
     ZeroReturn,
