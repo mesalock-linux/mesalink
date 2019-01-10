@@ -31,14 +31,14 @@ typedef struct MEASLINK_CTX MESALINK_CTX;
 typedef struct MESALINK_CIPHER MESALINK_CIPHER;
 typedef struct MESALINK_SSL MESALINK_SSL;
 
-typedef enum
+typedef enum mesalink_verify_mode_t
 {
-  SSL_VERIFY_NONE = 0,
-  SSL_VERIFY_PEER = 1,
-  SSL_VERIFY_FAIL_IF_NO_PEER_CERT = 2,
+  MESALINK_SSL_VERIFY_NONE = 0,
+  MESALINK_SSL_VERIFY_PEER = 1,
+  MESALINK_SSL_VERIFY_FAIL_IF_NO_PEER_CERT = 2,
 } mesalink_verify_mode_t;
 
-typedef enum
+typedef enum mesalink_constant_t
 {
   MESALINK_FAILURE = 0,
   MESALINK_ERROR = -1,
