@@ -87,27 +87,34 @@ extern crate lazy_static;
 #[macro_use]
 extern crate enum_to_u8_slice_derive;
 
-#[doc(hidden)]
-#[macro_use]
-mod macros {
-    #[cfg(feature = "error_strings")]
-    #[doc(hidden)]
-    #[macro_export]
-    macro_rules! call_site {
-        () => {{
-            concat!(file!(), ":", line!())
-        }};
-    }
+use ring::rand;
+use ring::rand::SecureRandom;
 
-    #[cfg(not(feature = "error_strings"))]
+#[doc(hidden)]
+pub(self) const MAGIC_SIZE: usize = 4;
+
+lazy_static! {
     #[doc(hidden)]
-    #[macro_export]
-    macro_rules! call_site {
-        () => {{
-            "call_site information not enabled"
-        }};
-    }
+    pub(self) static ref MAGIC: [u8; MAGIC_SIZE] = {
+        let mut number = [0u8; MAGIC_SIZE];
+        if rand::SystemRandom::new().fill(&mut number).is_ok() {
+            number
+        } else {
+            panic!("Getrandom error");
+        }
+    };
 }
+
+#[doc(hidden)]
+pub(crate) trait MesalinkOpaquePointerType {
+    fn check_magic(&self) -> bool;
+}
+
+#[macro_use]
+mod macros;
+
+#[macro_use]
+mod error_san;
 
 /// The ssl module is the counterpart of the OpenSSL ssl library.
 pub mod libssl;

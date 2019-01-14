@@ -12,27 +12,3 @@
  * For a copy, see the LICENSE file.
  *
  */
-
-use std::io::{Read, Write};
-use std::fs::{File, OpenOptions};
-use std::io::Cursor;
-
-#[doc(hidden)]
-pub(self) const MAGIC_SIZE: usize = 4;
-
-#[derive(Debug)]
-enum BioType {
-    File,
-    Mem,
-    Socket,
-}
-
-#[allow(non_camel_case_types)]
-pub struct MEASLINK_BIO_METHOD<R: Read, W: Write> {
-    magic: [u8; MAGIC_SIZE],
-    reader: Box<R>,
-    writer: Box<W>,
-    bio_type: BioType,
-}
-
-impl<R, W> MEASLINK_BIO_METHOD<R, W>

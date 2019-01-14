@@ -15,10 +15,10 @@
 
 use libc::c_int;
 use libssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
-use libssl::error_san::*;
 use libssl::x509::{MESALINK_X509, MESALINK_X509_NAME};
-use libssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use libssl::{SSL_FAILURE, SSL_SUCCESS};
+use ::error_san::*;
+use ::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use std::ptr;
 
 // ---------------------------------------

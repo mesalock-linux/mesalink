@@ -37,11 +37,11 @@
 
 use libc::{c_char, c_int, c_long, c_uchar, size_t};
 use libssl::err::{ErrorCode, MesalinkBuiltinError, MesalinkError, MesalinkInnerResult};
-use libssl::error_san::*;
 use libssl::safestack::MESALINK_STACK_MESALINK_X509;
 use libssl::x509::MESALINK_X509;
-use libssl::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use libssl::{SslSessionCacheModes, SSL_ERROR, SSL_FAILURE, SSL_SUCCESS};
+use ::error_san::*;
+use ::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use rustls;
 use std::sync::Arc;
 use std::{ffi, fs, io, net, path, ptr, slice};
