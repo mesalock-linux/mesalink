@@ -13,5 +13,6 @@
  *
  */
 
-//!
-//! Not implemented yet
+/// Implementations of OpenSSL BIO APIs.
+/// Please also refer to the header file at mesalink/openssl/bio.h
+pub mod bio;
