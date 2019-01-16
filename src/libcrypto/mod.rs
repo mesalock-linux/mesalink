@@ -16,3 +16,7 @@
 /// Implementations of OpenSSL BIO APIs.
 /// Please also refer to the header file at mesalink/openssl/bio.h
 pub mod bio;
+
+use libc::c_int;
+pub(self) const CRYPTO_FAILURE: c_int = 0;
+pub(self) const CRYPTO_SUCCESS: c_int = 1;

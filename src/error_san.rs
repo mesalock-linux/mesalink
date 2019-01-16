@@ -16,7 +16,7 @@
 use libssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
 use MesalinkOpaquePointerType;
 
-pub(crate) fn sanitize_const_ptr_for_ref<'a, T>(ptr: *const T) ->MesalinkInnerResult<&'a T>
+pub(crate) fn sanitize_const_ptr_for_ref<'a, T>(ptr: *const T) -> MesalinkInnerResult<&'a T>
 where
     T: MesalinkOpaquePointerType,
 {

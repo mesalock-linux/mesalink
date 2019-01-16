@@ -53,7 +53,6 @@
     anonymous_parameters,
     unused_import_braces,
     unused_results,
-    variant_size_differences,
     warnings
 )]
 
@@ -81,6 +80,10 @@ extern crate env_logger;
 // lazy_static for defining static variables
 #[macro_use]
 extern crate lazy_static;
+
+// bitflags for C-style bitmask flags
+#[macro_use]
+extern crate bitflags;
 
 // enum_to_str_derive for human-readable error numbers
 #[cfg(feature = "error_strings")]

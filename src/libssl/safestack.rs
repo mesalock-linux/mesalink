@@ -13,13 +13,13 @@
  *
  */
 
+use error_san::*;
 use libc::c_int;
 use libssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
 use libssl::x509::{MESALINK_X509, MESALINK_X509_NAME};
 use libssl::{SSL_FAILURE, SSL_SUCCESS};
-use ::error_san::*;
-use ::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use std::ptr;
+use {MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 
 // ---------------------------------------
 // STACK for MESALINK_X509

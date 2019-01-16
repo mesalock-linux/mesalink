@@ -13,17 +13,17 @@
  *
  */
 
+use error_san::*;
 use libc::{c_char, c_int};
 use libssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
 use libssl::safestack::MESALINK_STACK_MESALINK_X509_NAME;
 use libssl::{SSL_FAILURE, SSL_SUCCESS};
-use ::error_san::*;
-use ::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use ring::der;
 use rustls;
 use std::{ptr, slice, str};
 use untrusted;
 use webpki;
+use {MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 
 /// An OpenSSL X509 object
 #[allow(non_camel_case_types)]
