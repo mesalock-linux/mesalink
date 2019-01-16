@@ -97,7 +97,7 @@ fn generic_write<'a>(b: &mut MesalinkBioInner<'a>, buf: &[u8]) -> io::Result<usi
 }
 
 fn file_gets<'a>(inner: &mut MesalinkBioInner<'a>, buf: &mut [u8]) -> io::Result<usize> {
-    if buf.len() == 0 {
+    if buf.is_empty() {
         return Ok(0);
     }
     let file_bytes = if let MesalinkBioInner::File(ref mut f) = inner {
@@ -112,14 +112,14 @@ fn file_gets<'a>(inner: &mut MesalinkBioInner<'a>, buf: &mut [u8]) -> io::Result
             break;
         }
         buf[pos] = b;
-        pos = pos + 1;
+        pos += 1;
     }
     buf[pos] = b'\0';
     Ok(pos + 1) // include '\0' at the end
 }
 
 fn mem_gets<'a>(inner: &mut MesalinkBioInner<'a>, buf: &mut [u8]) -> io::Result<usize> {
-    if buf.len() == 0 {
+    if buf.is_empty() {
         return Ok(0);
     }
     let mem_bytes = if let MesalinkBioInner::Mem(ref mut m) = inner {
@@ -134,7 +134,7 @@ fn mem_gets<'a>(inner: &mut MesalinkBioInner<'a>, buf: &mut [u8]) -> io::Result<
             break;
         }
         buf[pos] = b;
-        pos = pos + 1;
+        pos += 1;
     }
     buf[pos] = b'\0';
     Ok(pos + 1) // include '\0' at the end
@@ -142,9 +142,9 @@ fn mem_gets<'a>(inner: &mut MesalinkBioInner<'a>, buf: &mut [u8]) -> io::Result<
 
 impl<'a> From<&MESALINK_BIO_METHOD> for MesalinkBioFunctions<'a> {
     fn from(m: &MESALINK_BIO_METHOD) -> MesalinkBioFunctions<'a> {
-        let gets = match m {
-            &MESALINK_BIO_METHOD::File => file_gets,
-            &MESALINK_BIO_METHOD::Mem => mem_gets,
+        let gets = match *m {
+            MESALINK_BIO_METHOD::File => file_gets,
+            MESALINK_BIO_METHOD::Mem => mem_gets,
             _ => unimplemented!(),
         };
         MesalinkBioFunctions {
@@ -245,11 +245,11 @@ fn inner_mesalink_bio_new<'a>(
 /// int BIO_free(BIO *a);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_BIO_free<'a>(bio_ptr: *mut MESALINK_BIO<'a>) {
+pub extern "C" fn mesalink_BIO_free(bio_ptr: *mut MESALINK_BIO) {
     let _ = check_inner_result!(inner_mesalink_bio_free(bio_ptr), CRYPTO_FAILURE);
 }
 
-fn inner_mesalink_bio_free<'a>(bio_ptr: *mut MESALINK_BIO<'a>) -> MesalinkInnerResult<c_int> {
+fn inner_mesalink_bio_free(bio_ptr: *mut MESALINK_BIO) -> MesalinkInnerResult<c_int> {
     let _ = sanitize_ptr_for_mut_ref(bio_ptr)?;
     let mut bio = unsafe { Box::from_raw(bio_ptr) };
     let inner = mem::replace(&mut bio.inner, MesalinkBioInner::Unspecified);
@@ -270,16 +270,16 @@ fn inner_mesalink_bio_free<'a>(bio_ptr: *mut MESALINK_BIO<'a>) -> MesalinkInnerR
 /// int BIO_read(BIO *b, void *buf, int len);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_BIO_read<'a>(
-    bio_ptr: *mut MESALINK_BIO<'a>,
+pub extern "C" fn mesalink_BIO_read(
+    bio_ptr: *mut MESALINK_BIO,
     buf_ptr: *mut c_void,
     len: c_int,
 ) -> c_int {
     check_inner_result!(inner_mesalink_bio_read(bio_ptr, buf_ptr, len), -1)
 }
 
-fn inner_mesalink_bio_read<'a>(
-    bio_ptr: *mut MESALINK_BIO<'a>,
+fn inner_mesalink_bio_read(
+    bio_ptr: *mut MESALINK_BIO,
     buf_ptr: *mut c_void,
     len: c_int,
 ) -> MesalinkInnerResult<c_int> {
@@ -306,16 +306,16 @@ fn inner_mesalink_bio_read<'a>(
 /// int BIO_gets(BIO *b, char *buf, int size);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_BIO_gets<'a>(
-    bio_ptr: *mut MESALINK_BIO<'a>,
+pub extern "C" fn mesalink_BIO_gets(
+    bio_ptr: *mut MESALINK_BIO,
     buf_ptr: *mut c_char,
     size: c_int,
 ) -> c_int {
     check_inner_result!(inner_mesalink_bio_gets(bio_ptr, buf_ptr, size), -1)
 }
 
-fn inner_mesalink_bio_gets<'a>(
-    bio_ptr: *mut MESALINK_BIO<'a>,
+fn inner_mesalink_bio_gets(
+    bio_ptr: *mut MESALINK_BIO,
     buf_ptr: *mut c_char,
     size: c_int,
 ) -> MesalinkInnerResult<c_int> {
@@ -342,16 +342,16 @@ fn inner_mesalink_bio_gets<'a>(
 /// int BIO_write(BIO *b, void *buf, int len);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_BIO_write<'a>(
-    bio_ptr: *mut MESALINK_BIO<'a>,
+pub extern "C" fn mesalink_BIO_write(
+    bio_ptr: *mut MESALINK_BIO,
     buf_ptr: *const c_void,
     len: c_int,
 ) -> c_int {
     check_inner_result!(inner_mesalink_bio_write(bio_ptr, buf_ptr, len), -1)
 }
 
-fn inner_mesalink_bio_write<'a>(
-    bio_ptr: *mut MESALINK_BIO<'a>,
+fn inner_mesalink_bio_write(
+    bio_ptr: *mut MESALINK_BIO,
     buf_ptr: *const c_void,
     len: c_int,
 ) -> MesalinkInnerResult<c_int> {
@@ -378,15 +378,12 @@ fn inner_mesalink_bio_write<'a>(
 /// int BIO_puts(BIO *b, const char *buf);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_BIO_puts<'a>(
-    bio_ptr: *mut MESALINK_BIO<'a>,
-    buf_ptr: *const c_char,
-) -> c_int {
+pub extern "C" fn mesalink_BIO_puts(bio_ptr: *mut MESALINK_BIO, buf_ptr: *const c_char) -> c_int {
     check_inner_result!(inner_mesalink_bio_puts(bio_ptr, buf_ptr), -1)
 }
 
-fn inner_mesalink_bio_puts<'a>(
-    bio_ptr: *mut MESALINK_BIO<'a>,
+fn inner_mesalink_bio_puts(
+    bio_ptr: *mut MESALINK_BIO,
     buf_ptr: *const c_char,
 ) -> MesalinkInnerResult<c_int> {
     let bio = sanitize_ptr_for_mut_ref(bio_ptr)?;
@@ -579,7 +576,7 @@ fn inner_mesalink_bio_new_fp<'a>(
         magic: *MAGIC,
         inner: MesalinkBioInner::File(file),
         method: (&MESALINK_BIO_METHOD_FILE).into(),
-        flags: flags,
+        flags,
     };
     Ok(Box::into_raw(Box::new(bio)) as *mut MESALINK_BIO)
 }

@@ -49,12 +49,7 @@
 //!
 
 #![deny(trivial_numeric_casts, unused_qualifications)]
-#![forbid(
-    anonymous_parameters,
-    unused_import_braces,
-    unused_results,
-    warnings
-)]
+#![forbid(anonymous_parameters, unused_import_braces, unused_results, warnings)]
 
 // libc for libc bindings
 extern crate libc;
