@@ -786,8 +786,8 @@ mod tests {
         mesalink_BIO_set_fp(bio_ptr_f, fp, 0);
         assert_eq!(0x0, mesalink_BIO_get_close(bio_ptr_f)); // BIO_NOCLOSE after set_fp
         let buf = [0u8; 1024];
-        let ret = mesalink_BIO_read(bio_ptr_f, buf.as_ptr() as *mut c_void, 1024);
-        assert_eq!(ret, 664); // The size of ca.cert is 664
+        let ret = mesalink_BIO_gets(bio_ptr_f, buf.as_ptr() as *mut c_char, 1024);
+        assert_eq!(ret, 28); // gets returns the first line
         mesalink_BIO_free(bio_ptr_f);
     }
 
