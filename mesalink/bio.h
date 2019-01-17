@@ -27,7 +27,6 @@ extern "C" {
 
 typedef struct MESALINK_BIO_METHOD MESALINK_BIO_METHOD;
 typedef struct MESALINK_BIO MESALINK_BIO;
-typedef struct MESALINK_BUF_MEM MESALINK_BUF_MEM;
 
 #define BIO_NOCLOSE         0x00
 #define BIO_CLOSE           0x01

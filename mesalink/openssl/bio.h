@@ -16,13 +16,14 @@
 #ifndef MESALINK_OPENSSL_BIO_H
 #define MESALINK_OPENSSL_BIO_H
 
+#include <mesalink/bio.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define MESALINK_BIO_METHOD BIO_METHOD
-#define MESALINK_BIO BIO
-#define MESALINK_BUF_MEM BUF_MEM
+#define BIO_METHOD MESALINK_BIO_METHOD
+#define BIO MESALINK_BIO
 
 #define BIO_new mesalink_BIO_new
 #define BIO_free mesalink_BIO_free
@@ -35,8 +36,8 @@ extern "C" {
 #define BIO_s_file mesalink_BIO_s_file
 #define BIO_new_fp mesalink_BIO_new_fp
 #define BIO_set_fp mesalink_BIO_set_fp
-#define BIO_set_close mesalink_BIO_set_close
 #define BIO_get_close mesalink_BIO_get_close
+#define BIO_set_close mesalink_BIO_set_close
 
 #define BIO_new_file mesalink_BIO_new_file
 #define BIO_read_filename mesalink_BIO_read_filename

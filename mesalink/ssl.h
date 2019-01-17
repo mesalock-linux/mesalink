@@ -27,7 +27,7 @@ extern "C" {
 #include <mesalink/x509.h>
 
 typedef struct MESALINK_METHOD MESALINK_METHOD;
-typedef struct MEASLINK_CTX MESALINK_CTX;
+typedef struct MESALINK_CTX MESALINK_CTX;
 typedef struct MESALINK_CIPHER MESALINK_CIPHER;
 typedef struct MESALINK_SSL MESALINK_SSL;
 
