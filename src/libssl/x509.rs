@@ -30,7 +30,7 @@ use {MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 #[derive(Clone)]
 pub struct MESALINK_X509 {
     magic: [u8; MAGIC_SIZE],
-    cert_data: rustls::Certificate,
+    pub inner: rustls::Certificate,
 }
 
 impl MesalinkOpaquePointerType for MESALINK_X509 {
@@ -44,7 +44,7 @@ impl MESALINK_X509 {
     pub(crate) fn new(cert: rustls::Certificate) -> MESALINK_X509 {
         MESALINK_X509 {
             magic: *MAGIC,
-            cert_data: cert,
+            inner: cert,
         }
     }
 }
@@ -56,7 +56,6 @@ impl MESALINK_X509 {
 ///
 /// void X509_free(X509 *a);
 /// ```
-///
 #[no_mangle]
 pub extern "C" fn mesalink_X509_free(x509_ptr: *mut MESALINK_X509) {
     let _ = check_inner_result!(inner_mesalink_x509_free(x509_ptr), SSL_FAILURE);
@@ -99,7 +98,6 @@ impl<'a> MESALINK_X509_NAME {
 ///
 /// void X509_free(X509 *a);
 /// ```
-///
 #[no_mangle]
 pub extern "C" fn mesalink_X509_NAME_free(x509_name_ptr: *mut MESALINK_X509_NAME) {
     let _ = check_inner_result!(inner_mesalink_x509_name_free(x509_name_ptr), SSL_FAILURE);
@@ -122,7 +120,6 @@ fn inner_mesalink_x509_name_free(
 ///
 /// STACK_OF(X509_NAME) *X509_get_alt_subject_names(const X509 *x);;
 /// ```
-///
 #[no_mangle]
 pub extern "C" fn mesalink_X509_get_alt_subject_names(
     x509_ptr: *mut MESALINK_X509,
@@ -137,7 +134,7 @@ fn inner_mesalink_x509_get_alt_subject_names(
     x509_ptr: *mut MESALINK_X509,
 ) -> MesalinkInnerResult<*mut MESALINK_STACK_MESALINK_X509_NAME> {
     let cert = sanitize_ptr_for_ref(x509_ptr)?;
-    let cert_der = untrusted::Input::from(&cert.cert_data.0);
+    let cert_der = untrusted::Input::from(&cert.inner.0);
     let x509 = webpki::EndEntityCert::from(cert_der)
         .map_err(|e| error!(rustls::TLSError::WebPKIError(e).into()))?;
     let subject_alt_name = x509
@@ -166,7 +163,6 @@ fn inner_mesalink_x509_get_alt_subject_names(
 ///
 /// X509_NAME *X509_get_subject(const X509 *x);;
 /// ```
-///
 #[no_mangle]
 pub extern "C" fn mesalink_X509_get_subject(
     x509_ptr: *mut MESALINK_X509,
@@ -178,7 +174,7 @@ fn inner_mesalink_x509_get_subject(
     x509_ptr: *mut MESALINK_X509,
 ) -> MesalinkInnerResult<*mut MESALINK_X509_NAME> {
     let cert = sanitize_ptr_for_ref(x509_ptr)?;
-    let cert_der = untrusted::Input::from(&cert.cert_data.0);
+    let cert_der = untrusted::Input::from(&cert.inner.0);
     let x509 = webpki::EndEntityCert::from(cert_der)
         .map_err(|e| error!(rustls::TLSError::WebPKIError(e).into()))?;
     let subject = x509.inner.subject.as_slice_less_safe();
@@ -217,7 +213,6 @@ fn inner_mesalink_x509_get_subject(
 ///
 /// X509_NAME *X509_get_subject_name(const X509 *x);;
 /// ```
-///
 #[no_mangle]
 pub extern "C" fn mesalink_X509_get_subject_name(
     x509_ptr: *mut MESALINK_X509,
@@ -232,7 +227,7 @@ fn inner_mesalink_x509_get_subject_name(
     x509_ptr: *mut MESALINK_X509,
 ) -> MesalinkInnerResult<*mut MESALINK_X509_NAME> {
     let cert = sanitize_ptr_for_ref(x509_ptr)?;
-    let cert_der = untrusted::Input::from(&cert.cert_data.0);
+    let cert_der = untrusted::Input::from(&cert.inner.0);
     let x509 = webpki::EndEntityCert::from(cert_der)
         .map_err(|e| error!(rustls::TLSError::WebPKIError(e).into()))?;
 
@@ -302,7 +297,6 @@ fn inner_mesalink_x509_get_subject_name(
 ///
 /// char * X509_NAME_oneline(X509_NAME *a,char *buf,int size);
 /// ```
-///
 #[no_mangle]
 pub extern "C" fn mesalink_X509_NAME_oneline(
     x509_name_ptr: *mut MESALINK_X509_NAME,

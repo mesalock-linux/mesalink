@@ -17,6 +17,14 @@
 /// Please also refer to the header file at mesalink/openssl/bio.h
 pub mod bio;
 
+/// Implementations of OpenSSL EVP APIs.
+/// Please also refer to the header file at mesalink/openssl/evp.h
+pub mod evp;
+
+/// Implementations of OpenSSL PEM APIs.
+/// Please also refer to the header file at mesalink/openssl/evp.h
+pub mod pem;
+
 use libc::c_int;
 pub(self) const CRYPTO_FAILURE: c_int = 0;
 pub(self) const CRYPTO_SUCCESS: c_int = 1;

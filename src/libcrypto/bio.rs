@@ -195,6 +195,22 @@ impl<'a> MESALINK_BIO<'a> {
     }
 }
 
+impl<'a> Read for MESALINK_BIO<'a> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.inner.read(buf)
+    }
+}
+
+impl<'a> Write for MESALINK_BIO<'a> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.inner.write(buf)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.inner.flush()
+    }
+}
+
 ////////////////////////////////////////////////////
 ///
 /// BIO generic C APIs

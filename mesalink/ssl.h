@@ -25,6 +25,7 @@ extern "C" {
 #include <mesalink/version.h>
 #include <mesalink/visibility.h>
 #include <mesalink/x509.h>
+#include <mesalink/evp.h>
 
 typedef struct MESALINK_METHOD MESALINK_METHOD;
 typedef struct MESALINK_CTX MESALINK_CTX;
@@ -104,17 +105,17 @@ MESALINK_API MESALINK_METHOD *mesalink_TLSv1_3_server_method(void);
 
 MESALINK_API MESALINK_CTX *mesalink_SSL_CTX_new(MESALINK_METHOD *);
 MESALINK_API int mesalink_SSL_CTX_load_verify_locations(MESALINK_CTX *,
-                                                          const char *,
-                                                          const char *);
+                                                        const char *,
+                                                        const char *);
 
-#ifdef HAVE_SERVER
 MESALINK_API int mesalink_SSL_CTX_use_certificate_chain_file(MESALINK_CTX *,
                                                              const char *,
                                                              int);
 MESALINK_API int mesalink_SSL_CTX_use_PrivateKey_file(MESALINK_CTX *,
                                                       const char *, int);
+MESALINK_API int mesalink_SSL_CTX_use_PrivateKey(MESALINK_CTX *,
+                                                 MESALINK_EVP_PKEY *);
 MESALINK_API int mesalink_SSL_CTX_check_private_key(const MESALINK_CTX *);
-#endif
 
 MESALINK_API int mesalink_SSL_CTX_set_verify(MESALINK_CTX *, int,
                                              int (*cb)(int, MESALINK_CTX *));

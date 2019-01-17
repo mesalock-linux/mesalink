@@ -6,8 +6,12 @@ nobase_include_HEADERS+= \
                     mesalink/err.h \
                     mesalink/x509.h \
                     mesalink/bio.h \
+                    mesalink/evp.h \
+                    mesalink/pem.h \
                     mesalink/openssl/ssl.h \
                     mesalink/openssl/err.h \
                     mesalink/openssl/x509.h \
                     mesalink/openssl/bio.h \
+                    mesalink/openssl/evp.h \
+                    mesalink/openssl/pem.h \
                     mesalink/openssl/safestack.h

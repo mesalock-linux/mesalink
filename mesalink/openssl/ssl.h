@@ -97,6 +97,7 @@ extern "C" {
 #ifdef HAVE_SERVER
 #define SSL_CTX_use_certificate_chain_file                                    \
   mesalink_SSL_CTX_use_certificate_chain_file
+#define SSL_CTX_use_PrivateKey mesalink_SSL_CTX_use_PrivateKey
 #define SSL_CTX_use_PrivateKey_file mesalink_SSL_CTX_use_PrivateKey_file
 #define SSL_CTX_check_private_key mesalink_SSL_CTX_check_private_key
 #endif

@@ -37,6 +37,7 @@
 
 use error_san::*;
 use libc::{c_char, c_int, c_long, c_uchar, size_t};
+use libcrypto::evp::MESALINK_EVP_PKEY;
 use libssl::err::{ErrorCode, MesalinkBuiltinError, MesalinkError, MesalinkInnerResult};
 use libssl::safestack::MESALINK_STACK_MESALINK_X509;
 use libssl::x509::MESALINK_X509;
@@ -315,7 +316,7 @@ fn complete_io(
                     io::ErrorKind::UnexpectedEof,
                     "Unexpected EOF"
                 )
-                .into()))
+                .into()));
             }
             (..) => (),
         }
@@ -849,7 +850,7 @@ fn inner_mesalink_ssl_ctx_use_certificate_chain_file(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     filename_ptr: *const c_char,
 ) -> MesalinkInnerResult<c_int> {
-    use rustls::internal;
+    use libcrypto::pem;
     use std::fs;
 
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
@@ -862,12 +863,48 @@ fn inner_mesalink_ssl_ctx_use_certificate_chain_file(
             .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?
     };
     let file = fs::File::open(filename).map_err(|e| error!(e.into()))?;
-    let certs = internal::pemfile::certs(&mut io::BufReader::new(file))
+    let mut buf_reader = io::BufReader::new(file);
+    let certs = pem::load_certificate(&mut buf_reader)
         .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
-    if certs.is_empty() {
-        return Err(error!(MesalinkBuiltinError::BadFuncArg.into()));
-    }
     util::get_context_mut(ctx).certificates = Some(certs);
+    if let Ok((certs, priv_key)) = util::try_get_context_certs_and_key(ctx) {
+        util::get_context_mut(ctx)
+            .client_config
+            .set_single_client_cert(certs.clone(), priv_key.clone());
+        util::get_context_mut(ctx)
+            .server_config
+            .set_single_cert(certs.clone(), priv_key.clone())
+            .map_err(|e| error!(e.into()))?;
+    }
+    Ok(SSL_SUCCESS)
+}
+
+/// `SSL_CTX_use_PrivateKey` - add the private key found in *pkey* to ctx.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_CTX_use_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    pkey_ptr: *mut MESALINK_EVP_PKEY,
+) -> c_int {
+    check_inner_result!(
+        inner_mesalink_ssl_ctx_use_privatekey(ctx_ptr, pkey_ptr),
+        SSL_FAILURE
+    )
+}
+
+fn inner_mesalink_ssl_ctx_use_privatekey(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    pkey_ptr: *mut MESALINK_EVP_PKEY,
+) -> MesalinkInnerResult<c_int> {
+    let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
+    let pkey = sanitize_ptr_for_ref(pkey_ptr)?;
+
+    util::get_context_mut(ctx).private_key = Some(pkey.inner.clone());
     if let Ok((certs, priv_key)) = util::try_get_context_certs_and_key(ctx) {
         util::get_context_mut(ctx)
             .client_config
@@ -890,7 +927,6 @@ fn inner_mesalink_ssl_ctx_use_certificate_chain_file(
 /// int SSL_CTX_use_PrivateKey_file(SSL_CTX *ctx, const char *file, int type);
 /// ```
 #[no_mangle]
-#[cfg(feature = "server_apis")]
 pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     filename_ptr: *const c_char,
@@ -902,12 +938,11 @@ pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey_file(
     )
 }
 
-#[cfg(feature = "server_apis")]
 fn inner_mesalink_ssl_ctx_use_privatekey_file(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     filename_ptr: *const c_char,
 ) -> MesalinkInnerResult<c_int> {
-    use rustls::internal;
+    use libcrypto::pem;
     use std::fs;
 
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
@@ -920,17 +955,9 @@ fn inner_mesalink_ssl_ctx_use_privatekey_file(
             .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?
     };
     let file = fs::File::open(filename).map_err(|e| error!(e.into()))?;
-    let rsa_keys = internal::pemfile::rsa_private_keys(&mut io::BufReader::new(file));
-    let file = fs::File::open(filename).map_err(|e| error!(e.into()))?;
-    let pk8_keys = internal::pemfile::pkcs8_private_keys(&mut io::BufReader::new(file));
-    let mut valid_keys = Err(error!(MesalinkBuiltinError::BadFuncArg.into()));
-    valid_keys = rsa_keys
-        .and_then(|keys| if keys.is_empty() { Err(()) } else { Ok(keys) })
-        .or_else(|_| valid_keys);
-    valid_keys = pk8_keys
-        .and_then(|keys| if keys.is_empty() { Err(()) } else { Ok(keys) })
-        .or_else(|_| valid_keys);
-    let keys = valid_keys?;
+    let mut buf_reader = io::BufReader::new(file);
+    let keys = pem::load_private_key(&mut buf_reader)
+        .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     util::get_context_mut(ctx).private_key = Some(keys[0].clone());
     if let Ok((certs, priv_key)) = util::try_get_context_certs_and_key(ctx) {
         util::get_context_mut(ctx)
@@ -953,7 +980,6 @@ fn inner_mesalink_ssl_ctx_use_privatekey_file(
 /// int SSL_CTX_check_private_key(const SSL_CTX *ctx);
 /// ```
 #[no_mangle]
-#[cfg(feature = "server_apis")]
 pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX_ARC) -> c_int {
     check_inner_result!(
         inner_mesalink_ssl_ctx_check_private_key(ctx_ptr),
@@ -961,7 +987,6 @@ pub extern "C" fn mesalink_SSL_CTX_check_private_key(ctx_ptr: *mut MESALINK_CTX_
     )
 }
 
-#[cfg(feature = "server_apis")]
 fn inner_mesalink_ssl_ctx_check_private_key(
     ctx_ptr: *mut MESALINK_CTX_ARC,
 ) -> MesalinkInnerResult<c_int> {
