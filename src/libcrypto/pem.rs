@@ -21,6 +21,7 @@ use libc::c_void;
 use libssl::x509::MESALINK_X509;
 //use libcrypto::{CRYPTO_FAILURE, CRYPTO_SUCCESS};
 use libssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
+use std::io::{Read, Seek};
 use std::{io, ptr};
 
 /// `PEM_read_bio_PrivateKey` reads a private key from *bio*. If there are
@@ -155,16 +156,15 @@ pub extern "C" fn mesalink_PEM_read_X509(
     ret
 }
 
-pub(crate) fn load_private_key<T: io::Read>(
+pub(crate) fn load_private_key<T: Read + Seek>(
     buf_reader: &mut io::BufReader<T>,
 ) -> Result<Vec<rustls::PrivateKey>, ()> {
     let mut parsed_keys: Result<Vec<rustls::PrivateKey>, ()> = Err(());
     let rsa_keys = rustls::internal::pemfile::rsa_private_keys(buf_reader);
-
     parsed_keys = rsa_keys
         .and_then(|keys| if keys.is_empty() { Err(()) } else { Ok(keys) })
         .or_else(|_| parsed_keys);
-
+    let _ = buf_reader.seek(io::SeekFrom::Start(0));
     let pk8_keys = rustls::internal::pemfile::pkcs8_private_keys(buf_reader);
     parsed_keys = pk8_keys
         .and_then(|keys| if keys.is_empty() { Err(()) } else { Ok(keys) })
@@ -172,7 +172,7 @@ pub(crate) fn load_private_key<T: io::Read>(
     parsed_keys
 }
 
-pub(crate) fn load_certificate<T: io::Read>(
+pub(crate) fn load_certificate<T: Read>(
     buf_reader: &mut io::BufReader<T>,
 ) -> Result<Vec<rustls::Certificate>, ()> {
     rustls::internal::pemfile::certs(buf_reader).and_then(|certs| {
@@ -182,4 +182,66 @@ pub(crate) fn load_certificate<T: io::Read>(
             Ok(certs)
         }
     })
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use libc::c_char;
+    use libcrypto::{bio, evp};
+    use libssl::x509;
+    use std::fs;
+    use std::os::unix::io::AsRawFd;
+
+    #[test]
+    fn pem_read_bio_private_key() {
+        let bio_ptr = bio::mesalink_BIO_read_filename(b"tests/end.key\0".as_ptr() as *const c_char);
+        assert_ne!(bio_ptr, ptr::null_mut());
+        let pkey_ptr = mesalink_PEM_read_bio_PrivateKey(
+            bio_ptr,
+            ptr::null_mut(),
+            ptr::null_mut(),
+            ptr::null_mut(),
+        );
+        assert_ne!(pkey_ptr, ptr::null_mut());
+        evp::mesalink_EVP_PKEY_free(pkey_ptr);
+        bio::mesalink_BIO_free(bio_ptr);
+    }
+
+    #[test]
+    fn pem_read_private_key() {
+        let file = fs::File::open("tests/end.key").unwrap(); // Read-only, "r"
+        let fd = file.as_raw_fd();
+        let fp = unsafe { libc::fdopen(fd, b"r\0".as_ptr() as *const c_char) };
+        assert_ne!(fp, ptr::null_mut());
+        let pkey_ptr =
+            mesalink_PEM_read_PrivateKey(fp, ptr::null_mut(), ptr::null_mut(), ptr::null_mut());
+        assert_ne!(pkey_ptr, ptr::null_mut());
+        evp::mesalink_EVP_PKEY_free(pkey_ptr);
+    }
+
+    #[test]
+    fn pem_read_bio_x509() {
+        let bio_ptr =
+            bio::mesalink_BIO_read_filename(b"tests/end.fullchain\0".as_ptr() as *const c_char);
+        assert_ne!(bio_ptr, ptr::null_mut());
+        let x509_ptr =
+            mesalink_PEM_read_bio_X509(bio_ptr, ptr::null_mut(), ptr::null_mut(), ptr::null_mut());
+        assert_ne!(x509_ptr, ptr::null_mut());
+        x509::mesalink_X509_free(x509_ptr);
+        bio::mesalink_BIO_free(bio_ptr);
+    }
+
+    #[test]
+    fn pem_read_x509() {
+        let file = fs::File::open("tests/end.fullchain").unwrap(); // Read-only, "r"
+        let fd = file.as_raw_fd();
+        let fp = unsafe { libc::fdopen(fd, b"r\0".as_ptr() as *const c_char) };
+        assert_ne!(fp, ptr::null_mut());
+        let x509_ptr =
+            mesalink_PEM_read_X509(fp, ptr::null_mut(), ptr::null_mut(), ptr::null_mut());
+        assert_ne!(x509_ptr, ptr::null_mut());
+        x509::mesalink_X509_free(x509_ptr);
+    }
+
 }

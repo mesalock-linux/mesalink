@@ -21,12 +21,12 @@ use std::{ffi, fs, io, mem, ptr, slice};
 use {MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 
 // Trait imports
-use std::io::{Read, Write};
+use std::io::{Read, Write, Seek};
 use std::ops::{Deref, DerefMut};
 use std::os::unix::io::{FromRawFd, IntoRawFd};
 
-pub trait BioRW: Read + Write {}
-impl<T> BioRW for T where T: Read + Write + ?Sized {}
+pub trait BioRW: Read + Write + Seek {}
+impl<T> BioRW for T where T: Read + Write + Seek + ?Sized {}
 
 ////////////////////////////////////////////////////
 ///
@@ -208,6 +208,12 @@ impl<'a> Write for MESALINK_BIO<'a> {
 
     fn flush(&mut self) -> io::Result<()> {
         self.inner.flush()
+    }
+}
+
+impl<'a> Seek for MESALINK_BIO<'a> {
+    fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
+        self.inner.seek(pos)
     }
 }
 
@@ -809,13 +815,18 @@ mod tests {
 
     #[test]
     fn bio_file_new_from_path() {
-        let path_ptr = b"tests/ca.cert\0".as_ptr() as *const c_char;
+        let path_ptr = b"tests/deleteme\0".as_ptr() as *const c_char;
+
+        let bio_ptr_f = mesalink_BIO_write_filename(path_ptr);
+        assert_ne!(bio_ptr_f, ptr::null_mut());
+        mesalink_BIO_free(bio_ptr_f);
+
+        let bio_ptr_f = mesalink_BIO_rw_filename(path_ptr);
+        assert_ne!(bio_ptr_f, ptr::null_mut());
+        mesalink_BIO_free(bio_ptr_f);
+
         let bio_ptr_f = mesalink_BIO_new_file(path_ptr, b"r\0".as_ptr() as *const c_char);
         assert_ne!(bio_ptr_f, ptr::null_mut());
-        assert_eq!(0x1, mesalink_BIO_get_close(bio_ptr_f)); // BIO_CLOSE
-        let buf = [0u8; 1024];
-        let ret = mesalink_BIO_read(bio_ptr_f, buf.as_ptr() as *mut c_void, 1024);
-        assert_eq!(ret, 664); // The size of ca.cert is 664
         mesalink_BIO_free(bio_ptr_f);
 
         let bio_ptr_f = mesalink_BIO_read_filename(path_ptr);
@@ -824,17 +835,10 @@ mod tests {
         assert_eq!(0x0, mesalink_BIO_get_close(bio_ptr_f)); // BIO_NOCLOSE after set_fp
         mesalink_BIO_free(bio_ptr_f);
 
-        let bio_ptr_f = mesalink_BIO_write_filename(b"tests/deleteme\0".as_ptr() as *const c_char);
-        assert_ne!(bio_ptr_f, ptr::null_mut());
-        mesalink_BIO_free(bio_ptr_f);
-        let _ = fs::remove_file("tests/deleteme");
-
         let bio_ptr_f = mesalink_BIO_append_filename(path_ptr);
         assert_ne!(bio_ptr_f, ptr::null_mut());
         mesalink_BIO_free(bio_ptr_f);
 
-        let bio_ptr_f = mesalink_BIO_rw_filename(path_ptr);
-        assert_ne!(bio_ptr_f, ptr::null_mut());
-        mesalink_BIO_free(bio_ptr_f);
+        let _ = fs::remove_file("tests/deleteme");
     }
 }
