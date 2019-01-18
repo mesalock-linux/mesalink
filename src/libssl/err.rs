@@ -497,7 +497,7 @@ impl From<u64> for ErrorCode {
 
 #[doc(hidden)]
 #[allow(unused_variables)]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 impl<'a> From<&'a MesalinkError> for ErrorCode {
     fn from(e: &'a MesalinkError) -> ErrorCode {
         use rustls::internal::msgs::enums::{AlertDescription, ContentType};
