@@ -866,8 +866,10 @@ fn inner_mesalink_ssl_ctx_use_certificate_chain_file(
     };
     let file = fs::File::open(filename).map_err(|e| error!(e.into()))?;
     let mut buf_reader = io::BufReader::new(file);
-    let certs = pem::load_certificate(&mut buf_reader)
-        .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+    let certs = pem::get_certificate_chain(&mut buf_reader);
+    if certs.is_empty() {
+        return Err(error!(MesalinkBuiltinError::BadFuncArg.into()));
+    }
     util::get_context_mut(ctx).certificates = Some(certs);
     if let Ok((certs, priv_key)) = util::try_get_context_certs_and_key(ctx) {
         util::get_context_mut(ctx)
@@ -1007,9 +1009,9 @@ fn inner_mesalink_ssl_ctx_use_privatekey_file(
     };
     let file = fs::File::open(filename).map_err(|e| error!(e.into()))?;
     let mut buf_reader = io::BufReader::new(file);
-    let keys = pem::load_private_key(&mut buf_reader)
+    let key = pem::get_either_rsa_or_ecdsa_private_key(&mut buf_reader)
         .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
-    util::get_context_mut(ctx).private_key = Some(keys[0].clone());
+    util::get_context_mut(ctx).private_key = Some(key);
     if let Ok((certs, priv_key)) = util::try_get_context_certs_and_key(ctx) {
         util::get_context_mut(ctx)
             .client_config

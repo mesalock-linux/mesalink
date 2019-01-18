@@ -80,6 +80,9 @@ extern crate lazy_static;
 #[macro_use]
 extern crate bitflags;
 
+// base64 for decoding PEM files
+extern crate base64;
+
 // enum_to_str_derive for human-readable error numbers
 #[cfg(feature = "error_strings")]
 #[macro_use]

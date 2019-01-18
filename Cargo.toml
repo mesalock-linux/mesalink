@@ -43,6 +43,7 @@ libc = "0.2.42"
 lazy_static = "1.0.0"
 enum_to_u8_slice_derive = "0.1"
 bitflags = "1.0.4"
+base64 = "0.10"
 
 [patch.crates-io]
 rustls = { git = "https://github.com/mesalock-linux/rustls", tag = "v0.7.0", default-features = false }

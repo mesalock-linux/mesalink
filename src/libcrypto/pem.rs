@@ -53,9 +53,9 @@ fn inner_mesalink_pem_read_bio_privatekey(
 ) -> MesalinkInnerResult<*mut MESALINK_EVP_PKEY> {
     let bio = sanitize_ptr_for_mut_ref(bio_ptr)?;
     let mut buf_reader = io::BufReader::new(bio);
-    let parsed_keys = load_private_key(&mut buf_reader)
+    let key = get_either_rsa_or_ecdsa_private_key(&mut buf_reader)
         .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
-    let pkey = MESALINK_EVP_PKEY::new(parsed_keys[0].clone());
+    let pkey = MESALINK_EVP_PKEY::new(key);
     let pkey_ptr = Box::into_raw(Box::new(pkey)) as *mut MESALINK_EVP_PKEY;
 
     if !pkey_pp.is_null() {
@@ -119,9 +119,9 @@ fn inner_mesalink_pem_read_bio_x509(
 ) -> MesalinkInnerResult<*mut MESALINK_X509> {
     let bio = sanitize_ptr_for_mut_ref(bio_ptr)?;
     let mut buf_reader = io::BufReader::new(bio);
-    let certs = load_certificate(&mut buf_reader)
+    let cert = get_certificate(&mut buf_reader)
         .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
-    let x509 = MESALINK_X509::new(certs[0].clone());
+    let x509 = MESALINK_X509::new(cert);
     let x509_ptr = Box::into_raw(Box::new(x509)) as *mut MESALINK_X509;
     if !x509_pp.is_null() {
         unsafe {
@@ -132,8 +132,7 @@ fn inner_mesalink_pem_read_bio_x509(
     Ok(x509_ptr)
 }
 
-/// `PEM_read_X509` reads a X509 certificate from *file*. If there are
-/// multiple certificates in the file, only the first one is read.
+/// `PEM_read_X509` reads a X509 certificate from *file*.
 ///
 /// ```c
 /// #include <mesalink/openssl/pem.h>
@@ -156,32 +155,82 @@ pub extern "C" fn mesalink_PEM_read_X509(
     ret
 }
 
-pub(crate) fn load_private_key<T: Read + Seek>(
+pub(crate) fn get_either_rsa_or_ecdsa_private_key<T: Read + Seek>(
     buf_reader: &mut io::BufReader<T>,
-) -> Result<Vec<rustls::PrivateKey>, ()> {
-    let mut parsed_keys: Result<Vec<rustls::PrivateKey>, ()> = Err(());
-    let rsa_keys = rustls::internal::pemfile::rsa_private_keys(buf_reader);
-    parsed_keys = rsa_keys
-        .and_then(|keys| if keys.is_empty() { Err(()) } else { Ok(keys) })
-        .or_else(|_| parsed_keys);
+) -> Result<rustls::PrivateKey, ()> {
+    let maybe_rsa_key = get_rsa_private_key(buf_reader);
     let _ = buf_reader.seek(io::SeekFrom::Start(0));
-    let pk8_keys = rustls::internal::pemfile::pkcs8_private_keys(buf_reader);
-    parsed_keys = pk8_keys
-        .and_then(|keys| if keys.is_empty() { Err(()) } else { Ok(keys) })
-        .or_else(|_| parsed_keys);
-    parsed_keys
+    let maybe_ecdsa_key = get_ecdsa_private_key(buf_reader);
+    match (maybe_rsa_key, maybe_ecdsa_key) {
+        (Ok(k), Err(_)) => Ok(k),
+        (Err(_), Ok(k)) => Ok(k),
+        _ => Err(()),
+    }
 }
 
-pub(crate) fn load_certificate<T: Read>(
-    buf_reader: &mut io::BufReader<T>,
-) -> Result<Vec<rustls::Certificate>, ()> {
-    rustls::internal::pemfile::certs(buf_reader).and_then(|certs| {
-        if certs.is_empty() {
-            Err(())
-        } else {
-            Ok(certs)
+pub(crate) fn get_certificate_chain(rd: &mut io::BufRead) -> Vec<rustls::Certificate> {
+    let mut certs = Vec::new();
+    while let Ok(cert) = get_certificate(rd) {
+        certs.push(cert);
+    }
+    certs
+}
+
+pub(crate) fn get_certificate(rd: &mut io::BufRead) -> Result<rustls::Certificate, ()> {
+    extract_one(
+        rd,
+        "-----BEGIN CERTIFICATE-----",
+        "-----END CERTIFICATE-----",
+        &|v| rustls::Certificate(v),
+    )
+}
+
+pub(crate) fn get_rsa_private_key(rd: &mut io::BufRead) -> Result<rustls::PrivateKey, ()> {
+    extract_one(
+        rd,
+        "-----BEGIN RSA PRIVATE KEY-----",
+        "-----END RSA PRIVATE KEY-----",
+        &|v| rustls::PrivateKey(v),
+    )
+}
+
+pub(crate) fn get_ecdsa_private_key(rd: &mut io::BufRead) -> Result<rustls::PrivateKey, ()> {
+    extract_one(
+        rd,
+        "-----BEGIN PRIVATE KEY-----",
+        "-----END PRIVATE KEY-----",
+        &|v| rustls::PrivateKey(v),
+    )
+}
+
+fn extract_one<A>(
+    rd: &mut io::BufRead,
+    start_mark: &str,
+    end_mark: &str,
+    f: &Fn(Vec<u8>) -> A,
+) -> Result<A, ()> {
+    let mut b64buf = String::new();
+    let mut take_base64 = false;
+    let mut raw_line = Vec::<u8>::new();
+    loop {
+        raw_line.clear();
+        let len = rd.read_until(b'\n', &mut raw_line).map_err(|_| ())?;
+        if len == 0 {
+            return Err(());
         }
-    })
+        let line = String::from_utf8_lossy(&raw_line);
+        if line.starts_with(start_mark) {
+            take_base64 = true;
+            continue;
+        }
+        if line.starts_with(end_mark) {
+            let der = base64::decode(&b64buf).map_err(|_| ())?;
+            return Ok(f(der));
+        }
+        if take_base64 {
+            b64buf.push_str(line.trim());
+        }
+    }
 }
 
 #[cfg(test)]

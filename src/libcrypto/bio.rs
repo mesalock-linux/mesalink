@@ -713,13 +713,18 @@ pub extern "C" fn mesalink_BIO_new_mem_buf<'a>(
     if buf_ptr.is_null() {
         return ptr::null_mut();
     }
+    let buflen = if len < 0 {
+        unsafe { libc::strlen(buf_ptr as *const c_char) }
+    } else {
+        len as usize
+    };
     let buf_ptr = buf_ptr as *mut u8;
-    let buf = unsafe { slice::from_raw_parts_mut(buf_ptr, len as usize) };
+    let buf = unsafe { slice::from_raw_parts_mut(buf_ptr, buflen) };
     let bio = MESALINK_BIO {
         magic: *MAGIC,
         inner: MesalinkBioInner::Mem(io::Cursor::new(buf)),
         method: (&MESALINK_BIO_METHOD_MEM).into(),
-        flags: BioFlags::BIO_CLOSE,
+        flags: BioFlags::default(), // TODO: support BIO_FLAGS_MEM_RDONLY
     };
     Box::into_raw(Box::new(bio)) as *mut MESALINK_BIO
 }
