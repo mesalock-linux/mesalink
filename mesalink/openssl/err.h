@@ -16,12 +16,12 @@
 #ifndef MESALINK_OPENSSL_ERR_H
 #define MESALINK_OPENSSL_ERR_H
 
+#include <mesalink/ssl.h>
+#include <mesalink/err.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <mesalink/ssl.h>
-#include <mesalink/err.h>
 
 #define SSL_ERROR_WANT_READ MESALINK_ERROR_WANT_READ
 #define SSL_ERROR_WANT_WRITE MESALINK_ERROR_WANT_WRITE

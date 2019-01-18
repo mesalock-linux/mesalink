@@ -46,10 +46,10 @@ MESALINK_API int mesalink_BIO_get_close(MESALINK_BIO *);
 MESALINK_API int mesalink_BIO_set_close(MESALINK_BIO *, long);
 
 MESALINK_API MESALINK_BIO *mesalink_BIO_new_file(const char *, const char *);
-MESALINK_API int mesalink_BIO_read_filename(MESALINK_BIO *, char *);
-MESALINK_API int mesalink_BIO_write_filename(MESALINK_BIO *, char *);
-MESALINK_API int mesalink_BIO_append_filename(MESALINK_BIO *, char *);
-MESALINK_API int mesalink_BIO_rw_filename(MESALINK_BIO *, char *);
+MESALINK_API int mesalink_BIO_read_filename(MESALINK_BIO *, const char *);
+MESALINK_API int mesalink_BIO_write_filename(MESALINK_BIO *, const char *);
+MESALINK_API int mesalink_BIO_append_filename(MESALINK_BIO *, const char *);
+MESALINK_API int mesalink_BIO_rw_filename(MESALINK_BIO *, const char *);
 
 MESALINK_API MESALINK_BIO_METHOD *mesalink_BIO_s_mem(void);
 MESALINK_API MESALINK_BIO *mesalink_BIO_new_mem_buf(const void *, int);

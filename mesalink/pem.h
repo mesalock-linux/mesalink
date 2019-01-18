@@ -28,7 +28,7 @@ extern "C" {
 #include <mesalink/x509.h>
 #include <stdio.h>
 
-typedef pem_password_cb pem_password_cb;
+typedef int pem_password_cb(char *buf, int size, int rwflag, void *userdata);
 
 MESALINK_API MESALINK_EVP_PKEY *mesalink_PEM_read_bio_PrivateKey(
   MESALINK_BIO *, MESALINK_EVP_PKEY **, pem_password_cb *cb, void *u);

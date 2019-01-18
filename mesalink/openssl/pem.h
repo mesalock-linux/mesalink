@@ -16,7 +16,7 @@
 #ifndef MESALINK_OPENSSL_PEM_H
 #define MESALINK_OPENSSL_PEM_H
 
-#include <mesalink/evp.h>
+#include <mesalink/pem.h>
 
 #ifdef __cplusplus
 extern "C" {

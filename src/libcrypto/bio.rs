@@ -21,7 +21,7 @@ use std::{ffi, fs, io, mem, ptr, slice};
 use {MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 
 // Trait imports
-use std::io::{Read, Write, Seek};
+use std::io::{Read, Seek, Write};
 use std::ops::{Deref, DerefMut};
 use std::os::unix::io::{FromRawFd, IntoRawFd};
 
