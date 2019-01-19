@@ -52,7 +52,7 @@ fn inner_mesalink_pem_read_bio_privatekey(
     pkey_pp: *mut *mut MESALINK_EVP_PKEY,
 ) -> MesalinkInnerResult<*mut MESALINK_EVP_PKEY> {
     let bio = sanitize_ptr_for_mut_ref(bio_ptr)?;
-    let mut buf_reader = io::BufReader::new(bio);
+    let mut buf_reader = io::BufReader::with_capacity(1, bio);
     let key = get_either_rsa_or_ecdsa_private_key(&mut buf_reader)
         .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     let pkey = MESALINK_EVP_PKEY::new(key);
@@ -118,7 +118,7 @@ fn inner_mesalink_pem_read_bio_x509(
     x509_pp: *mut *mut MESALINK_X509,
 ) -> MesalinkInnerResult<*mut MESALINK_X509> {
     let bio = sanitize_ptr_for_mut_ref(bio_ptr)?;
-    let mut buf_reader = io::BufReader::new(bio);
+    let mut buf_reader = io::BufReader::with_capacity(1, bio);
     let cert = get_certificate(&mut buf_reader)
         .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     let x509 = MESALINK_X509::new(cert);
