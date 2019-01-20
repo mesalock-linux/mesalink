@@ -108,6 +108,10 @@ MESALINK_API int mesalink_SSL_CTX_load_verify_locations(MESALINK_CTX *,
                                                         const char *,
                                                         const char *);
 
+MESALINK_API int mesalink_SSL_CTX_use_certificate(MESALINK_CTX *,
+                                                  MESALINK_X509 *);
+MESALINK_API int mesalink_SSL_CTX_add_extra_chain_cert(MESALINK_CTX *,
+                                                       MESALINK_X509 *);
 MESALINK_API int mesalink_SSL_CTX_use_certificate_chain_file(MESALINK_CTX *,
                                                              const char *,
                                                              int);

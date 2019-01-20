@@ -825,11 +825,48 @@ fn load_cert_into_root_store(ctx: &mut MESALINK_CTX, path: &path::Path) -> Mesal
     Ok(())
 }
 
-/// `SSL_CTX_use_certificate_chain_file` - load a certificate chain from file into
-/// ctx. The certificates must be in PEM format and must be sorted starting with
-/// the subject's certificate (actual client or server certificate), followed by
-/// intermediate CA certificates if applicable, and ending at the highest level
-/// (root) CA.
+fn update_ctx_if_both_certs_and_key_set(ctx: &mut Arc<MESALINK_CTX>) -> MesalinkInnerResult<c_int> {
+    if let Ok((certs, priv_key)) = util::try_get_context_certs_and_key(ctx) {
+        util::get_context_mut(ctx)
+            .client_config
+            .set_single_client_cert(certs.clone(), priv_key.clone());
+        util::get_context_mut(ctx)
+            .server_config
+            .set_single_cert(certs.clone(), priv_key.clone())
+            .map_err(|e| error!(e.into()))?;
+    }
+    Ok(SSL_SUCCESS)
+}
+
+/// `SSL_CTX_use_certificate` loads the certificate x into ctx. The rest of the
+/// certificates needed to form the complete certificate chain can be specified
+/// using the SSL_CTX_add_extra_chain_cert function.
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_CTX_use_certificate(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    x509_ptr: *mut MESALINK_X509,
+) -> c_int {
+    check_inner_result!(
+        inner_mesalink_ssl_ctx_use_certificate(ctx_ptr, x509_ptr),
+        SSL_FAILURE
+    )
+}
+
+fn inner_mesalink_ssl_ctx_use_certificate(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    x509_ptr: *mut MESALINK_X509,
+) -> MesalinkInnerResult<c_int> {
+    let _ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
+    let _x509 = sanitize_ptr_for_ref(x509_ptr)?;
+
+    Ok(SSL_SUCCESS)
+}
+
+/// `SSL_CTX_use_certificate_chain_file` - load a certificate chain from file
+/// into ctx. The certificates must be in PEM format and must be sorted starting
+/// with the subject's certificate (actual client or server certificate),
+/// followed by intermediate CA certificates if applicable, and ending at the
+/// highest level (root) CA.
 ///
 /// ```c
 /// #include <mesalink/openssl/ssl.h>
@@ -871,16 +908,7 @@ fn inner_mesalink_ssl_ctx_use_certificate_chain_file(
         return Err(error!(MesalinkBuiltinError::BadFuncArg.into()));
     }
     util::get_context_mut(ctx).certificates = Some(certs);
-    if let Ok((certs, priv_key)) = util::try_get_context_certs_and_key(ctx) {
-        util::get_context_mut(ctx)
-            .client_config
-            .set_single_client_cert(certs.clone(), priv_key.clone());
-        util::get_context_mut(ctx)
-            .server_config
-            .set_single_cert(certs.clone(), priv_key.clone())
-            .map_err(|e| error!(e.into()))?;
-    }
-    Ok(SSL_SUCCESS)
+    Ok(update_ctx_if_both_certs_and_key_set(ctx)?)
 }
 
 /// `SSL_CTX_use_certificate_ASN1` - load the ASN1 encoded certificate
@@ -914,24 +942,14 @@ fn inner_mesalink_ssl_ctx_use_certificate_asn1(
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     let buf: &[u8] = unsafe { slice::from_raw_parts_mut(d, len as usize) };
     let cert = rustls::Certificate(buf.to_vec());
-    let ctx_mut_ref = util::get_context_mut(ctx);
-    if ctx_mut_ref.certificates.is_none() {
-        ctx_mut_ref.certificates = Some(vec![]);
+    {
+        let ctx_mut_ref = util::get_context_mut(ctx);
+        if ctx_mut_ref.certificates.is_none() {
+            ctx_mut_ref.certificates = Some(vec![]);
+        }
+        ctx_mut_ref.certificates.as_mut().unwrap().push(cert);
     }
-    ctx_mut_ref.certificates.as_mut().unwrap().push(cert);
-    if let (Some(certs), Some(priv_key)) = (
-        ctx_mut_ref.certificates.as_ref(),
-        ctx_mut_ref.private_key.as_ref(),
-    ) {
-        ctx_mut_ref
-            .client_config
-            .set_single_client_cert(certs.clone(), priv_key.clone());
-        ctx_mut_ref
-            .server_config
-            .set_single_cert(certs.clone(), priv_key.clone())
-            .map_err(|e| error!(e.into()))?;
-    }
-    Ok(SSL_SUCCESS)
+    Ok(update_ctx_if_both_certs_and_key_set(ctx)?)
 }
 
 /// `SSL_use_certificate_ASN1` - load the ASN1 encoded certificate
@@ -1012,16 +1030,7 @@ fn inner_mesalink_ssl_ctx_use_privatekey_file(
     let key = pem::get_either_rsa_or_ecdsa_private_key(&mut buf_reader)
         .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     util::get_context_mut(ctx).private_key = Some(key);
-    if let Ok((certs, priv_key)) = util::try_get_context_certs_and_key(ctx) {
-        util::get_context_mut(ctx)
-            .client_config
-            .set_single_client_cert(certs.clone(), priv_key.clone());
-        util::get_context_mut(ctx)
-            .server_config
-            .set_single_cert(certs.clone(), priv_key.clone())
-            .map_err(|e| error!(e.into()))?;
-    }
-    Ok(SSL_SUCCESS)
+    Ok(update_ctx_if_both_certs_and_key_set(ctx)?)
 }
 
 /// `SSL_CTX_use_PrivateKey_ASN1` - load the ASN1 encoded certificate into
@@ -1059,16 +1068,7 @@ fn inner_mesalink_ssl_ctx_use_privatekey_asn1(
     let buf: &[u8] = unsafe { slice::from_raw_parts_mut(d, len as usize) };
     let pkey = rustls::PrivateKey(buf.to_vec());
     util::get_context_mut(ctx).private_key = Some(pkey);
-    if let Ok((certs, priv_key)) = util::try_get_context_certs_and_key(ctx) {
-        util::get_context_mut(ctx)
-            .client_config
-            .set_single_client_cert(certs.clone(), priv_key.clone());
-        util::get_context_mut(ctx)
-            .server_config
-            .set_single_cert(certs.clone(), priv_key.clone())
-            .map_err(|e| error!(e.into()))?;
-    }
-    Ok(SSL_SUCCESS)
+    Ok(update_ctx_if_both_certs_and_key_set(ctx)?)
 }
 
 /// `SSL_use_PrivateKey_ASN1` - load the ASN1 encoded certificate into

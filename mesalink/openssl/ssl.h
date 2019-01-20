@@ -31,7 +31,8 @@ extern "C" {
 
 #define SSL_VERIFY_NONE MESALINK_SSL_VERIFY_NONE
 #define SSL_VERIFY_PEER MESALINK_SSL_VERIFY_PEER
-#define SSL_VERIFY_FAIL_IF_NO_PEER_CERT MESALINK_SSL_VERIFY_FAIL_IF_NO_PEER_CERT
+#define SSL_VERIFY_FAIL_IF_NO_PEER_CERT                                       \
+  MESALINK_SSL_VERIFY_FAIL_IF_NO_PEER_CERT
 
 #define SSL_ERROR_NONE MESALINK_ERROR_NONE
 #define SSL_FAILURE MESALINK_FAILURE
@@ -94,6 +95,8 @@ extern "C" {
 
 #define SSL_CTX_new mesalink_SSL_CTX_new
 #define SSL_CTX_load_verify_locations mesalink_SSL_CTX_load_verify_locations
+#define SSL_CTX_use_certificate mesalink_SSL_CTX_use_certificate
+#define SSL_CTX_add_extra_chain_cert mesalink_SSL_CTX_add_extra_chain_cert
 #define SSL_CTX_use_certificate_chain_file                                    \
   mesalink_SSL_CTX_use_certificate_chain_file
 #define SSL_CTX_use_PrivateKey mesalink_SSL_CTX_use_PrivateKey
