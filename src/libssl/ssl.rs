@@ -838,30 +838,6 @@ fn update_ctx_if_both_certs_and_key_set(ctx: &mut Arc<MESALINK_CTX>) -> Mesalink
     Ok(SSL_SUCCESS)
 }
 
-/// `SSL_CTX_use_certificate` loads the certificate x into ctx. The rest of the
-/// certificates needed to form the complete certificate chain can be specified
-/// using the SSL_CTX_add_extra_chain_cert function.
-#[no_mangle]
-pub extern "C" fn mesalink_SSL_CTX_use_certificate(
-    ctx_ptr: *mut MESALINK_CTX_ARC,
-    x509_ptr: *mut MESALINK_X509,
-) -> c_int {
-    check_inner_result!(
-        inner_mesalink_ssl_ctx_use_certificate(ctx_ptr, x509_ptr),
-        SSL_FAILURE
-    )
-}
-
-fn inner_mesalink_ssl_ctx_use_certificate(
-    ctx_ptr: *mut MESALINK_CTX_ARC,
-    x509_ptr: *mut MESALINK_X509,
-) -> MesalinkInnerResult<c_int> {
-    let _ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
-    let _x509 = sanitize_ptr_for_ref(x509_ptr)?;
-
-    Ok(SSL_SUCCESS)
-}
-
 /// `SSL_CTX_use_certificate_chain_file` - load a certificate chain from file
 /// into ctx. The certificates must be in PEM format and must be sorted starting
 /// with the subject's certificate (actual client or server certificate),
@@ -908,6 +884,48 @@ fn inner_mesalink_ssl_ctx_use_certificate_chain_file(
         return Err(error!(MesalinkBuiltinError::BadFuncArg.into()));
     }
     util::get_context_mut(ctx).certificates = Some(certs);
+    Ok(update_ctx_if_both_certs_and_key_set(ctx)?)
+}
+
+/// `SSL_CTX_use_certificate` loads the certificate x into ctx. The rest of the
+/// certificates needed to form the complete certificate chain can be specified
+/// using the `SSL_CTX_add_extra_chain_cert` function.
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_CTX_use_certificate(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    x509_ptr: *mut MESALINK_X509,
+) -> c_int {
+    check_inner_result!(
+        inner_mesalink_ssl_ctx_add_certificate(ctx_ptr, x509_ptr),
+        SSL_FAILURE
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_CTX_add_extra_chain_cert(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    x509_ptr: *mut MESALINK_X509,
+) -> c_int {
+    check_inner_result!(
+        inner_mesalink_ssl_ctx_add_certificate(ctx_ptr, x509_ptr),
+        SSL_FAILURE
+    )
+}
+
+fn inner_mesalink_ssl_ctx_add_certificate(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    x509_ptr: *mut MESALINK_X509,
+) -> MesalinkInnerResult<c_int> {
+    let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
+    let x509 = sanitize_ptr_for_ref(x509_ptr)?;
+    let cert = x509.inner.clone();
+    {
+        let ctx_mut_ref = util::get_context_mut(ctx);
+        if ctx_mut_ref.certificates.is_none() {
+            ctx_mut_ref.certificates = Some(vec![]);
+        }
+        ctx_mut_ref.certificates.as_mut().unwrap().push(cert);
+    }
     Ok(update_ctx_if_both_certs_and_key_set(ctx)?)
 }
 
