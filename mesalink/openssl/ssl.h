@@ -99,9 +99,9 @@ extern "C" {
 #define SSL_CTX_add_extra_chain_cert mesalink_SSL_CTX_add_extra_chain_cert
 #define SSL_CTX_use_certificate_chain_file                                    \
   mesalink_SSL_CTX_use_certificate_chain_file
-#define SSL_CTX_use_PrivateKey mesalink_SSL_CTX_use_PrivateKey
 #define SSL_CTX_use_certificate_ASN1 mesalink_SSL_CTX_use_certificate_ASN1
 #define SSL_use_certificate_ASN1 mesalink_SSL_use_certificate_ASN1
+#define SSL_CTX_use_PrivateKey mesalink_SSL_CTX_use_PrivateKey
 #define SSL_CTX_use_PrivateKey_file mesalink_SSL_CTX_use_PrivateKey_file
 #define SSL_CTX_use_PrivateKey_ASN1 mesalink_SSL_CTX_use_PrivateKey_ASN1
 #define SSL_use_PrivateKey_ASN1 mesalink_SSL_use_PrivateKey_ASN1

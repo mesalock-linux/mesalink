@@ -37,6 +37,7 @@
 
 use error_san::*;
 use libc::{c_char, c_int, c_long, c_uchar, size_t};
+use libcrypto::evp::MESALINK_EVP_PKEY;
 use libssl::err::{ErrorCode, MesalinkBuiltinError, MesalinkError, MesalinkInnerResult};
 use libssl::safestack::MESALINK_STACK_MESALINK_X509;
 use libssl::x509::MESALINK_X509;
@@ -1004,6 +1005,35 @@ fn inner_mesalink_ssl_use_certificate_asn1(
     let _ = inner_mesalink_ssl_ctx_use_certificate_asn1(ctx_ptr, len, d)?;
     let _ = inner_mesalink_ssl_set_ssl_ctx(ssl_ptr, ctx_ptr)?;
     Ok(SSL_SUCCESS)
+}
+
+/// `SSL_CTX_use_PrivateKey` adds *pkey* as private key to *ctx*
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_CTX_use_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_CTX_use_PrivateKey(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    pkey_ptr: *mut MESALINK_EVP_PKEY,
+) -> c_int {
+    check_inner_result!(
+        inner_mesalink_ssl_ctx_use_privatekey(ctx_ptr, pkey_ptr),
+        SSL_FAILURE
+    )
+}
+
+fn inner_mesalink_ssl_ctx_use_privatekey(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    pkey_ptr: *mut MESALINK_EVP_PKEY,
+) -> MesalinkInnerResult<c_int> {
+    let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
+    let pkey = sanitize_ptr_for_mut_ref(pkey_ptr)?;
+    let key = pkey.inner.clone();
+    util::get_context_mut(ctx).private_key = Some(key);
+    Ok(update_ctx_if_both_certs_and_key_set(ctx)?)
 }
 
 /// `SSL_CTX_use_PrivateKey_file` - add the first private key found in file to
