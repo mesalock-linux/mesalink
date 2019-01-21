@@ -1992,14 +1992,14 @@ fn inner_mesalink_ssl_do_handshake(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerR
     };
 
     if ssl.session.is_none() {
-        let hostname = ssl
-            .hostname
-            .as_ref()
-            .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
-        let dnsname = webpki::DNSNameRef::try_from_ascii_str(hostname)
-            .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
         match ssl.mode {
             ClientOrServerMode::Client | ClientOrServerMode::Both => {
+                let hostname = ssl
+                    .hostname
+                    .as_ref()
+                    .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+                let dnsname = webpki::DNSNameRef::try_from_ascii_str(hostname)
+                    .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
                 let client_session = rustls::ClientSession::new(&ssl.client_config, dnsname);
                 ssl.session = Some(ClientOrServerSession::Client(client_session));
             }
