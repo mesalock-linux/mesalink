@@ -1871,7 +1871,18 @@ fn inner_mesalink_ssl_do_handshake(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerR
             if session.is_handshaking() {
                 match complete_io(session, io) {
                     Err(e) => {
+                        let error_code = ErrorCode::from(&e);
                         ssl.error = ErrorCode::from(&e);
+                        if error_code == ErrorCode::IoErrorWouldBlock {
+                            ssl.error = ErrorCode::MesalinkErrorWantRead;
+                        } else {
+                            ssl.error = error_code;
+                        }
+                        if ssl.error == ErrorCode::MesalinkErrorWantRead
+                            || ssl.error == ErrorCode::IoErrorNotConnected
+                        {
+                            return Ok(SSL_ERROR);
+                        }
                         Err(e)
                     }
                     Ok(_) => Ok(SSL_SUCCESS),
