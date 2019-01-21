@@ -91,6 +91,14 @@ impl MESALINK_CIPHER {
 pub struct MESALINK_METHOD {
     magic: [u8; MAGIC_SIZE],
     versions: Vec<rustls::ProtocolVersion>,
+    mode: ClientOrServerMode,
+}
+
+#[derive(Clone, PartialEq)]
+enum ClientOrServerMode {
+    Client,
+    Server,
+    Both,
 }
 
 impl MesalinkOpaquePointerType for MESALINK_METHOD {
@@ -100,10 +108,11 @@ impl MesalinkOpaquePointerType for MESALINK_METHOD {
 }
 
 impl MESALINK_METHOD {
-    fn new(versions: Vec<rustls::ProtocolVersion>) -> MESALINK_METHOD {
+    fn new(versions: Vec<rustls::ProtocolVersion>, mode: ClientOrServerMode) -> MESALINK_METHOD {
         MESALINK_METHOD {
             magic: *MAGIC,
             versions,
+            mode,
         }
     }
 }
@@ -173,6 +182,7 @@ pub struct MESALINK_CTX {
     ca_roots: rustls::RootCertStore,
     session_cache_mode: SslSessionCacheModes,
     session_cache_size: usize,
+    mode: ClientOrServerMode,
 }
 
 #[allow(non_camel_case_types)]
@@ -221,6 +231,7 @@ impl MESALINK_CTX {
             ca_roots: rustls::RootCertStore::empty(),
             session_cache_mode: SslSessionCacheModes::Both,
             session_cache_size: SSL_SESSION_CACHE_MAX_SIZE_DEFAULT,
+            mode: method.mode.clone(),
         }
     }
 }
@@ -275,6 +286,7 @@ pub struct MESALINK_SSL {
     session: Option<ClientOrServerSession>,
     error: ErrorCode,
     eof: bool,
+    mode: ClientOrServerMode,
 }
 
 impl MesalinkOpaquePointerType for MESALINK_SSL {
@@ -354,6 +366,7 @@ impl MESALINK_SSL {
             session: None,
             error: ErrorCode::default(),
             eof: false,
+            mode: ctx.mode.clone(),
         }
     }
 
@@ -518,10 +531,13 @@ fn mesalink_not_available_method() -> *const MESALINK_METHOD {
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_TLS_method() -> *const MESALINK_METHOD {
-    let method = MESALINK_METHOD::new(vec![
-        rustls::ProtocolVersion::TLSv1_3,
-        rustls::ProtocolVersion::TLSv1_2,
-    ]);
+    let method = MESALINK_METHOD::new(
+        vec![
+            rustls::ProtocolVersion::TLSv1_3,
+            rustls::ProtocolVersion::TLSv1_2,
+        ],
+        ClientOrServerMode::Both,
+    );
     Box::into_raw(Box::new(method))
 }
 
@@ -537,7 +553,14 @@ pub extern "C" fn mesalink_TLS_method() -> *const MESALINK_METHOD {
 #[no_mangle]
 #[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_TLS_client_method() -> *const MESALINK_METHOD {
-    mesalink_TLS_method()
+    let method = MESALINK_METHOD::new(
+        vec![
+            rustls::ProtocolVersion::TLSv1_3,
+            rustls::ProtocolVersion::TLSv1_2,
+        ],
+        ClientOrServerMode::Client,
+    );
+    Box::into_raw(Box::new(method))
 }
 
 /// A general-purpose version-flexible SSL/TLS method. The supported protocols
@@ -552,7 +575,7 @@ pub extern "C" fn mesalink_TLS_client_method() -> *const MESALINK_METHOD {
 #[no_mangle]
 #[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_SSLv23_client_method() -> *const MESALINK_METHOD {
-    mesalink_TLS_method()
+    mesalink_TLS_client_method()
 }
 
 /// This SSL/TLS version is not supported. Always return NULL.
@@ -609,7 +632,10 @@ pub extern "C" fn mesalink_TLSv1_1_client_method() -> *const MESALINK_METHOD {
 #[no_mangle]
 #[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_TLSv1_2_client_method() -> *const MESALINK_METHOD {
-    let method = MESALINK_METHOD::new(vec![rustls::ProtocolVersion::TLSv1_2]);
+    let method = MESALINK_METHOD::new(
+        vec![rustls::ProtocolVersion::TLSv1_2],
+        ClientOrServerMode::Client,
+    );
     Box::into_raw(Box::new(method))
 }
 
@@ -625,7 +651,10 @@ pub extern "C" fn mesalink_TLSv1_2_client_method() -> *const MESALINK_METHOD {
 #[no_mangle]
 #[cfg(all(feature = "tls13", feature = "client_apis"))]
 pub extern "C" fn mesalink_TLSv1_3_client_method() -> *const MESALINK_METHOD {
-    let method = MESALINK_METHOD::new(vec![rustls::ProtocolVersion::TLSv1_3]);
+    let method = MESALINK_METHOD::new(
+        vec![rustls::ProtocolVersion::TLSv1_3],
+        ClientOrServerMode::Client,
+    );
     Box::into_raw(Box::new(method))
 }
 
@@ -641,7 +670,14 @@ pub extern "C" fn mesalink_TLSv1_3_client_method() -> *const MESALINK_METHOD {
 #[no_mangle]
 #[cfg(all(feature = "tls13", feature = "server_apis"))]
 pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
-    mesalink_TLS_method()
+    let method = MESALINK_METHOD::new(
+        vec![
+            rustls::ProtocolVersion::TLSv1_3,
+            rustls::ProtocolVersion::TLSv1_2,
+        ],
+        ClientOrServerMode::Server,
+    );
+    Box::into_raw(Box::new(method))
 }
 
 /// A general-purpose version-flexible SSL/TLS method. The supported protocol is
@@ -656,7 +692,11 @@ pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
 #[no_mangle]
 #[cfg(all(not(feature = "tls13"), feature = "server_apis"))]
 pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
-    mesalink_TLSv1_2_server_method()
+    let method = MESALINK_METHOD::new(
+        vec![rustls::ProtocolVersion::TLSv1_2],
+        ClientOrServerMode::Server,
+    );
+    Box::into_raw(Box::new(method))
 }
 
 /// A general-purpose version-flexible SSL/TLS method. The supported protocols
@@ -728,7 +768,10 @@ pub extern "C" fn mesalink_TLSv1_1_server_method() -> *const MESALINK_METHOD {
 #[no_mangle]
 #[cfg(feature = "server_apis")]
 pub extern "C" fn mesalink_TLSv1_2_server_method() -> *const MESALINK_METHOD {
-    let method = MESALINK_METHOD::new(vec![rustls::ProtocolVersion::TLSv1_2]);
+    let method = MESALINK_METHOD::new(
+        vec![rustls::ProtocolVersion::TLSv1_2],
+        ClientOrServerMode::Server,
+    );
     Box::into_raw(Box::new(method))
 }
 
@@ -744,7 +787,10 @@ pub extern "C" fn mesalink_TLSv1_2_server_method() -> *const MESALINK_METHOD {
 #[no_mangle]
 #[cfg(all(feature = "tls13", feature = "server_apis"))]
 pub extern "C" fn mesalink_TLSv1_3_server_method() -> *const MESALINK_METHOD {
-    let method = MESALINK_METHOD::new(vec![rustls::ProtocolVersion::TLSv1_3]);
+    let method = MESALINK_METHOD::new(
+        vec![rustls::ProtocolVersion::TLSv1_3],
+        ClientOrServerMode::Server,
+    );
     Box::into_raw(Box::new(method))
 }
 
@@ -1866,6 +1912,62 @@ fn inner_measlink_ssl_get_fd(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
     Ok(socket.as_raw_fd())
 }
 
+/// `SSL_set_connect_state` sets *ssl* to work in client mode.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// void SSL_set_connect_state(SSL *ssl);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_set_connect_state(ssl_ptr: *mut MESALINK_SSL) {
+    let _ = check_inner_result!(inner_mesalink_ssl_set_mode(ssl_ptr, false), SSL_FAILURE);
+}
+
+/// `SSL_set_accept_state` sets *ssl* to work in server mode.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// void SSL_set_accept_state(SSL *ssl);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_set_accept_state(ssl_ptr: *mut MESALINK_SSL) {
+    let _ = check_inner_result!(inner_mesalink_ssl_set_mode(ssl_ptr, true), SSL_FAILURE);
+}
+
+fn inner_mesalink_ssl_set_mode(
+    ssl_ptr: *mut MESALINK_SSL,
+    is_server: bool,
+) -> MesalinkInnerResult<c_int> {
+    let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
+    ssl.mode = match is_server {
+        true => ClientOrServerMode::Server,
+        false => ClientOrServerMode::Client,
+    };
+    Ok(SSL_SUCCESS)
+}
+
+/// `SSL_is_server` checks if ssl is working in server mode.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_is_server(SSL *ssl);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_is_server(ssl_ptr: *mut MESALINK_SSL) -> c_int {
+    check_inner_result!(inner_mesalink_is_server_mode(ssl_ptr), SSL_FAILURE)
+}
+
+fn inner_mesalink_is_server_mode(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
+    let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
+    match ssl.mode {
+        ClientOrServerMode::Client | ClientOrServerMode::Both => Ok(0),
+        ClientOrServerMode::Server => Ok(1),
+    }
+}
+
 /// `SSL_do_handshake` - perform a TLS/SSL handshake
 ///
 /// ```c
@@ -1880,6 +1982,34 @@ pub extern "C" fn mesalink_SSL_do_handshake(ssl_ptr: *mut MESALINK_SSL) -> c_int
 
 fn inner_mesalink_ssl_do_handshake(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
+    match ssl.error {
+        ErrorCode::MesalinkErrorNone
+        | ErrorCode::MesalinkErrorWantRead
+        | ErrorCode::MesalinkErrorWantWrite
+        | ErrorCode::MesalinkErrorWantConnect
+        | ErrorCode::MesalinkErrorWantAccept => ssl.error = ErrorCode::default(),
+        _ => (),
+    };
+
+    if ssl.session.is_none() {
+        let hostname = ssl
+            .hostname
+            .as_ref()
+            .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+        let dnsname = webpki::DNSNameRef::try_from_ascii_str(hostname)
+            .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+        match ssl.mode {
+            ClientOrServerMode::Client | ClientOrServerMode::Both => {
+                let client_session = rustls::ClientSession::new(&ssl.client_config, dnsname);
+                ssl.session = Some(ClientOrServerSession::Client(client_session));
+            }
+            ClientOrServerMode::Server => {
+                let server_session = rustls::ServerSession::new(&ssl.server_config);
+                ssl.session = Some(ClientOrServerSession::Server(server_session));
+            }
+        }
+    }
+
     match (ssl.session.as_mut(), ssl.io.as_mut()) {
         (Some(session), Some(io)) => {
             if session.is_handshaking() {
@@ -1960,6 +2090,7 @@ fn inner_mesalink_ssl_connect(
             .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
         let client_session = rustls::ClientSession::new(&ssl.client_config, dnsname);
         ssl.session = Some(ClientOrServerSession::Client(client_session));
+        ssl.mode = ClientOrServerMode::Client;
     }
     if !is_lazy {
         match complete_io(ssl.session.as_mut().unwrap(), &mut io) {
@@ -2012,6 +2143,7 @@ fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
     if ssl.session.is_none() {
         let server_session = rustls::ServerSession::new(&ssl.server_config);
         ssl.session = Some(ClientOrServerSession::Server(server_session));
+        ssl.mode = ClientOrServerMode::Server;
     }
     match complete_io(ssl.session.as_mut().unwrap(), &mut io) {
         Err(e) => {

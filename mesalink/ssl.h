@@ -184,6 +184,10 @@ MESALINK_API void mesalink_SSL_free(MESALINK_SSL *);
 
 MESALINK_API int mesalink_SSL_get_error(const MESALINK_SSL *, int);
 
+MESALINK_API void mesalink_SSL_set_connect_state(MESALINK_SSL *);
+MESALINK_API void mesalink_SSL_set_accept_state(MESALINK_SSL *);
+MESALINK_API int mesalink_SSL_is_server(const MESALINK_SSL *);
+
 #ifdef __cplusplus
 } /* extern C */
 #endif

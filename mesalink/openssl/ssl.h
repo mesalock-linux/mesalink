@@ -151,6 +151,10 @@ extern "C" {
 
 #define SSL_get_error mesalink_SSL_get_error
 
+#define SSL_set_connect_state mesalink_SSL_set_connect_state
+#define SSL_set_accept_state mesalink_SSL_set_accept_state
+#define SSL_is_server mesalink_SSL_is_server
+
 #ifdef __cplusplus
 } /* extern C */
 #endif
