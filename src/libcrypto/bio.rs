@@ -466,6 +466,20 @@ fn inner_mesalink_bio_new_filename<'a>(
     filename_ptr: *const c_char,
     mode_ptr: *const c_char,
 ) -> MesalinkInnerResult<*mut MESALINK_BIO<'a>> {
+    let file = open_file_from_filename_and_mode(filename_ptr, mode_ptr)?;
+    let bio = MESALINK_BIO {
+        magic: *MAGIC,
+        inner: MesalinkBioInner::File(file),
+        method: (&MESALINK_BIO_METHOD_FILE).into(),
+        flags: BioFlags::BIO_CLOSE,
+    };
+    Ok(Box::into_raw(Box::new(bio)) as *mut MESALINK_BIO)
+}
+
+fn open_file_from_filename_and_mode(
+    filename_ptr: *const c_char,
+    mode_ptr: *const c_char,
+) -> MesalinkInnerResult<fs::File> {
     if filename_ptr.is_null() || mode_ptr.is_null() {
         return Err(error!(MesalinkBuiltinError::NullPointer.into()));
     }
@@ -489,14 +503,7 @@ fn inner_mesalink_bio_new_filename<'a>(
             .to_str()
             .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?
     };
-    let file = open_mode.open(filename).map_err(|e| error!(e.into()))?;
-    let bio = MESALINK_BIO {
-        magic: *MAGIC,
-        inner: MesalinkBioInner::File(file),
-        method: (&MESALINK_BIO_METHOD_FILE).into(),
-        flags: BioFlags::BIO_CLOSE,
-    };
-    Ok(Box::into_raw(Box::new(bio)) as *mut MESALINK_BIO)
+    open_mode.open(filename).map_err(|e| error!(e.into()))
 }
 
 /// `BIO_read_filename()` sets the file BIO b to use file name for reading.
@@ -508,12 +515,24 @@ fn inner_mesalink_bio_new_filename<'a>(
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_BIO_read_filename<'a>(
+    bio_ptr: *mut MESALINK_BIO,
     filename_ptr: *const c_char,
-) -> *mut MESALINK_BIO<'a> {
+) -> c_int {
     check_inner_result!(
-        inner_mesalink_bio_new_filename(filename_ptr, b"r\0".as_ptr() as *const c_char),
-        ptr::null_mut()
+        inner_mesalink_bio_set_filename(bio_ptr, filename_ptr, b"r\0".as_ptr() as *const c_char),
+        CRYPTO_FAILURE
     )
+}
+
+fn inner_mesalink_bio_set_filename(
+    bio_ptr: *mut MESALINK_BIO,
+    filename_ptr: *const c_char,
+    mode_ptr: *const c_char,
+) -> MesalinkInnerResult<c_int> {
+    let file = open_file_from_filename_and_mode(filename_ptr, mode_ptr)?;
+    let bio = sanitize_ptr_for_mut_ref(bio_ptr)?;
+    bio.inner = MesalinkBioInner::File(file);
+    Ok(CRYPTO_SUCCESS)
 }
 
 /// `BIO_write_filename()` sets the file BIO b to use file name for writing.
@@ -525,11 +544,12 @@ pub extern "C" fn mesalink_BIO_read_filename<'a>(
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_BIO_write_filename<'a>(
+    bio_ptr: *mut MESALINK_BIO,
     filename_ptr: *const c_char,
-) -> *mut MESALINK_BIO<'a> {
+) -> c_int {
     check_inner_result!(
-        inner_mesalink_bio_new_filename(filename_ptr, b"w\0".as_ptr() as *const c_char),
-        ptr::null_mut()
+        inner_mesalink_bio_set_filename(bio_ptr, filename_ptr, b"w\0".as_ptr() as *const c_char),
+        CRYPTO_FAILURE
     )
 }
 
@@ -542,11 +562,12 @@ pub extern "C" fn mesalink_BIO_write_filename<'a>(
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_BIO_append_filename<'a>(
+    bio_ptr: *mut MESALINK_BIO,
     filename_ptr: *const c_char,
-) -> *mut MESALINK_BIO<'a> {
+) -> c_int {
     check_inner_result!(
-        inner_mesalink_bio_new_filename(filename_ptr, b"a\0".as_ptr() as *const c_char),
-        ptr::null_mut()
+        inner_mesalink_bio_set_filename(bio_ptr, filename_ptr, b"a\0".as_ptr() as *const c_char),
+        CRYPTO_FAILURE
     )
 }
 
@@ -560,11 +581,12 @@ pub extern "C" fn mesalink_BIO_append_filename<'a>(
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_BIO_rw_filename<'a>(
+    bio_ptr: *mut MESALINK_BIO,
     filename_ptr: *const c_char,
-) -> *mut MESALINK_BIO<'a> {
+) -> c_int {
     check_inner_result!(
-        inner_mesalink_bio_new_filename(filename_ptr, b"r+\0".as_ptr() as *const c_char),
-        ptr::null_mut()
+        inner_mesalink_bio_set_filename(bio_ptr, filename_ptr, b"r+\0".as_ptr() as *const c_char),
+        CRYPTO_FAILURE
     )
 }
 
@@ -822,28 +844,22 @@ mod tests {
     fn bio_file_new_from_path() {
         let path_ptr = b"tests/deleteme\0".as_ptr() as *const c_char;
 
-        let bio_ptr_f = mesalink_BIO_write_filename(path_ptr);
+        let bio_ptr_f = mesalink_BIO_new(mesalink_BIO_s_file());
         assert_ne!(bio_ptr_f, ptr::null_mut());
-        mesalink_BIO_free(bio_ptr_f);
 
-        let bio_ptr_f = mesalink_BIO_rw_filename(path_ptr);
-        assert_ne!(bio_ptr_f, ptr::null_mut());
-        mesalink_BIO_free(bio_ptr_f);
+        let ret = mesalink_BIO_write_filename(bio_ptr_f, path_ptr);
+        assert_eq!(ret, CRYPTO_SUCCESS);
 
-        let bio_ptr_f = mesalink_BIO_new_file(path_ptr, b"r\0".as_ptr() as *const c_char);
-        assert_ne!(bio_ptr_f, ptr::null_mut());
-        mesalink_BIO_free(bio_ptr_f);
+        let ret = mesalink_BIO_rw_filename(bio_ptr_f, path_ptr);
+        assert_eq!(ret, CRYPTO_SUCCESS);
 
-        let bio_ptr_f = mesalink_BIO_read_filename(path_ptr);
-        assert_ne!(bio_ptr_f, ptr::null_mut());
-        let _ = mesalink_BIO_set_close(bio_ptr_f, 0x0); // Set BIO_NOCLOSE
-        assert_eq!(0x0, mesalink_BIO_get_close(bio_ptr_f)); // BIO_NOCLOSE after set_fp
-        mesalink_BIO_free(bio_ptr_f);
+        let ret = mesalink_BIO_read_filename(bio_ptr_f, path_ptr);
+        assert_eq!(ret, CRYPTO_SUCCESS);
 
-        let bio_ptr_f = mesalink_BIO_append_filename(path_ptr);
-        assert_ne!(bio_ptr_f, ptr::null_mut());
-        mesalink_BIO_free(bio_ptr_f);
+        let ret = mesalink_BIO_append_filename(bio_ptr_f, path_ptr);
+        assert_eq!(ret, CRYPTO_SUCCESS);
 
+        mesalink_BIO_free(bio_ptr_f);
         let _ = fs::remove_file("tests/deleteme");
     }
 }

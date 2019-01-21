@@ -244,7 +244,10 @@ mod test {
 
     #[test]
     fn pem_read_bio_private_key() {
-        let bio_ptr = bio::mesalink_BIO_read_filename(b"tests/end.key\0".as_ptr() as *const c_char);
+        let bio_ptr = bio::mesalink_BIO_new_file(
+            b"tests/end.key\0".as_ptr() as *const c_char,
+            b"r\0".as_ptr() as *const c_char,
+        );
         assert_ne!(bio_ptr, ptr::null_mut());
         let pkey_ptr = mesalink_PEM_read_bio_PrivateKey(
             bio_ptr,
@@ -271,8 +274,10 @@ mod test {
 
     #[test]
     fn pem_read_bio_x509() {
-        let bio_ptr =
-            bio::mesalink_BIO_read_filename(b"tests/end.fullchain\0".as_ptr() as *const c_char);
+        let bio_ptr = bio::mesalink_BIO_new_file(
+            b"tests/end.fullchain\0".as_ptr() as *const c_char,
+            b"r\0".as_ptr() as *const c_char,
+        );
         assert_ne!(bio_ptr, ptr::null_mut());
         let x509_ptr =
             mesalink_PEM_read_bio_X509(bio_ptr, ptr::null_mut(), ptr::null_mut(), ptr::null_mut());
