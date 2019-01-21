@@ -295,7 +295,14 @@ fn complete_io(
         while session.wants_write() {
             match session.write_tls(io) {
                 Ok(n) => wrlen += n,
-                Err(e) => return Err(error!(e.into())),
+                Err(e) => {
+                    return match e.kind() {
+                        io::ErrorKind::WouldBlock => {
+                            Err(error!(MesalinkBuiltinError::WantWrite.into()))
+                        }
+                        _ => Err(error!(e.into())),
+                    };
+                }
             }
         }
         if !until_handshaked && wrlen > 0 {
@@ -305,7 +312,14 @@ fn complete_io(
             match session.read_tls(io) {
                 Ok(0) => eof = true,
                 Ok(n) => rdlen += n,
-                Err(e) => return Err(error!(e.into())),
+                Err(e) => {
+                    return match e.kind() {
+                        io::ErrorKind::WouldBlock => {
+                            Err(error!(MesalinkBuiltinError::WantRead.into()))
+                        }
+                        _ => Err(error!(e.into())),
+                    };
+                }
             }
         }
         if let Err(tls_err) = session.process_new_packets() {
@@ -1871,19 +1885,13 @@ fn inner_mesalink_ssl_do_handshake(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerR
             if session.is_handshaking() {
                 match complete_io(session, io) {
                     Err(e) => {
-                        let error_code = ErrorCode::from(&e);
                         ssl.error = ErrorCode::from(&e);
-                        if error_code == ErrorCode::IoErrorWouldBlock {
-                            ssl.error = ErrorCode::MesalinkErrorWantRead;
-                        } else {
-                            ssl.error = error_code;
+                        match ssl.error {
+                            ErrorCode::MesalinkErrorWantRead
+                            | ErrorCode::MesalinkErrorWantWrite
+                            | ErrorCode::IoErrorNotConnected => Ok(SSL_ERROR),
+                            _ => Err(e),
                         }
-                        if ssl.error == ErrorCode::MesalinkErrorWantRead
-                            || ssl.error == ErrorCode::IoErrorNotConnected
-                        {
-                            return Ok(SSL_ERROR);
-                        }
-                        Err(e)
                     }
                     Ok(_) => Ok(SSL_SUCCESS),
                 }
@@ -1956,19 +1964,13 @@ fn inner_mesalink_ssl_connect(
     if !is_lazy {
         match complete_io(ssl.session.as_mut().unwrap(), &mut io) {
             Err(e) => {
-                let error_code = ErrorCode::from(&e);
                 ssl.error = ErrorCode::from(&e);
-                if error_code == ErrorCode::IoErrorWouldBlock {
-                    ssl.error = ErrorCode::MesalinkErrorWantConnect;
-                } else {
-                    ssl.error = error_code;
+                match ssl.error {
+                    ErrorCode::MesalinkErrorWantRead
+                    | ErrorCode::MesalinkErrorWantWrite
+                    | ErrorCode::IoErrorNotConnected => Ok(SSL_ERROR),
+                    _ => Err(e),
                 }
-                if ssl.error == ErrorCode::MesalinkErrorWantConnect
-                    || ssl.error == ErrorCode::IoErrorNotConnected
-                {
-                    return Ok(SSL_ERROR);
-                }
-                Err(e)
             }
             Ok(_) => Ok(SSL_SUCCESS),
         }
@@ -2013,19 +2015,13 @@ fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
     }
     match complete_io(ssl.session.as_mut().unwrap(), &mut io) {
         Err(e) => {
-            let error_code = ErrorCode::from(&e);
             ssl.error = ErrorCode::from(&e);
-            if error_code == ErrorCode::IoErrorWouldBlock {
-                ssl.error = ErrorCode::MesalinkErrorWantAccept;
-            } else {
-                ssl.error = error_code;
+            match ssl.error {
+                ErrorCode::MesalinkErrorWantRead
+                | ErrorCode::MesalinkErrorWantWrite
+                | ErrorCode::IoErrorNotConnected => Ok(SSL_ERROR),
+                _ => Err(e),
             }
-            if ssl.error == ErrorCode::MesalinkErrorWantAccept
-                || ssl.error == ErrorCode::IoErrorNotConnected
-            {
-                return Ok(SSL_ERROR);
-            }
-            Err(e)
         }
         Ok(_) => Ok(SSL_SUCCESS),
     }
