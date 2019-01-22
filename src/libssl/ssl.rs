@@ -404,11 +404,12 @@ impl MESALINK_SSL {
                 let len = session.write(buf).map_err(|e| error!(e.into()))?;
                 match session.write_tls(io) {
                     Ok(_) => Ok(len),
-                    Err(e) => {
-                        let error = error!(e.into());
-                        self.error = ErrorCode::from(&error);
-                        Err(error)
-                    }
+                    Err(e) => match e.kind() {
+                        io::ErrorKind::WouldBlock => {
+                            Err(error!(MesalinkBuiltinError::WantWrite.into()))
+                        }
+                        _ => Err(error!(e.into())),
+                    },
                 }
             }
             _ => Err(error!(MesalinkBuiltinError::BadFuncArg.into())),
@@ -421,11 +422,12 @@ impl MESALINK_SSL {
                 session.flush().map_err(|e| error!(e.into()))?;
                 match session.write_tls(io) {
                     Ok(_) => Ok(()),
-                    Err(e) => {
-                        let error = error!(e.into());
-                        self.error = ErrorCode::from(&error);
-                        Err(error)
-                    }
+                    Err(e) => match e.kind() {
+                        io::ErrorKind::WouldBlock => {
+                            Err(error!(MesalinkBuiltinError::WantWrite.into()))
+                        }
+                        _ => Err(error!(e.into())),
+                    },
                 }
             }
             _ => Err(error!(MesalinkBuiltinError::BadFuncArg.into())),
@@ -2266,7 +2268,7 @@ fn inner_mesalink_ssl_write(
     let buf = unsafe { slice::from_raw_parts(buf_ptr, buf_len as usize) };
     match ssl.ssl_write(buf) {
         Ok(count) => Ok(count as c_int),
-        Err(_) => unreachable!(),
+        Err(e) => Err(e),
     }
 }
 
@@ -2287,7 +2289,7 @@ fn inner_mesalink_ssl_flush(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     match ssl.ssl_flush() {
         Ok(_) => Ok(SSL_SUCCESS),
-        Err(_) => unreachable!(),
+        Err(e) => Err(e),
     }
 }
 
