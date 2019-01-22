@@ -514,7 +514,7 @@ fn open_file_from_filename_and_mode(
 /// BIO *BIO_read_file(const char *filename);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_BIO_read_filename<'a>(
+pub extern "C" fn mesalink_BIO_read_filename(
     bio_ptr: *mut MESALINK_BIO,
     filename_ptr: *const c_char,
 ) -> c_int {
@@ -543,7 +543,7 @@ fn inner_mesalink_bio_set_filename(
 /// BIO *BIO_write_file(const char *filename);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_BIO_write_filename<'a>(
+pub extern "C" fn mesalink_BIO_write_filename(
     bio_ptr: *mut MESALINK_BIO,
     filename_ptr: *const c_char,
 ) -> c_int {
@@ -561,7 +561,7 @@ pub extern "C" fn mesalink_BIO_write_filename<'a>(
 /// BIO *BIO_append_filename(const char *filename);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_BIO_append_filename<'a>(
+pub extern "C" fn mesalink_BIO_append_filename(
     bio_ptr: *mut MESALINK_BIO,
     filename_ptr: *const c_char,
 ) -> c_int {
@@ -580,7 +580,7 @@ pub extern "C" fn mesalink_BIO_append_filename<'a>(
 /// BIO *BIO_rw_file(const char *filename);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_BIO_rw_filename<'a>(
+pub extern "C" fn mesalink_BIO_rw_filename(
     bio_ptr: *mut MESALINK_BIO,
     filename_ptr: *const c_char,
 ) -> c_int {

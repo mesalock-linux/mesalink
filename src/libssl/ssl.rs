@@ -1941,9 +1941,10 @@ fn inner_mesalink_ssl_set_mode(
     is_server: bool,
 ) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
-    ssl.mode = match is_server {
-        true => ClientOrServerMode::Server,
-        false => ClientOrServerMode::Client,
+    ssl.mode = if is_server {
+        ClientOrServerMode::Server
+    } else {
+        ClientOrServerMode::Client
     };
     Ok(SSL_SUCCESS)
 }
