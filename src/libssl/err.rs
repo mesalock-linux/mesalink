@@ -52,6 +52,7 @@
 //!   MESALINK_ERROR_MALFORMED_OBJECT = 0xe1,
 //!   MESALINK_ERROR_BAD_FUNC_ARG = 0xe2,
 //!   MESALINK_ERROR_PANIC = 0xe3,
+//!   MESALINK_ERROR_PANIC = 0xe4,
 //!   IO_ERROR_NOT_FOUND = 0x0200_0001,
 //!   IO_ERROR_PERMISSION_DENIED = 0x0200_0002,
 //!   IO_ERROR_CONNECTION_REFUSED = 0x0200_0003,
@@ -172,6 +173,7 @@ pub(crate) enum MesalinkBuiltinError {
     MalformedObject,
     BadFuncArg,
     Panic,
+    Lock,
 }
 
 #[doc(hidden)]
@@ -197,6 +199,7 @@ impl error::Error for MesalinkBuiltinError {
             MesalinkBuiltinError::MalformedObject => "MESALINK_ERROR_MALFORMED_OBJECT",
             MesalinkBuiltinError::BadFuncArg => "MESALINK_ERROR_BAD_FUNCTION_ARGUMENT",
             MesalinkBuiltinError::Panic => "MESALINK_ERROR_PANIC_AT_FFI",
+            MesalinkBuiltinError::Lock => "MESALINK_ERROR_LOCK_FAILED",
         }
     }
 }
@@ -264,6 +267,7 @@ pub enum ErrorCode {
     MesalinkErrorMalformedObject = 0xe1,
     MesalinkErrorBadFuncArg = 0xe2,
     MesalinkErrorPanic = 0xe3,
+    MesalinkErrorLock = 0xe4,
     // Rust IO ErrorKind codes
     IoErrorNotFound = 0x0200_0001,
     IoErrorPermissionDenied = 0x0200_0002,
@@ -394,6 +398,7 @@ impl From<u32> for ErrorCode {
             0xe1 => ErrorCode::MesalinkErrorMalformedObject,
             0xe2 => ErrorCode::MesalinkErrorBadFuncArg,
             0xe3 => ErrorCode::MesalinkErrorPanic,
+            0xe4 => ErrorCode::MesalinkErrorLock,
             0x0200_0001 => ErrorCode::IoErrorNotFound,
             0x0200_0002 => ErrorCode::IoErrorPermissionDenied,
             0x0200_0003 => ErrorCode::IoErrorConnectionRefused,
@@ -516,6 +521,7 @@ impl<'a> From<&'a MesalinkError> for ErrorCode {
                 MesalinkBuiltinError::MalformedObject => ErrorCode::MesalinkErrorMalformedObject,
                 MesalinkBuiltinError::BadFuncArg => ErrorCode::MesalinkErrorBadFuncArg,
                 MesalinkBuiltinError::Panic => ErrorCode::MesalinkErrorPanic,
+                MesalinkBuiltinError::Lock => ErrorCode::MesalinkErrorLock,
             },
             MesalinkErrorType::Io(ref e) => match e.kind() {
                 io::ErrorKind::NotFound => ErrorCode::IoErrorNotFound,
@@ -875,7 +881,7 @@ mod tests {
         );
     }
 
-    const ERROR_CODES: [ErrorCode; 101] = [
+    const ERROR_CODES: [ErrorCode; 103] = [
         ErrorCode::MesalinkErrorNone,
         ErrorCode::MesalinkErrorZeroReturn,
         ErrorCode::MesalinkErrorWantRead,
@@ -887,6 +893,8 @@ mod tests {
         ErrorCode::MesalinkNullPointer,
         ErrorCode::MesalinkErrorMalformedObject,
         ErrorCode::MesalinkErrorBadFuncArg,
+        ErrorCode::MesalinkErrorPanic,
+        ErrorCode::MesalinkErrorLock,
         ErrorCode::IoErrorNotFound,
         ErrorCode::IoErrorPermissionDenied,
         ErrorCode::IoErrorConnectionRefused,
