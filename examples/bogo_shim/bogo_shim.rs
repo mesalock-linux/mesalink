@@ -33,9 +33,9 @@
  * THIS SOFTWARE.
  */
 
-extern crate env_logger;
-extern crate libc;
-extern crate mesalink;
+use env_logger;
+use libc;
+
 
 use mesalink::libssl::err::ErrorCode;
 use mesalink::libssl::{err, ssl};

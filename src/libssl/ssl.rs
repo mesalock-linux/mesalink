@@ -123,7 +123,7 @@ impl rustls::ServerCertVerifier for NoServerAuth {
         &self,
         _roots: &rustls::RootCertStore,
         _certs: &[rustls::Certificate],
-        _hostname: webpki::DNSNameRef,
+        _hostname: webpki::DNSNameRef<'_>,
         _ocsp: &[u8],
     ) -> Result<rustls::ServerCertVerified, rustls::TLSError> {
         Ok(rustls::ServerCertVerified::assertion())
@@ -242,7 +242,7 @@ enum ClientOrServerSession {
 }
 
 impl Deref for ClientOrServerSession {
-    type Target = rustls::Session;
+    type Target = dyn rustls::Session;
 
     fn deref(&self) -> &Self::Target {
         match &self {
@@ -2949,8 +2949,8 @@ mod tests {
     fn ssl_ctx_is_thread_safe() {
         let context_ptr = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
         let context = sanitize_ptr_for_mut_ref(context_ptr);
-        let _ = &context as &Send;
-        let _ = &context as &Sync;
+        let _ = &context as &dyn Send;
+        let _ = &context as &dyn Sync;
     }
 
     #[test]
@@ -2958,8 +2958,8 @@ mod tests {
         let context_ptr = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
         let ssl_ptr = mesalink_SSL_new(context_ptr);
         let ssl = sanitize_ptr_for_mut_ref(ssl_ptr);
-        let _ = &ssl as &Send;
-        let _ = &ssl as &Sync;
+        let _ = &ssl as &dyn Send;
+        let _ = &ssl as &dyn Sync;
     }
 
     #[test]
