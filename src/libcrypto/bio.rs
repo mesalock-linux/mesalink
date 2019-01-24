@@ -44,11 +44,7 @@ impl<'a> Deref for MesalinkBioInner<'a> {
     type Target = dyn BioRW + 'a;
 
     fn deref(&self) -> &Self::Target {
-        match &self {
-            MesalinkBioInner::File(ref f) => f,
-            MesalinkBioInner::Mem(ref m) => m,
-            _ => unimplemented!(),
-        }
+        unreachable!()
     }
 }
 
@@ -778,6 +774,50 @@ mod tests {
     }
 
     #[test]
+    fn bio_null_ptr() {
+        let bio_ptr = mesalink_BIO_new(ptr::null());
+        assert_eq!(bio_ptr, ptr::null_mut());
+
+        let invalid_method_ptr = "hello".as_ptr() as *const MESALINK_BIO_METHOD;
+        let bio_ptr = mesalink_BIO_new(invalid_method_ptr);
+        assert_eq!(bio_ptr, ptr::null_mut());
+    }
+
+    #[test]
+    fn bio_uninitialized() {
+        let bio_ptr = mesalink_BIO_new(mesalink_BIO_s_mem());
+        let buf_ptr = [0u8; 32].as_ptr() as *mut c_void;
+        let len = mesalink_BIO_read(bio_ptr, buf_ptr, 32);
+        assert_eq!(-1, len);
+        let len = mesalink_BIO_write(bio_ptr, buf_ptr, 32);
+        assert_eq!(-1, len);
+        let buf_ptr = buf_ptr as *mut c_char;
+        let len = mesalink_BIO_gets(bio_ptr, buf_ptr, 32);
+        assert_eq!(-1, len);
+        let len = mesalink_BIO_puts(bio_ptr, buf_ptr);
+        assert_eq!(-1, len);
+        mesalink_BIO_free(bio_ptr);
+    }
+
+    #[test]
+    fn bio_null_buf() {
+        let bio_ptr = mesalink_BIO_new_mem_buf(ptr::null_mut(), 10);
+        assert_eq!(bio_ptr, ptr::null_mut());
+        let bio_ptr = mesalink_BIO_new_mem_buf(b"hello\0".as_ptr() as *mut c_void, -1);
+        let buf_ptr = ptr::null_mut() as *mut c_void;
+        let len = mesalink_BIO_read(bio_ptr, buf_ptr, 5);
+        assert_eq!(-1, len);
+        let len = mesalink_BIO_write(bio_ptr, buf_ptr, 5);
+        assert_eq!(-1, len);
+        let buf_ptr = buf_ptr as *mut c_char;
+        let len = mesalink_BIO_gets(bio_ptr, buf_ptr, 5);
+        assert_eq!(-1, len);
+        let len = mesalink_BIO_puts(bio_ptr, buf_ptr);
+        assert_eq!(-1, len);
+        mesalink_BIO_free(bio_ptr);
+    }
+
+    #[test]
     fn bio_mem() {
         let buf = [0u8; 10];
         let bio_ptr_m = mesalink_BIO_new_mem_buf(buf.as_ptr() as *mut c_void, 10);
@@ -815,6 +855,9 @@ mod tests {
 
     #[test]
     fn bio_file_new_fp() {
+        let bio_ptr_f = mesalink_BIO_new_fp(ptr::null_mut(), 0);
+        assert_eq!(bio_ptr_f, ptr::null_mut());
+
         let file = fs::File::open("tests/ca.cert").unwrap(); // Read-only, "r"
         let fd = file.as_raw_fd();
         let fp = unsafe { libc::fdopen(fd, b"r\0".as_ptr() as *const c_char) };
@@ -837,6 +880,7 @@ mod tests {
         assert_eq!(0x1, mesalink_BIO_get_close(bio_ptr_f)); // BIO_CLOSE by default
         mesalink_BIO_set_fp(bio_ptr_f, fp, 0);
         assert_eq!(0x0, mesalink_BIO_get_close(bio_ptr_f)); // BIO_NOCLOSE after set_fp
+        assert_eq!(CRYPTO_SUCCESS, mesalink_BIO_set_close(bio_ptr_f, 0x0));
         let buf = [0u8; 1024];
         let ret = mesalink_BIO_gets(bio_ptr_f, buf.as_ptr() as *mut c_char, 1024);
         assert_eq!(ret, 28); // gets returns the first line
