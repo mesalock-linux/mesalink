@@ -20,7 +20,21 @@ MesaLink into Android apps and Android-based smart TVs is now in progress.
 Also visit us on our new website: [https://mesalink.io](https://mesalink.io).
 
 ## Release history
-
+* 0.8.0 (Upcoming release)
+  - File BIO and memory BIO APIs
+  - EVP_PKEY APIs for storing RSA/EC private keys
+  - PEM and X509 APIs for loading certs and keys
+  - Refactored and new SSL/SSL_CTX APIs
+  - TLS backend for curl (since 7.62.0)
+  - Discontinue support for SHA1 signatures
+  - Move to Rust 2018 edition
+* 0.7.2 (11-24-2018)
+  - Client authentication with `SSL_CTX_load_verify_location`,
+    `SSL_CTX_use_certificate_chain_file`, and `SSL_CTX_use_PrivateKey_file`
+  - Use armv7-linux-androideabi for Android builds
+* 0.7.1 (09-05-2018)
+  - SSL_CTX_load_verify_location
+  - Fix duplicate `floatdisf` symbols
 * 0.7.0 (08-14-2018)
   - TLS 1.3 draft 28
   - Client-side support for TLS 1.3 0-RTT ([rustls PR
