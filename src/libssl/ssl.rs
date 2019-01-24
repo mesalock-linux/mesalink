@@ -2577,7 +2577,7 @@ mod tests {
         fn new_client_session(
             method: *const MESALINK_METHOD,
             sockfd: c_int,
-        ) -> MesalinkTestSession {
+        ) -> Result<MesalinkTestSession, ()> {
             let ctx = mesalink_SSL_CTX_new(method);
             assert_ne!(ctx, ptr::null_mut(), "CTX is null");
             let _ =
@@ -2624,11 +2624,11 @@ mod tests {
             );
             mesalink_SSL_set_connect_state(ssl);
             assert_eq!(SSL_SUCCESS, mesalink_SSL_connect0(ssl), "Failed to connect");
-            assert_eq!(
-                SSL_SUCCESS,
-                mesalink_SSL_do_handshake(ssl),
-                "Failed to start handshake"
-            );
+            if SSL_SUCCESS != mesalink_SSL_do_handshake(ssl) {
+                mesalink_SSL_free(ssl);
+                mesalink_SSL_CTX_free(ctx);
+                return Err(());
+            }
             let certs = mesalink_SSL_get_peer_certificates(ssl);
             let cert = mesalink_SSL_get_peer_certificate(ssl);
             assert_ne!(certs, ptr::null_mut(), "Failed to get peer certificates");
@@ -2636,13 +2636,13 @@ mod tests {
             mesalink_sk_X509_free(certs);
             mesalink_X509_free(cert);
 
-            MesalinkTestSession { ctx, ssl }
+            Ok(MesalinkTestSession { ctx, ssl })
         }
 
         fn new_server_session(
             method: *const MESALINK_METHOD,
             sockfd: c_int,
-        ) -> MesalinkTestSession {
+        ) -> Result<MesalinkTestSession, ()> {
             let ctx = mesalink_SSL_CTX_new(method);
             assert_ne!(ctx, ptr::null_mut(), "CTX is null");
             assert_eq!(
@@ -2685,8 +2685,12 @@ mod tests {
                 "Faield to set fd"
             );
             mesalink_SSL_set_accept_state(ssl);
-            assert_eq!(SSL_SUCCESS, mesalink_SSL_accept(ssl), "Failed to accept");
-            MesalinkTestSession { ctx, ssl }
+            if SSL_SUCCESS != mesalink_SSL_accept(ssl) {
+                mesalink_SSL_free(ssl);
+                mesalink_SSL_CTX_free(ctx);
+                return Err(());
+            }
+            Ok(MesalinkTestSession { ctx, ssl })
         }
 
         fn read(&self, buf: &mut [u8]) -> c_int {
@@ -2755,6 +2759,10 @@ mod tests {
             thread::spawn(move || {
                 let method = get_method_by_version(&version, false);
                 let session = MesalinkTestSession::new_client_session(method, sock.as_raw_fd());
+                if session.is_err() {
+                    return 1; // SSL handshake failed
+                }
+                let session = session.unwrap();
                 mesalink_ERR_clear_error();
                 let _ = session.write(b"Hello server");
                 let error = mesalink_ERR_get_error();
@@ -2820,6 +2828,10 @@ mod tests {
             thread::spawn(move || {
                 let method = get_method_by_version(&version, true);
                 let session = MesalinkTestSession::new_server_session(method, sock.as_raw_fd());
+                if session.is_err() {
+                    return 1; // SSL handshake failed
+                }
+                let session = session.unwrap();
                 mesalink_ERR_clear_error();
                 let mut rd_buf = [0u8; 64];
                 let _ = session.read(&mut rd_buf);
@@ -2862,15 +2874,33 @@ mod tests {
 
     #[test]
     fn supported_tls_versions() {
-        assert_ne!(mesalink_SSLv23_client_method(), ptr::null());
-        assert_ne!(mesalink_SSLv23_server_method(), ptr::null());
-        assert_ne!(mesalink_TLSv1_2_client_method(), ptr::null());
-        assert_ne!(mesalink_TLSv1_2_server_method(), ptr::null());
-        assert_ne!(mesalink_TLSv1_3_client_method(), ptr::null());
-        assert_ne!(mesalink_TLSv1_3_server_method(), ptr::null());
-        assert_ne!(mesalink_TLS_method(), ptr::null());
-        assert_ne!(mesalink_TLS_client_method(), ptr::null());
-        assert_ne!(mesalink_TLS_server_method(), ptr::null());
+        let method_ptr = mesalink_SSLv23_client_method();
+        assert_ne!(method_ptr, ptr::null());
+        let _ = unsafe { Box::from_raw(method_ptr as *mut MESALINK_METHOD) };
+
+        let method_ptr = mesalink_TLSv1_2_client_method();
+        assert_ne!(method_ptr, ptr::null());
+        let _ = unsafe { Box::from_raw(method_ptr as *mut MESALINK_METHOD) };
+
+        let method_ptr = mesalink_TLSv1_2_client_method();
+        assert_ne!(method_ptr, ptr::null());
+        let _ = unsafe { Box::from_raw(method_ptr as *mut MESALINK_METHOD) };
+
+        let method_ptr = mesalink_TLSv1_2_server_method();
+        assert_ne!(method_ptr, ptr::null());
+        let _ = unsafe { Box::from_raw(method_ptr as *mut MESALINK_METHOD) };
+
+        let method_ptr = mesalink_TLS_method();
+        assert_ne!(method_ptr, ptr::null());
+        let _ = unsafe { Box::from_raw(method_ptr as *mut MESALINK_METHOD) };
+
+        let method_ptr = mesalink_TLS_client_method();
+        assert_ne!(method_ptr, ptr::null());
+        let _ = unsafe { Box::from_raw(method_ptr as *mut MESALINK_METHOD) };
+
+        let method_ptr = mesalink_TLS_server_method();
+        assert_ne!(method_ptr, ptr::null());
+        let _ = unsafe { Box::from_raw(method_ptr as *mut MESALINK_METHOD) };
     }
 
     #[test]
@@ -2957,19 +2987,22 @@ mod tests {
 
     #[test]
     fn ssl_ctx_is_thread_safe() {
-        let context_ptr = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
-        let context = sanitize_ptr_for_mut_ref(context_ptr);
-        let _ = &context as &dyn Send;
-        let _ = &context as &dyn Sync;
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
+        let ctx = sanitize_ptr_for_mut_ref(ctx_ptr);
+        let _ = &ctx as &dyn Send;
+        let _ = &ctx as &dyn Sync;
+        mesalink_SSL_CTX_free(ctx_ptr);
     }
 
     #[test]
     fn ssl_is_thread_safe() {
-        let context_ptr = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
-        let ssl_ptr = mesalink_SSL_new(context_ptr);
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
+        let ssl_ptr = mesalink_SSL_new(ctx_ptr);
         let ssl = sanitize_ptr_for_mut_ref(ssl_ptr);
         let _ = &ssl as &dyn Send;
         let _ = &ssl as &dyn Sync;
+        mesalink_SSL_free(ssl_ptr);
+        mesalink_SSL_CTX_free(ctx_ptr);
     }
 
     #[test]
@@ -3313,6 +3346,8 @@ mod tests {
             SSL_SUCCESS,
             mesalink_SSL_set_tlsext_host_name(ssl_ptr, ptr::null() as *const c_char)
         );
+        mesalink_SSL_free(ssl_ptr);
+        mesalink_SSL_CTX_free(ctx_ptr);
     }
 
     #[test]
@@ -3323,6 +3358,8 @@ mod tests {
             SSL_SUCCESS,
             mesalink_SSL_set_tlsext_host_name(ssl_ptr, b"@#$%^&*(\0".as_ptr() as *const c_char)
         );
+        mesalink_SSL_free(ssl_ptr);
+        mesalink_SSL_CTX_free(ctx_ptr);
     }
 
     #[test]
@@ -3333,6 +3370,8 @@ mod tests {
             SSL_SUCCESS,
             mesalink_SSL_set_tlsext_host_name(ssl_ptr, b"google.com\0".as_ptr() as *const c_char)
         );
+        mesalink_SSL_free(ssl_ptr);
+        mesalink_SSL_CTX_free(ctx_ptr);
     }
 
     #[test]
@@ -3554,5 +3593,7 @@ mod tests {
             mesalink_SSL_write_early_data(ssl, buf.as_ptr() as *const c_uchar, 10, wr_len_ptr)
         );
         let _ = unsafe { Box::from_raw(wr_len_ptr) };
+        mesalink_SSL_free(ssl);
+        mesalink_SSL_CTX_free(ctx);
     }
 }
