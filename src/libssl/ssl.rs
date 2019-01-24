@@ -293,12 +293,6 @@ pub struct MESALINK_SSL {
 #[doc(hidden)]
 pub type MESALINK_SSL_ARC = Arc<Mutex<MESALINK_SSL>>;
 
-impl MesalinkOpaquePointerType for MESALINK_SSL {
-    fn check_magic(&self) -> bool {
-        self.magic == *MAGIC
-    }
-}
-
 impl MesalinkOpaquePointerType for MESALINK_SSL_ARC {
     fn check_magic(&self) -> bool {
         let reader = self.lock().unwrap();
@@ -2566,7 +2560,9 @@ mod tests {
     use std::{str, thread};
 
     const CONST_CA_FILE: &'static [u8] = b"tests/ca.cert\0";
-    const CONST_SERVER_CERT_FILE: &'static [u8] = b"tests/end.fullchain\0";
+    const CONST_INTER_CA_FILE: &'static [u8] = b"tests/inter.cert\0";
+    const CONST_SERVER_CERT_CHAIN_FILE: &'static [u8] = b"tests/end.fullchain\0";
+    const CONST_SERVER_CERT_FILE: &'static [u8] = b"tests/end.cert\0";
     const CONST_SERVER_KEY_FILE: &'static [u8] = b"tests/end.key\0";
     const CONST_CLIENT_CERT_FILE: &'static [u8] = b"tests/client.fullchain\0";
     const CONST_CLIENT_KEY_FILE: &'static [u8] = b"tests/client.key\0";
@@ -2626,6 +2622,7 @@ mod tests {
                 mesalink_SSL_set_fd(ssl, sockfd),
                 "Failed to set fd"
             );
+            mesalink_SSL_set_connect_state(ssl);
             assert_eq!(SSL_SUCCESS, mesalink_SSL_connect0(ssl), "Failed to connect");
             assert_eq!(
                 SSL_SUCCESS,
@@ -2661,7 +2658,7 @@ mod tests {
                 SSL_SUCCESS,
                 mesalink_SSL_CTX_use_certificate_chain_file(
                     ctx,
-                    CONST_SERVER_CERT_FILE.as_ptr() as *const c_char,
+                    CONST_SERVER_CERT_CHAIN_FILE.as_ptr() as *const c_char,
                     0,
                 ),
                 "Failed to set certificate file"
@@ -2687,6 +2684,7 @@ mod tests {
                 mesalink_SSL_set_fd(ssl, sockfd),
                 "Faield to set fd"
             );
+            mesalink_SSL_set_accept_state(ssl);
             assert_eq!(SSL_SUCCESS, mesalink_SSL_accept(ssl), "Failed to accept");
             MesalinkTestSession { ctx, ssl }
         }
@@ -2870,6 +2868,7 @@ mod tests {
         assert_ne!(mesalink_TLSv1_2_server_method(), ptr::null());
         assert_ne!(mesalink_TLSv1_3_client_method(), ptr::null());
         assert_ne!(mesalink_TLSv1_3_server_method(), ptr::null());
+        assert_ne!(mesalink_TLS_method(), ptr::null());
         assert_ne!(mesalink_TLS_client_method(), ptr::null());
         assert_ne!(mesalink_TLS_server_method(), ptr::null());
     }
@@ -3078,7 +3077,7 @@ mod tests {
             SSL_SUCCESS,
             mesalink_SSL_CTX_use_certificate_chain_file(
                 ctx_ptr,
-                CONST_SERVER_CERT_FILE.as_ptr() as *const c_char,
+                CONST_SERVER_CERT_CHAIN_FILE.as_ptr() as *const c_char,
                 0
             )
         );
@@ -3095,7 +3094,7 @@ mod tests {
     }
 
     #[test]
-    fn verify_key_and_certificate() {
+    fn verify_key_and_certificate_1() {
         let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_server_method());
         assert_eq!(
             SSL_SUCCESS,
@@ -3109,11 +3108,106 @@ mod tests {
             SSL_SUCCESS,
             mesalink_SSL_CTX_use_certificate_chain_file(
                 ctx_ptr,
-                CONST_SERVER_CERT_FILE.as_ptr() as *const c_char,
+                CONST_SERVER_CERT_CHAIN_FILE.as_ptr() as *const c_char,
                 0
             )
         );
         assert_eq!(SSL_SUCCESS, mesalink_SSL_CTX_check_private_key(ctx_ptr));
+        mesalink_SSL_CTX_free(ctx_ptr);
+    }
+
+    #[test]
+    fn verify_key_and_certificate_2() {
+        use crate::libcrypto::{bio, evp, pem};
+
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_server_method());
+
+        // Load the private key
+        let bio_pkey_ptr = bio::mesalink_BIO_new_file(
+            CONST_SERVER_KEY_FILE.as_ptr() as *const c_char,
+            b"r\0".as_ptr() as *const c_char,
+        );
+        assert_ne!(bio_pkey_ptr, ptr::null_mut());
+        let pkey_ptr = pem::mesalink_PEM_read_bio_PrivateKey(
+            bio_pkey_ptr,
+            ptr::null_mut(),
+            ptr::null_mut(),
+            ptr::null_mut(),
+        );
+        assert_ne!(pkey_ptr, ptr::null_mut());
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_use_PrivateKey(ctx_ptr, pkey_ptr)
+        );
+
+        // Load the end entity cert
+        let bio_x509_cert_ptr = bio::mesalink_BIO_new_file(
+            CONST_SERVER_CERT_FILE.as_ptr() as *const c_char,
+            b"r\0".as_ptr() as *const c_char,
+        );
+        assert_ne!(bio_x509_cert_ptr, ptr::null_mut());
+        let x509_cert_ptr = pem::mesalink_PEM_read_bio_X509(
+            bio_x509_cert_ptr,
+            ptr::null_mut(),
+            ptr::null_mut(),
+            ptr::null_mut(),
+        );
+        assert_ne!(x509_cert_ptr, ptr::null_mut());
+
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_use_certificate(ctx_ptr, x509_cert_ptr,)
+        );
+
+        // Load the intermediate CA cert
+        let bio_x509_inter_ca_ptr = bio::mesalink_BIO_new_file(
+            CONST_INTER_CA_FILE.as_ptr() as *const c_char,
+            b"r\0".as_ptr() as *const c_char,
+        );
+        assert_ne!(bio_x509_inter_ca_ptr, ptr::null_mut());
+        let x509_inter_ca_ptr = pem::mesalink_PEM_read_bio_X509(
+            bio_x509_inter_ca_ptr,
+            ptr::null_mut(),
+            ptr::null_mut(),
+            ptr::null_mut(),
+        );
+        assert_ne!(x509_inter_ca_ptr, ptr::null_mut());
+
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_add_extra_chain_cert(ctx_ptr, x509_inter_ca_ptr)
+        );
+
+        // Load the CA cert
+        let bio_x509_ca_ptr = bio::mesalink_BIO_new_file(
+            CONST_CA_FILE.as_ptr() as *const c_char,
+            b"r\0".as_ptr() as *const c_char,
+        );
+        assert_ne!(bio_x509_ca_ptr, ptr::null_mut());
+        let x509_ca_ptr = pem::mesalink_PEM_read_bio_X509(
+            bio_x509_ca_ptr,
+            ptr::null_mut(),
+            ptr::null_mut(),
+            ptr::null_mut(),
+        );
+        assert_ne!(x509_ca_ptr, ptr::null_mut());
+
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_add_extra_chain_cert(ctx_ptr, x509_ca_ptr)
+        );
+
+        // Check the private key and certificate
+        assert_eq!(SSL_SUCCESS, mesalink_SSL_CTX_check_private_key(ctx_ptr));
+
+        mesalink_X509_free(x509_cert_ptr);
+        mesalink_X509_free(x509_inter_ca_ptr);
+        mesalink_X509_free(x509_ca_ptr);
+        evp::mesalink_EVP_PKEY_free(pkey_ptr);
+        bio::mesalink_BIO_free(bio_pkey_ptr);
+        bio::mesalink_BIO_free(bio_x509_cert_ptr);
+        bio::mesalink_BIO_free(bio_x509_inter_ca_ptr);
+        bio::mesalink_BIO_free(bio_x509_ca_ptr);
         mesalink_SSL_CTX_free(ctx_ptr);
     }
 
@@ -3208,7 +3302,7 @@ mod tests {
     fn dummy_openssl_compatible_apis_always_return_success() {
         assert_eq!(SSL_SUCCESS, mesalink_library_init());
         assert_eq!(SSL_SUCCESS, mesalink_add_ssl_algorithms());
-        //assert_eq!((), mesalink_SSL_load_error_strings());
+        assert_eq!((), mesalink_SSL_load_error_strings());
     }
 
     #[test]
