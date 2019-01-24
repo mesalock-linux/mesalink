@@ -13,8 +13,8 @@
  *
  */
 
-use libssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
-use MesalinkOpaquePointerType;
+use crate::libssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
+use crate::MesalinkOpaquePointerType;
 
 pub(crate) fn sanitize_const_ptr_for_ref<'a, T>(ptr: *const T) -> MesalinkInnerResult<&'a T>
 where

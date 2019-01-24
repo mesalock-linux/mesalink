@@ -13,13 +13,13 @@
  *
  */
 
-use error_san::*;
+use super::err::{MesalinkBuiltinError, MesalinkInnerResult};
+use super::x509::{MESALINK_X509, MESALINK_X509_NAME};
+use super::{SSL_FAILURE, SSL_SUCCESS};
+use crate::error_san::*;
+use crate::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use libc::c_int;
-use libssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
-use libssl::x509::{MESALINK_X509, MESALINK_X509_NAME};
-use libssl::{SSL_FAILURE, SSL_SUCCESS};
 use std::ptr;
-use {MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 
 // ---------------------------------------
 // STACK for MESALINK_X509
@@ -309,7 +309,7 @@ fn inner_mesalink_sk_X509_NAME_free(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use libssl::SSL_SUCCESS;
+    use crate::libssl::SSL_SUCCESS;
     use rustls::internal::pemfile;
     use std::fs::File;
     use std::io::BufReader;

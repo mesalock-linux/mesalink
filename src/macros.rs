@@ -33,7 +33,7 @@ macro_rules! call_site {
 #[macro_export]
 macro_rules! error {
     ($code:expr) => {{
-        use libssl::err::MesalinkError;
+        use crate::libssl::err::MesalinkError;
         MesalinkError::new($code, call_site!())
     }};
 }
@@ -45,7 +45,7 @@ macro_rules! error {
 #[macro_export]
 macro_rules! check_inner_result {
     ($inner:expr, $err_ret:expr) => {{
-        use libssl::err::{ErrorQueue, MesalinkBuiltinError};
+        use crate::libssl::err::{ErrorQueue, MesalinkBuiltinError};
         use std::panic;
         match panic::catch_unwind(panic::AssertUnwindSafe(|| $inner))
             .unwrap_or_else(|_| Err(error!(MesalinkBuiltinError::Panic.into())))

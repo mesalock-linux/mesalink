@@ -808,7 +808,7 @@ mod tests {
 
     macro_rules! error {
         ($code:expr) => {{
-            use libssl::err::MesalinkError;
+            use crate::libssl::err::MesalinkError;
             MesalinkError::new($code, call_site!())
         }};
     }

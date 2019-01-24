@@ -13,17 +13,17 @@
  *
  */
 
-use error_san::*;
+use super::err::{MesalinkBuiltinError, MesalinkInnerResult};
+use super::safestack::MESALINK_STACK_MESALINK_X509_NAME;
+use super::{SSL_FAILURE, SSL_SUCCESS};
+use crate::error_san::*;
+use crate::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use libc::{c_char, c_int};
-use libssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
-use libssl::safestack::MESALINK_STACK_MESALINK_X509_NAME;
-use libssl::{SSL_FAILURE, SSL_SUCCESS};
 use ring::io::der;
 use rustls;
 use std::{ptr, slice, str};
 use untrusted;
 use webpki;
-use {MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 
 /// An OpenSSL X509 object
 #[allow(non_camel_case_types)]
@@ -337,7 +337,7 @@ fn inner_mesalink_x509_name_oneline(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use libssl::safestack::*;
+    use crate::libssl::safestack::*;
     use rustls::internal::pemfile;
     use std::fs::File;
     use std::io::BufReader;
@@ -382,7 +382,7 @@ mod tests {
         let name_count = mesalink_sk_X509_NAME_num(name_stack_ptr) as usize;
         assert_eq!(true, name_count > 0);
         for index in 0..name_count {
-            let mut name_ptr = mesalink_sk_X509_NAME_value(name_stack_ptr, index as c_int);
+            let name_ptr = mesalink_sk_X509_NAME_value(name_stack_ptr, index as c_int);
             assert_ne!(name_ptr, ptr::null_mut());
             let buf = [0u8; 253];
             let _ = mesalink_X509_NAME_oneline(

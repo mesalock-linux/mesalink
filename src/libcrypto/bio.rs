@@ -13,12 +13,12 @@
  *
  */
 
-use error_san::*;
+use crate::error_san::*;
+use crate::libcrypto::{CRYPTO_FAILURE, CRYPTO_SUCCESS};
+use crate::libssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
+use crate::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use libc::{c_char, c_int, c_long, c_void, FILE};
-use libcrypto::{CRYPTO_FAILURE, CRYPTO_SUCCESS};
-use libssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
 use std::{ffi, fs, io, mem, ptr, slice};
-use {MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 
 // Trait imports
 use std::io::{Read, Seek, Write};

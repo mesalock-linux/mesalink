@@ -16,11 +16,11 @@
 use super::bio;
 use super::bio::MESALINK_BIO;
 use super::evp::MESALINK_EVP_PKEY;
-use error_san::*;
+use crate::error_san::*;
+use crate::libssl::x509::MESALINK_X509;
 use libc::c_void;
-use libssl::x509::MESALINK_X509;
 //use libcrypto::{CRYPTO_FAILURE, CRYPTO_SUCCESS};
-use libssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
+use crate::libssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
 use std::io::{Read, Seek};
 use std::{io, ptr};
 
@@ -236,9 +236,9 @@ fn extract_one<A>(
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::libcrypto::{bio, evp};
+    use crate::libssl::x509;
     use libc::c_char;
-    use libcrypto::{bio, evp};
-    use libssl::x509;
     use std::fs;
     use std::os::unix::io::AsRawFd;
 

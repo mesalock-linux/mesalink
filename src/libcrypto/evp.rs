@@ -13,12 +13,12 @@
  *
  */
 
-use error_san::*;
+use crate::error_san::*;
+use crate::libcrypto::{CRYPTO_FAILURE, CRYPTO_SUCCESS};
+use crate::libssl::err::MesalinkInnerResult;
+use crate::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use libc::c_int;
-use libcrypto::{CRYPTO_FAILURE, CRYPTO_SUCCESS};
-use libssl::err::MesalinkInnerResult;
 use rustls;
-use {MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 
 #[allow(non_camel_case_types)]
 pub struct MESALINK_EVP_PKEY {

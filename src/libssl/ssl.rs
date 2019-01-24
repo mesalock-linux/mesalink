@@ -35,18 +35,18 @@
 
 // Module imports
 
-use error_san::*;
+use super::err::{ErrorCode, MesalinkBuiltinError, MesalinkError, MesalinkInnerResult};
+use super::safestack::MESALINK_STACK_MESALINK_X509;
+use super::x509::MESALINK_X509;
+use super::{SslSessionCacheModes, SSL_ERROR, SSL_FAILURE, SSL_SUCCESS};
+use crate::error_san::*;
+use crate::libcrypto::evp::MESALINK_EVP_PKEY;
+use crate::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use libc::{c_char, c_int, c_long, c_uchar, size_t};
-use libcrypto::evp::MESALINK_EVP_PKEY;
-use libssl::err::{ErrorCode, MesalinkBuiltinError, MesalinkError, MesalinkInnerResult};
-use libssl::safestack::MESALINK_STACK_MESALINK_X509;
-use libssl::x509::MESALINK_X509;
-use libssl::{SslSessionCacheModes, SSL_ERROR, SSL_FAILURE, SSL_SUCCESS};
 use rustls;
 use std::sync::{Arc, Mutex};
 use std::{ffi, fs, io, net, path, ptr, slice};
 use webpki;
-use {MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 
 // Trait imports
 use std::ops::{Deref, DerefMut};
@@ -939,7 +939,7 @@ fn inner_mesalink_ssl_ctx_use_certificate_chain_file(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     filename_ptr: *const c_char,
 ) -> MesalinkInnerResult<c_int> {
-    use libcrypto::pem;
+    use crate::libcrypto::pem;
     use std::fs;
 
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
@@ -1129,7 +1129,7 @@ fn inner_mesalink_ssl_ctx_use_privatekey_file(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     filename_ptr: *const c_char,
 ) -> MesalinkInnerResult<c_int> {
-    use libcrypto::pem;
+    use crate::libcrypto::pem;
     use std::fs;
 
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
@@ -2491,7 +2491,7 @@ fn inner_mesalink_ssl_free(ssl_ptr: *mut MESALINK_SSL_ARC) -> MesalinkInnerResul
 }
 
 mod util {
-    use libssl::ssl;
+    use crate::libssl::ssl;
     use std::sync::Arc;
 
     pub(crate) const CONST_NONE_STR: &[u8] = b" NONE \0";
@@ -2548,10 +2548,10 @@ mod util {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::libssl::err::{mesalink_ERR_clear_error, mesalink_ERR_get_error};
+    use crate::libssl::safestack::*;
+    use crate::libssl::x509::*;
     use libc::{c_long, c_ulong};
-    use libssl::err::{mesalink_ERR_clear_error, mesalink_ERR_get_error};
-    use libssl::safestack::*;
-    use libssl::x509::*;
     use std::{str, thread};
 
     const CONST_CA_FILE: &'static [u8] = b"tests/ca.cert\0";
