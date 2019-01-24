@@ -36,7 +36,6 @@
 use env_logger;
 use libc;
 
-
 use mesalink::libssl::err::ErrorCode;
 use mesalink::libssl::{err, ssl};
 use std::env;

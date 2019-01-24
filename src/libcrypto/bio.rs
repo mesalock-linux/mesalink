@@ -400,7 +400,10 @@ fn inner_mesalink_bio_write(
 /// int BIO_puts(BIO *b, const char *buf);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_BIO_puts(bio_ptr: *mut MESALINK_BIO<'_>, buf_ptr: *const c_char) -> c_int {
+pub extern "C" fn mesalink_BIO_puts(
+    bio_ptr: *mut MESALINK_BIO<'_>,
+    buf_ptr: *const c_char,
+) -> c_int {
     check_inner_result!(inner_mesalink_bio_puts(bio_ptr, buf_ptr), -1)
 }
 
