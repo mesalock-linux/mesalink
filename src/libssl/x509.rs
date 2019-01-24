@@ -18,7 +18,7 @@ use libc::{c_char, c_int};
 use libssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
 use libssl::safestack::MESALINK_STACK_MESALINK_X509_NAME;
 use libssl::{SSL_FAILURE, SSL_SUCCESS};
-use ring::der;
+use ring::io::der;
 use rustls;
 use std::{ptr, slice, str};
 use untrusted;

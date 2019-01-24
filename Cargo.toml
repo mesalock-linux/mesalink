@@ -33,11 +33,8 @@ verifier = ["rustls/dangerous_configuration"]
 nightly = []
 
 [dependencies]
-rustls = "0.13.0"
-webpki = "0.18.1"
-ring = { version = "0.13.2", features = ["rsa_signing", ] }
+ring = "0.14"
 untrusted = "0.6.2"
-webpki-roots = "0.15.0"
 env_logger = "0.5"
 libc = "0.2.42"
 lazy_static = "1.0.0"
@@ -45,10 +42,25 @@ enum_to_u8_slice_derive = "0.1"
 bitflags = "1.0.4"
 base64 = "0.10"
 
-[patch.crates-io]
-rustls = { git = "https://github.com/mesalock-linux/rustls", tag = "v0.7.0", default-features = false }
-sct = { git = "https://github.com/mesalock-linux/sct.rs", tag = "v0.7.0", default-features = false }
-webpki = { git = "https://github.com/mesalock-linux/webpki", tag = "v0.7.0", default-features = true }
+[dependencies.rustls]
+git = "https://github.com/mesalock-linux/rustls"
+tag = "v0.8.0"
+default-features = false
+
+[dependencies.webpki]
+git = "https://github.com/mesalock-linux/webpki"
+tag = "v0.8.0"
+default-features = false
+
+[dependencies.sct]
+git = "https://github.com/mesalock-linux/sct.rs"
+tag = "v0.8.0"
+default-features = false
+
+[dependencies.webpki-roots]
+git = "https://github.com/mesalock-linux/webpki-roots"
+tag = "v0.8.0"
+default-features = false
 
 [dev-dependencies]
 log = "0.4"
