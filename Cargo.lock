@@ -218,7 +218,7 @@ dependencies = [
 [[package]]
 name = "rustls"
 version = "0.15.0"
-source = "git+https://github.com/mesalock-linux/rustls?tag=v0.8.0#0f6f4458a43de1b173438e39087d5dc9702c3551"
+source = "git+https://github.com/mesalock-linux/rustls?tag=v0.8.0#3275ce157163753b1eb82d1a0bd3a7387e72d38f"
 dependencies = [
  "base64 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",

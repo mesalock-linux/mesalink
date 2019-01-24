@@ -245,6 +245,19 @@ else
     CONFIG_OPTIONS="$CONFIG_OPTIONS NO_ECDSA"
 fi
 
+AC_ARG_ENABLE([sgx],
+    [AS_HELP_STRING([--enable-sgx], [Enable experimental SGX attestation (default: disabled)])],
+    [ ENABLE_SGX=$enableval ],
+    [ ENABLE_SGX=no ]
+    )
+if test "$ENABLE_SGX" = "yes"
+then
+    CARGO_FEATURES=$CARGO_FEATURES" sgx"
+    CONFIG_OPTIONS="$CONFIG_OPTIONS HAVE_SGX"
+else
+    CONFIG_OPTIONS="$CONFIG_OPTIONS NO_SGX"
+fi
+
 CARGO_FEATURES=$CARGO_FEATURES" verifier"
 CARGO_FEATURES=$CARGO_FEATURES"\""
 
@@ -327,5 +340,6 @@ echo "   * X25519 key exchange:        $ENABLE_X25519"
 echo "   * EC key exchange:            $ENABLE_ECDH"
 echo "   * RSA signature verification: yes"
 echo "   * EC signature verification:  $ENABLE_ECDSA"
+echo "   * SGX attestation:            $ENABLE_SGX"
 echo ""
 echo "---"
