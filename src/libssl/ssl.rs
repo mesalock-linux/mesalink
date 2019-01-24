@@ -525,6 +525,17 @@ pub extern "C" fn mesalink_add_ssl_algorithms() -> c_int {
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_load_error_strings() {
     /* compatibility only */
+}
+
+/// `SSL_init_logger` turns on debugging output
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// void SSL_load_error_strings(void);
+/// ```
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_init_logger() {
     init_logger();
 }
 

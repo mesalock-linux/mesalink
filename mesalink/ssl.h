@@ -63,6 +63,7 @@ typedef enum mesalink_constant_t
 MESALINK_API int mesalink_library_init(void);
 MESALINK_API int mesalink_add_ssl_algorithms(void);
 MESALINK_API void mesalink_SSL_load_error_strings(void);
+MESALINK_API void mesalink_SSL_init_logger(void);
 MESALINK_API void mesalink_ERR_load_error_strings(void);
 MESALINK_API void mesalink_ERR_free_error_strings(void);
 
