@@ -374,6 +374,11 @@ fn main() {
     env_logger::init();
 
     args.remove(0);
+
+    if !args.is_empty() && args[0] == "-is-handshaker-supported" {
+        println!("No");
+        process::exit(0);
+    }
     println!("options: {:?}", args);
 
     let mut opts = Options::new();
@@ -428,12 +433,14 @@ fn main() {
             "-expect-curve-id" |
             "-expect-resume-curve-id" |
             "-expect-peer-signature-algorithm" |
+            "-expect-peer-verify-pref" |
             "-expect-advertised-alpn" |
             "-expect-alpn" |
             "-expect-server-name" |
             "-expect-ocsp-response" |
             "-expect-signed-cert-timestamps" |
             "-expect-certificate-types" |
+            "-handshaker-path" |
             "-expect-msg-callback" => {
                 println!("not checking {} {}; NYI", arg, args.remove(0));
             }
@@ -450,7 +457,9 @@ fn main() {
             "-export-keying-material" |
             "-export-label" |
             "-export-context" |
-            "-use-export-context" => {
+            "-use-export-context" |
+            "-no-ticket" |
+            "-on-resume-no-ticket" => {
                 println!("not checking {}; disabled for MesaLink", arg);
                 process::exit(BOGO_NACK);
             }
@@ -560,11 +569,14 @@ fn main() {
             "-on-resume-export-early-keying-material" |
             "-export-early-keying-material" |
             "-handshake-twice" |
+            "-on-resume-verify-fail" |
+            "-reverify-on-resume" |
             "-verify-prefs" |
             "-no-op-extra-handshake" |
             "-read-with-unfinished-write" |
             "-on-resume-read-with-unfinished-write" |
             "-expect-peer-cert-file" |
+            "-no-rsa-pss-rsae-certs" |
             "-on-initial-expect-peer-cert-file" => {
                 println!("NYI option {:?}", arg);
                 process::exit(BOGO_NACK);

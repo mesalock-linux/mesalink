@@ -30,6 +30,7 @@ x25519 = ["rustls/x25519"]
 ecdh = ["rustls/ecdh"]
 ecdsa = ["rustls/ecdsa"]
 verifier = ["rustls/dangerous_configuration"]
+sgx = ["rustls/sgx"]
 nightly = []
 
 [dependencies]
