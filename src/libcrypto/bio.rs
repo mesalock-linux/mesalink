@@ -25,6 +25,7 @@ use std::io::{Read, Seek, Write};
 use std::ops::{Deref, DerefMut};
 use std::os::unix::io::{FromRawFd, IntoRawFd};
 
+#[doc(hidden)]
 pub trait BioRW: Read + Write + Seek {}
 impl<T> BioRW for T where T: Read + Write + Seek + ?Sized {}
 
@@ -34,6 +35,7 @@ impl<T> BioRW for T where T: Read + Write + Seek + ?Sized {}
 ///
 /// ////////////////////////////////////////////////
 
+#[doc(hidden)]
 pub enum MesalinkBioInner<'a> {
     File(fs::File),
     Mem(io::Cursor<&'a mut [u8]>),
@@ -58,12 +60,8 @@ impl<'a> DerefMut for MesalinkBioInner<'a> {
     }
 }
 
-////////////////////////////////////////////////////
-///
-/// BIO_METHOD for defined operations on BIO_INNER
-///
-/// ////////////////////////////////////////////////
 
+/// A structure used for the implementation of new BIO types
 #[allow(non_camel_case_types)]
 #[repr(C)]
 #[derive(PartialEq)]
@@ -76,6 +74,7 @@ pub enum MESALINK_BIO_METHOD {
 static MESALINK_BIO_METHOD_FILE: MESALINK_BIO_METHOD = MESALINK_BIO_METHOD::File;
 static MESALINK_BIO_METHOD_MEM: MESALINK_BIO_METHOD = MESALINK_BIO_METHOD::Mem;
 
+#[doc(hidden)]
 #[allow(non_camel_case_types)]
 pub struct MesalinkBioFunctions<'a> {
     pub read: Box<dyn Fn(&mut MesalinkBioInner<'a>, &mut [u8]) -> io::Result<usize>>,
@@ -168,6 +167,8 @@ bitflags! {
     }
 }
 
+/// An I/O abstraction, it hides many of the underlying I/O details from an
+/// application.
 #[allow(non_camel_case_types)]
 pub struct MESALINK_BIO<'a> {
     magic: [u8; MAGIC_SIZE],
@@ -212,12 +213,6 @@ impl<'a> Seek for MESALINK_BIO<'a> {
         self.inner.seek(pos)
     }
 }
-
-////////////////////////////////////////////////////
-///
-/// BIO generic C APIs
-///
-/// ////////////////////////////////////////////////
 
 /// `BIO_new()` returns a new BIO using method `type`
 ///
@@ -422,12 +417,6 @@ fn inner_mesalink_bio_puts(
     let ret = puts_fn(&mut bio.inner, &buf).map_err(|e| error!(e.into()))?;
     Ok(ret as c_int)
 }
-
-////////////////////////////////////////////////////
-///
-/// BIO_s_file related C APIs
-///
-/// ////////////////////////////////////////////////
 
 /// `BIO_s_file()` returns the BIO file method.
 ///
@@ -700,12 +689,6 @@ fn inner_mesalink_bio_set_close(
     bio.flags = flag;
     Ok(CRYPTO_SUCCESS)
 }
-
-////////////////////////////////////////////////////
-///
-/// BIO_s_mem related C APIs
-///
-////////////////////////////////////////////////////
 
 /// `BIO_s_file()` returns the BIO memory method.
 ///

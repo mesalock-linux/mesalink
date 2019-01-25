@@ -20,6 +20,8 @@ use crate::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use libc::c_int;
 use rustls;
 
+/// A structure for storing keys. Currently only RSA/ECC private keys are
+/// supported.
 #[allow(non_camel_case_types)]
 pub struct MESALINK_EVP_PKEY {
     magic: [u8; MAGIC_SIZE],
