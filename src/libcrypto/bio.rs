@@ -60,7 +60,6 @@ impl<'a> DerefMut for MesalinkBioInner<'a> {
     }
 }
 
-
 /// A structure used for the implementation of new BIO types
 #[allow(non_camel_case_types)]
 #[repr(C)]
