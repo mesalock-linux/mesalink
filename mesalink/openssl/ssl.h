@@ -155,6 +155,10 @@ extern "C" {
 #define SSL_set_accept_state mesalink_SSL_set_accept_state
 #define SSL_is_server mesalink_SSL_is_server
 
+#ifdef HAVE_SGX
+#define SSL_CTX_set_sgx_verify mesalink_SSL_CTX_set_sgx_verify
+#endif
+
 #ifdef __cplusplus
 } /* extern C */
 #endif

@@ -30,6 +30,10 @@ pub mod x509;
 /// Please also refer to the header file at mesalink/openssl/safestack.h
 pub mod safestack;
 
+/// Flags reserved for SGX remote attestation
+#[cfg(feature = "sgx")]
+mod sgx;
+
 #[doc(hidden)]
 #[repr(C)]
 pub(self) enum SslConstants {

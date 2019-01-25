@@ -189,6 +189,17 @@ MESALINK_API void mesalink_SSL_set_connect_state(MESALINK_SSL *);
 MESALINK_API void mesalink_SSL_set_accept_state(MESALINK_SSL *);
 MESALINK_API int mesalink_SSL_is_server(const MESALINK_SSL *);
 
+#ifdef HAVE_SGX
+typedef enum mesalink_sgx_config_flag_t {
+  SGX_FLAGS_DEBUG = 1,
+  SGX_ALLOW_CONFIGURATION_NEEDED = 2,
+  SGX_ALLOW_GROUP_OUT_OF_DATE = 4,
+} mesalink_sgx_config_flag_t;
+
+MESALINK_API int mesalink_SSL_CTX_set_sgx_verify(MESALINK_CTX *, const char *,
+                                                 long);
+#endif
+
 #ifdef __cplusplus
 } /* extern C */
 #endif

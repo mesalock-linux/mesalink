@@ -42,7 +42,7 @@ use super::{SslSessionCacheModes, SSL_ERROR, SSL_FAILURE, SSL_SUCCESS};
 use crate::error_san::*;
 use crate::libcrypto::evp::MESALINK_EVP_PKEY;
 use crate::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
-use libc::{c_char, c_int, c_long, c_uchar, size_t};
+use libc::{c_char, c_int, c_long, c_uchar, c_void, size_t};
 use rustls;
 use std::sync::{Arc, Mutex};
 use std::{ffi, fs, io, net, path, ptr, slice};
@@ -1288,12 +1288,19 @@ fn inner_mesalink_ssl_check_private_key(
     inner_mesalink_ssl_ctx_check_private_key(ctx_ptr)
 }
 
-#[doc(hidden)]
+/// `SSL_CTX_set_verify` sets the verification flags for ctx to be *mode* and
+/// The verify_callback function is ignored for now.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_CTX_set_verify(const SSL_CTX *ctx, int mode, void *ignored_cb);
+/// ```
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_CTX_set_verify(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     mode: c_int,
-    _cb: Option<extern "C" fn(c_int, *mut MESALINK_CTX) -> c_int>,
+    _cb: Option<extern "C" fn(c_int, *mut c_void) -> c_int>,
 ) -> c_int {
     check_inner_result!(
         inner_mesalink_ssl_ctx_set_verify(ctx_ptr, mode),
@@ -1315,6 +1322,61 @@ fn inner_mesalink_ssl_ctx_set_verify(
         let client_auth = rustls::AllowAnyAuthenticatedClient::new(ctx.ca_roots.clone());
         util::get_context_mut(ctx).server_config.verifier = client_auth;
     }
+    Ok(SSL_SUCCESS)
+}
+
+/// `SSL_CTX_set_sgx_verify` sets the SSL_CTX to be used for SGX remote
+/// attestation
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_CTX_set_sgx_verify(const SSL_CTX *ctx, const char *mr_signer, long sgx_flags);
+/// ```
+#[cfg(feature = "sgx")]
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_CTX_set_sgx_verify(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    signer_ptr: *const c_char,
+    flag: c_long,
+) -> c_int {
+    check_inner_result!(
+        inner_mesalink_ssl_ctx_set_sgx_verify(ctx_ptr, signer_ptr, flag),
+        SSL_FAILURE
+    )
+}
+
+#[cfg(feature = "sgx")]
+fn inner_mesalink_ssl_ctx_set_sgx_verify(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    signer_ptr: *const c_char,
+    flag: c_long,
+) -> MesalinkInnerResult<c_int> {
+    use super::sgx::SgxConfigFlags;
+
+    let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
+    if signer_ptr.is_null() {
+        return Err(error!(MesalinkBuiltinError::NullPointer.into()));
+    }
+    let mut buf = [0u8; 32];
+    let mr_signer = unsafe { slice::from_raw_parts(signer_ptr as *const u8, 32) };
+    buf.copy_from_slice(&mr_signer[..32]);
+
+    let sgx_flag =
+        SgxConfigFlags::from_bits(flag).ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+    let is_debug_launch = sgx_flag.intersects(SgxConfigFlags::SGX_FLAGS_DEBUG);
+    let mut sgx_verifier_builder = rustls::SgxVerifierBuilder::new(buf, is_debug_launch);
+    if sgx_flag.intersects(SgxConfigFlags::SGX_ALLOW_CONFIGURATION_NEEDED) {
+        sgx_verifier_builder = sgx_verifier_builder.allow_configuration_needed();
+    }
+    if sgx_flag.intersects(SgxConfigFlags::SGX_ALLOW_GROUP_OUT_OF_DATE) {
+        sgx_verifier_builder = sgx_verifier_builder.allow_group_out_of_date();
+    }
+    let sgx_verifier = sgx_verifier_builder.finalize();
+    util::get_context_mut(ctx)
+        .client_config
+        .dangerous()
+        .set_certificate_verifier(Arc::new(sgx_verifier));
     Ok(SSL_SUCCESS)
 }
 
