@@ -1,0 +1,872 @@
+diff --git a/.travis.yml b/.travis.yml
+index 170c08b..da94753 100644
+--- a/.travis.yml
++++ b/.travis.yml
+@@ -10,6 +10,8 @@ env:
+ - PURPOSE=compile
+ - PURPOSE=unittest
+ - PURPOSE=compile-with-bazel
++- PURPOSE=compile USE_MESALINK=yes
++- PURPOSE=unittest USE_MESALINK=yes
+ 
+ before_script:
+ - ulimit -c unlimited -S       # enable core dumps
+@@ -23,6 +25,7 @@ install:
+ - sudo apt-get install -qq realpath libgflags-dev libprotobuf-dev libprotoc-dev protobuf-compiler libleveldb-dev libgoogle-perftools-dev libboost-dev libssl-dev libevent-dev libboost-test-dev
+ - sudo apt-get install libgtest-dev && cd /usr/src/gtest && sudo env "PATH=$PATH" cmake . && sudo make && sudo mv libgtest* /usr/lib/ && cd -
+ - sudo apt-get install -y gdb  # install gdb
++- if [[  "$USE_MESALINK" == "yes" ]]; then curl https://sh.rustup.rs -sSf | sh -s -- -y && source $HOME/.cargo/env && wget https://github.com/mesalock-linux/mesalink/archive/v0.8.0-pre.tar.gz && tar -xf v0.8.0-pre.tar.gz && cd mesalink-0.8.0-pre && ./autogen.sh --prefix=/usr/  && make && sudo make install && cd - ; fi
+ 
+ script:
+ - if [[ "$PURPOSE" == "compile-with-bazel" ]]; then bazel build -j 12 -c opt --copt -DHAVE_ZLIB=1 //...          ; fi
+diff --git a/build_in_travis_ci.sh b/build_in_travis_ci.sh
+index b59f7f9..6e35309 100644
+--- a/build_in_travis_ci.sh
++++ b/build_in_travis_ci.sh
+@@ -21,8 +21,13 @@ runcmd(){
+ 
+ echo "build combination: PURPOSE=$PURPOSE CXX=$CXX CC=$CC"
+ 
++EXTRA_BUILD_OPTS=""
++if [ "$USE_MESALINK" = "yes" ]; then
++    EXTRA_BUILD_OPTS="$EXTRA_BUILD_OPTS --with-mesalink"
++fi
++
+ # The default env in travis-ci is Ubuntu.
+-if ! sh config_brpc.sh --headers=/usr/include --libs=/usr/lib --nodebugsymbols --cxx=$CXX --cc=$CC; then
++if ! sh config_brpc.sh --headers=/usr/include --libs=/usr/lib --nodebugsymbols --cxx=$CXX --cc=$CC $EXTRA_BUILD_OPTS; then
+     echo "Fail to configure brpc"
+     exit 1
+ fi
+diff --git a/config_brpc.sh b/config_brpc.sh
+index 72ae313..3c980c4 100755
+--- a/config_brpc.sh
++++ b/config_brpc.sh
+@@ -21,9 +21,10 @@ else
+     LDD=ldd
+ fi
+ 
+-TEMP=`getopt -o v: --long headers:,libs:,cc:,cxx:,with-glog,with-thrift,nodebugsymbols -n 'config_brpc' -- "$@"`
++TEMP=`getopt -o v: --long headers:,libs:,cc:,cxx:,with-glog,with-thrift,with-mesalink,nodebugsymbols -n 'config_brpc' -- "$@"`
+ WITH_GLOG=0
+ WITH_THRIFT=0
++WITH_MESALINK=0
+ DEBUGSYMBOLS=-g
+ 
+ if [ $? != 0 ] ; then >&2 $ECHO "Terminating..."; exit 1 ; fi
+@@ -46,6 +47,7 @@ while true; do
+         --cxx ) CXX=$2; shift 2 ;;
+         --with-glog ) WITH_GLOG=1; shift 1 ;;
+         --with-thrift) WITH_THRIFT=1; shift 1 ;;
++        --with-mesalink) WITH_MESALINK=1; shift 1 ;;
+         --nodebugsymbols ) DEBUGSYMBOLS=; shift 1 ;;
+         -- ) shift; break ;;
+         * ) break ;;
+@@ -137,8 +139,18 @@ find_dir_of_header_or_die() {
+ #PTHREAD_HDR=$(find_dir_of_header_or_die pthread.h)
+ OPENSSL_HDR=$(find_dir_of_header_or_die openssl/ssl.h)
+ 
++if [ $WITH_MESALINK != 0 ]; then
++    MESALINK_HDR=$(find_dir_of_header_or_die mesalink/openssl/ssl.h)
++    OPENSSL_HDR="$OPENSSL_HDR\n$MESALINK_HDR"
++fi
++
+ STATIC_LINKINGS=
+ DYNAMIC_LINKINGS="-lpthread -lssl -lcrypto -ldl -lz"
++
++if [ $WITH_MESALINK != 0 ]; then
++    DYNAMIC_LINKINGS="$DYNAMIC_LINKINGS -lmesalink"
++fi
++
+ if [ "$SYSTEM" = "Linux" ]; then
+     DYNAMIC_LINKINGS="$DYNAMIC_LINKINGS -lrt"
+ fi
+@@ -304,6 +316,10 @@ if [ $WITH_THRIFT != 0 ]; then
+     fi
+ fi
+ 
++if [ $WITH_MESALINK != 0 ]; then
++    CPPFLAGS="${CPPFLAGS} -DUSE_MESALINK"
++fi
++
+ append_to_output "CPPFLAGS=${CPPFLAGS}"
+ 
+ append_to_output "ifeq (\$(NEED_LIBPROTOC), 1)"
+diff --git a/src/brpc/controller.h b/src/brpc/controller.h
+index ce12a5f..2627b87 100755
+--- a/src/brpc/controller.h
++++ b/src/brpc/controller.h
+@@ -48,7 +48,12 @@
+ #endif
+ 
+ extern "C" {
++#ifndef USE_MESALINK
+ struct x509_st;
++#else
++#include <mesalink/openssl/x509.h>
++#define x509_st X509
++#endif
+ }
+ 
+ namespace brpc {
+diff --git a/src/brpc/details/mesalink_ssl_helper.cpp b/src/brpc/details/mesalink_ssl_helper.cpp
+new file mode 100644
+index 0000000..3c12fce
+--- /dev/null
++++ b/src/brpc/details/mesalink_ssl_helper.cpp
+@@ -0,0 +1,402 @@
++// Copyright (c) 2019 Baidu, Inc.
++// 
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++// 
++//     http://www.apache.org/licenses/LICENSE-2.0
++// 
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++// Authors: Yiming Jing (jingyijming@baidu.com)
++
++#ifdef USE_MESALINK
++
++#include <sys/socket.h>                // recv
++#include <mesalink/openssl/ssl.h>
++#include <mesalink/openssl/err.h>
++#include <mesalink/openssl/x509.h>
++#include <mesalink/openssl/bio.h>
++#include <mesalink/openssl/evp.h>
++#include <mesalink/openssl/pem.h>
++#include "butil/unique_ptr.h"
++#include "butil/logging.h"
++#include "butil/string_splitter.h"
++#include "brpc/socket.h"
++#include "brpc/ssl_options.h"
++#include "brpc/details/ssl_helper.h"
++
++namespace brpc {
++
++static const char* const PEM_START = "-----BEGIN";
++
++static bool IsPemString(const std::string& input) {
++    for (const char* s = input.c_str(); *s != '\0'; ++s) {
++        if (*s != '\n') {
++            return strncmp(s, PEM_START, strlen(PEM_START)) == 0;
++        } 
++    }
++    return false;
++}
++
++const char* SSLStateToString(SSLState s) {
++    switch (s) {
++    case SSL_UNKNOWN:
++        return "SSL_UNKNOWN";
++    case SSL_OFF:
++        return "SSL_OFF";
++    case SSL_CONNECTING:
++        return "SSL_CONNECTING";
++    case SSL_CONNECTED:
++        return "SSL_CONNECTED";
++    }
++    return "Bad SSLState";
++}
++
++static int ParseSSLProtocols(const std::string& str_protocol) {
++    int protocol_flag = 0;
++    butil::StringSplitter sp(str_protocol.data(),
++                             str_protocol.data() + str_protocol.size(), ',');
++    for (; sp; ++sp) {
++        butil::StringPiece protocol(sp.field(), sp.length());
++        protocol.trim_spaces();
++        if (strncasecmp(protocol.data(), "SSLv3", protocol.size()) == 0) {
++            protocol_flag |= SSLv3;
++        } else if (strncasecmp(protocol.data(), "TLSv1", protocol.size()) == 0) {
++            protocol_flag |= TLSv1;
++        } else if (strncasecmp(protocol.data(), "TLSv1.1", protocol.size()) == 0) {
++            protocol_flag |= TLSv1_1;
++        } else if (strncasecmp(protocol.data(), "TLSv1.2", protocol.size()) == 0) {
++            protocol_flag |= TLSv1_2;
++        } else {
++            LOG(ERROR) << "Unknown SSL protocol=" << protocol;
++            return -1;
++        }
++    }
++    return protocol_flag;
++}
++
++std::ostream& operator<<(std::ostream& os, const SSLError& ssl) {
++    char buf[128];  // Should be enough
++    ERR_error_string_n(ssl.error, buf, sizeof(buf));
++    return os << buf;
++}
++
++std::ostream& operator<<(std::ostream& os, const CertInfo& cert) {
++    os << "certificate[";
++    if (IsPemString(cert.certificate)) {
++        size_t pos = cert.certificate.find('\n');
++        if (pos == std::string::npos) {
++            pos = 0;
++        } else {
++            pos++;
++        }
++        os << cert.certificate.substr(pos, 16) << "...";
++    } else {
++        os << cert.certificate;
++    } 
++
++    os << "] private-key[";
++    if (IsPemString(cert.private_key)) {
++        size_t pos = cert.private_key.find('\n');
++        if (pos == std::string::npos) {
++            pos = 0;
++        } else {
++            pos++;
++        }
++        os << cert.private_key.substr(pos, 16) << "...";
++    } else {
++        os << cert.private_key;
++    }
++    os << "]";
++    return os;
++}
++
++void ExtractHostnames(X509* x, std::vector<std::string>* hostnames) {
++    STACK_OF(X509_NAME)* names = (STACK_OF(X509_NAME)*)
++            X509_get_alt_subject_names(x);
++    if (names) {
++        for (int i = 0; i < sk_X509_NAME_num(names); i++) {
++            char buf[255] = {0};
++            X509_NAME* name = sk_X509_NAME_value(names, i);
++            if (X509_NAME_oneline(name, buf, 255)) {
++                std::string hostname(buf);
++                hostnames->push_back(hostname);
++            }
++        }
++        sk_X509_NAME_free(names);
++    }
++}
++
++struct FreeSSL {
++    inline void operator()(SSL* ssl) const {
++        if (ssl != NULL) {
++            SSL_free(ssl);
++        }
++    }
++};
++
++struct FreeBIO {
++    inline void operator()(BIO* io) const {
++        if (io != NULL) {
++            BIO_free(io);
++        }
++    }
++};
++
++struct FreeX509 {
++    inline void operator()(X509* x) const {
++        if (x != NULL) {
++            X509_free(x);
++        }
++    }
++};
++
++struct FreeEVPKEY {
++    inline void operator()(EVP_PKEY* k) const {
++        if (k != NULL) {
++            EVP_PKEY_free(k);
++        }
++    }
++};
++
++static int LoadCertificate(SSL_CTX* ctx,
++                           const std::string& certificate,
++                           const std::string& private_key,
++                           std::vector<std::string>* hostnames) {
++    // Load the private key
++    if (IsPemString(private_key)) {
++        std::unique_ptr<BIO, FreeBIO> kbio(
++            BIO_new_mem_buf((void*)private_key.c_str(), -1));
++        std::unique_ptr<EVP_PKEY, FreeEVPKEY> key(
++            PEM_read_bio_PrivateKey(kbio.get(), NULL, 0, NULL));
++        if (SSL_CTX_use_PrivateKey(ctx, key.get()) != 1) {
++            LOG(ERROR) << "Fail to load " << private_key << ": "
++                       << SSLError(ERR_get_error());
++            return -1;
++        }
++    } else {
++        if (SSL_CTX_use_PrivateKey_file(
++                ctx, private_key.c_str(), SSL_FILETYPE_PEM) != 1) {
++            LOG(ERROR) << "Fail to load " << private_key << ": "
++                       << SSLError(ERR_get_error());
++            return -1;
++        }
++    }
++
++    // Open & Read certificate
++    std::unique_ptr<BIO, FreeBIO> cbio;
++    if (IsPemString(certificate)) {
++        cbio.reset(BIO_new_mem_buf((void*)certificate.c_str(), -1));
++    } else {
++        cbio.reset(BIO_new(BIO_s_file()));
++        if (BIO_read_filename(cbio.get(), certificate.c_str()) <= 0) {
++            LOG(ERROR) << "Fail to read " << certificate << ": "
++                       << SSLError(ERR_get_error());
++            return -1;
++        }
++    }
++    std::unique_ptr<X509, FreeX509> x(
++        PEM_read_bio_X509(cbio.get(), NULL, 0, NULL));
++    if (!x) {
++        LOG(ERROR) << "Fail to parse " << certificate << ": "
++                   << SSLError(ERR_get_error());
++        return -1;
++    }
++    
++    // Load the main certficate
++    if (SSL_CTX_use_certificate(ctx, x.get()) != 1) {
++        LOG(ERROR) << "Fail to load " << certificate << ": "
++                   << SSLError(ERR_get_error());
++        return -1;
++    }
++
++    // Load the certificate chain
++    //SSL_CTX_clear_chain_certs(ctx);
++    X509* ca = NULL;
++    while ((ca = PEM_read_bio_X509(cbio.get(), NULL, 0, NULL))) {
++        if (SSL_CTX_add_extra_chain_cert(ctx, ca) != 1) {
++            LOG(ERROR) << "Fail to load chain certificate in "
++                       << certificate << ": " << SSLError(ERR_get_error());
++            X509_free(ca);
++            return -1;
++        }
++    }
++    ERR_clear_error();
++
++    // Validate certificate and private key 
++    if (SSL_CTX_check_private_key(ctx) != 1) {
++        LOG(ERROR) << "Fail to verify " << private_key << ": "
++                   << SSLError(ERR_get_error());
++        return -1;
++    }
++
++    return 0;
++}
++
++static int SetSSLOptions(SSL_CTX* ctx, const std::string& ciphers,
++                         int protocols, const VerifyOptions& verify) {
++    if (verify.verify_depth > 0) {
++        SSL_CTX_set_verify(ctx, (SSL_VERIFY_PEER
++                                 | SSL_VERIFY_FAIL_IF_NO_PEER_CERT), NULL);
++        std::string cafile = verify.ca_file_path;
++        if (!cafile.empty()) {
++            if (SSL_CTX_load_verify_locations(ctx, cafile.c_str(), NULL) == 0) {
++                LOG(ERROR) << "Fail to load CA file " << cafile
++                           << ": " << SSLError(ERR_get_error());
++                return -1;
++            }
++        }
++    } else {
++        SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
++    }
++
++    return 0;
++}
++
++SSL_CTX* CreateClientSSLContext(const ChannelSSLOptions& options) {
++    std::unique_ptr<SSL_CTX, FreeSSLCTX> ssl_ctx(
++        SSL_CTX_new(TLSv1_2_client_method()));
++    if (!ssl_ctx) {
++        LOG(ERROR) << "Fail to new SSL_CTX: " << SSLError(ERR_get_error());
++        return NULL;
++    }
++
++    if (!options.client_cert.certificate.empty()
++        && LoadCertificate(ssl_ctx.get(),
++                           options.client_cert.certificate,
++                           options.client_cert.private_key, NULL) != 0) {
++        return NULL;
++    }
++
++    int protocols = ParseSSLProtocols(options.protocols);
++    if (protocols < 0
++        || SetSSLOptions(ssl_ctx.get(), options.ciphers,
++                         protocols, options.verify) != 0) {
++        return NULL;
++    }
++
++    SSL_CTX_set_session_cache_mode(ssl_ctx.get(), SSL_SESS_CACHE_CLIENT);
++    return ssl_ctx.release();
++}
++
++SSL_CTX* CreateServerSSLContext(const std::string& certificate,
++                                const std::string& private_key,
++                                const ServerSSLOptions& options,
++                                std::vector<std::string>* hostnames) {
++    std::unique_ptr<SSL_CTX, FreeSSLCTX> ssl_ctx(
++        SSL_CTX_new(TLSv1_2_server_method()));
++    if (!ssl_ctx) {
++        LOG(ERROR) << "Fail to new SSL_CTX: " << SSLError(ERR_get_error());
++        return NULL;
++    }
++
++    if (LoadCertificate(ssl_ctx.get(), certificate,
++                        private_key, hostnames) != 0) {
++        return NULL;
++    }
++
++    int protocols = TLSv1 | TLSv1_1 | TLSv1_2;
++    if (!options.disable_ssl3) {
++        protocols |= SSLv3;
++    }
++    if (SetSSLOptions(ssl_ctx.get(), options.ciphers,
++                      protocols, options.verify) != 0) {
++        return NULL;
++    }
++
++    /* SSL_CTX_set_timeout(ssl_ctx.get(), options.session_lifetime_s); */
++    SSL_CTX_sess_set_cache_size(ssl_ctx.get(), options.session_cache_size);
++
++    return ssl_ctx.release();
++}
++
++SSL* CreateSSLSession(SSL_CTX* ctx, SocketId id, int fd, bool server_mode) {
++    if (ctx == NULL) {
++        LOG(WARNING) << "Lack SSL_ctx to create an SSL session";
++        return NULL;
++    }
++    SSL* ssl = SSL_new(ctx);
++    if (ssl == NULL) {
++        LOG(ERROR) << "Fail to SSL_new: " << SSLError(ERR_get_error());
++        return NULL;
++    }
++    if (SSL_set_fd(ssl, fd) != 1) {
++        LOG(ERROR) << "Fail to SSL_set_fd: " << SSLError(ERR_get_error());
++        SSL_free(ssl);
++        return NULL;
++    }
++
++    if (server_mode) {
++        SSL_set_accept_state(ssl);
++    } else {
++        SSL_set_connect_state(ssl);
++    }
++
++    return ssl;
++}
++
++void AddBIOBuffer(SSL* ssl, int fd, int bufsize) {
++    // MesaLink uses buffered IO internally
++}
++
++SSLState DetectSSLState(int fd, int* error_code) {
++    // Peek the first few bytes inside socket to detect whether
++    // it's an SSL connection. If it is, create an SSL session
++    // which will be used to read/write after
++
++    // Header format of SSLv2
++    // +-----------+------+-----
++    // | 2B header | 0x01 | etc.
++    // +-----------+------+-----
++    // The first bit of header is always 1, with the following
++    // 15 bits are the length of data
++
++    // Header format of SSLv3 or TLSv1.0, 1.1, 1.2
++    // +------+------------+-----------+------+-----
++    // | 0x16 | 2B version | 2B length | 0x01 | etc.
++    // +------+------------+-----------+------+-----
++    char header[6];
++    const ssize_t nr = recv(fd, header, sizeof(header), MSG_PEEK);
++    if (nr < (ssize_t)sizeof(header)) {
++        if (nr < 0) {
++            if (errno == ENOTSOCK) {
++                return SSL_OFF;
++            }
++            *error_code = errno;   // Including EAGAIN and EINTR
++        } else if (nr == 0) {      // EOF
++            *error_code = 0;
++        } else {                   // Not enough data, need retry
++            *error_code = EAGAIN;
++        }
++        return SSL_UNKNOWN;
++    }
++    
++    if ((header[0] == 0x16 && header[5] == 0x01) // SSLv3 or TLSv1.0, 1.1, 1.2
++        || ((header[0] & 0x80) == 0x80 && header[2] == 0x01)) {  // SSLv2
++        return SSL_CONNECTING;
++    } else {
++        return SSL_OFF;
++    }
++}
++
++int SSLThreadInit() {
++    return 0;
++}
++
++int SSLDHInit() {
++    return 0;
++}
++
++void Print(std::ostream& os, SSL* ssl, const char* sep) {
++    os << "cipher=" << SSL_get_cipher_name(ssl) << sep
++       << "protocol=" << SSL_get_version(ssl) << sep;
++}
++
++} // namespace brpc
++
++#endif // USE_MESALINK
+diff --git a/src/brpc/details/ssl_helper.cpp b/src/brpc/details/ssl_helper.cpp
+index 6415b0f..5032258 100644
+--- a/src/brpc/details/ssl_helper.cpp
++++ b/src/brpc/details/ssl_helper.cpp
+@@ -14,6 +14,9 @@
+ 
+ // Authors: Rujie Jiang (jiangrujie@baidu.com)
+ 
++
++#ifndef USE_MESALINK
++
+ #include <sys/socket.h>                // recv
+ #include <openssl/ssl.h>
+ #include <openssl/err.h>
+@@ -829,3 +832,5 @@ void Print(std::ostream& os, X509* cert, const char* sep) {
+ }
+ 
+ } // namespace brpc
++
++#endif // USE_MESALINK
+diff --git a/src/brpc/details/ssl_helper.h b/src/brpc/details/ssl_helper.h
+index e91b103..793be7d 100644
+--- a/src/brpc/details/ssl_helper.h
++++ b/src/brpc/details/ssl_helper.h
+@@ -18,9 +18,15 @@
+ #define BRPC_SSL_HELPER_H
+ 
+ #include <string.h>
++#ifndef USE_MESALINK
+ #include <openssl/ssl.h>
+ // For some versions of openssl, SSL_* are defined inside this header
+ #include <openssl/ossl_typ.h>
++#else
++#include <mesalink/openssl/ssl.h>
++#include <mesalink/openssl/err.h>
++#include <mesalink/openssl/x509.h>
++#endif
+ #include "brpc/socket_id.h"            // SocketId
+ #include "brpc/ssl_options.h"          // ServerSSLOptions
+ 
+diff --git a/src/brpc/global.cpp b/src/brpc/global.cpp
+index 6957433..06bcd44 100755
+--- a/src/brpc/global.cpp
++++ b/src/brpc/global.cpp
+@@ -14,8 +14,13 @@
+ 
+ // Authors: Ge,Jun (gejun@baidu.com)
+ 
++#ifndef USE_MESALINK
+ #include <openssl/ssl.h>
+ #include <openssl/conf.h>
++#else
++#include <mesalink/openssl/ssl.h>
++#endif
++
+ #include <gflags/gflags.h>
+ #include <fcntl.h>                               // O_RDONLY
+ #include <signal.h>
+diff --git a/src/brpc/socket.cpp b/src/brpc/socket.cpp
+index 68c56a1..616f66f 100644
+--- a/src/brpc/socket.cpp
++++ b/src/brpc/socket.cpp
+@@ -19,6 +19,11 @@
+ #include "butil/compat.h"                        // OS_MACOSX
+ #include <openssl/ssl.h>
+ #include <openssl/err.h>
++#ifdef USE_MESALINK
++#include <mesalink/openssl/ssl.h>
++#include <mesalink/openssl/err.h>
++#include <mesalink/openssl/x509.h>
++#endif
+ #include <netinet/tcp.h>                         // getsockopt
+ #include <gflags/gflags.h>
+ #include "bthread/unstable.h"                    // bthread_timer_del
+@@ -1834,7 +1839,7 @@ int Socket::SSLHandshake(int fd, bool server_mode) {
+         LOG(ERROR) << "Fail to CreateSSLSession";
+         return -1;
+     }
+-#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
++#if defined(SSL_CTRL_SET_TLSEXT_HOSTNAME) || defined(USE_MESALINK)
+     if (!_ssl_ctx->sni_name.empty()) {
+         SSL_set_tlsext_host_name(_ssl_session, _ssl_ctx->sni_name.c_str());
+     }
+diff --git a/src/butil/iobuf.cpp b/src/butil/iobuf.cpp
+index bb91c4e..e82ba97 100644
+--- a/src/butil/iobuf.cpp
++++ b/src/butil/iobuf.cpp
+@@ -17,6 +17,10 @@
+ // Date: Thu Nov 22 13:57:56 CST 2012
+ 
+ #include <openssl/ssl.h>                   // SSL_*
++#ifdef USE_MESALINK
++#include <mesalink/openssl/ssl.h>
++#include <mesalink/openssl/err.h>
++#endif
+ #include <sys/syscall.h>                   // syscall
+ #include <fcntl.h>                         // O_RDONLY
+ #include <errno.h>                         // errno
+@@ -1033,6 +1037,7 @@ ssize_t IOBuf::cut_multiple_into_SSL_channel(SSL* ssl, IOBuf* const* pieces,
+         }
+     }
+ 
++#ifndef USE_MESALINK
+     // Flush remaining data inside the BIO buffer layer
+     BIO* wbio = SSL_get_wbio(ssl);
+     if (BIO_wpending(wbio) > 0) {
+@@ -1043,6 +1048,14 @@ ssize_t IOBuf::cut_multiple_into_SSL_channel(SSL* ssl, IOBuf* const* pieces,
+             return rc;
+         }
+     }
++#else
++    int rc = SSL_flush(ssl);
++    if (rc <= 0) {
++        *ssl_error = SSL_ERROR_SYSCALL;
++        return rc;
++    }
++#endif
++
+     return nw;
+ }
+ 
+diff --git a/src/butil/iobuf.h b/src/butil/iobuf.h
+index 93bff76..1347436 100644
+--- a/src/butil/iobuf.h
++++ b/src/butil/iobuf.h
+@@ -39,7 +39,11 @@ struct const_iovec {
+     const void* iov_base;
+     size_t iov_len;
+ };
++#ifndef USE_MESALINK
+ struct ssl_st;
++#else
++#define ssl_st MESALINK_SSL
++#endif
+ }
+ 
+ namespace butil {
+diff --git a/test/brpc_ssl_unittest.cpp b/test/brpc_ssl_unittest.cpp
+index fc9f25f..65e3230 100644
+--- a/test/brpc_ssl_unittest.cpp
++++ b/test/brpc_ssl_unittest.cpp
+@@ -109,6 +109,7 @@ TEST_F(SSLTest, sanity) {
+         brpc::Channel channel;
+         brpc::ChannelOptions coptions;
+         coptions.mutable_ssl_options();
++        coptions.mutable_ssl_options()->sni_name = "localhost";
+         ASSERT_EQ(0, channel.Init("localhost", port, &coptions));
+ 
+         brpc::Controller cntl;
+@@ -125,6 +126,7 @@ TEST_F(SSLTest, sanity) {
+         brpc::Channel channel;
+         brpc::ChannelOptions coptions;
+         coptions.mutable_ssl_options();
++        coptions.mutable_ssl_options()->sni_name = "localhost";
+         ASSERT_EQ(0, channel.Init("127.0.0.1", port, &coptions));
+         for (int i = 0; i < NUM; ++i) {
+             google::protobuf::Closure* thrd_func =
+@@ -141,6 +143,7 @@ TEST_F(SSLTest, sanity) {
+         brpc::ChannelOptions coptions;
+         coptions.protocol = "http";
+         coptions.mutable_ssl_options();
++        coptions.mutable_ssl_options()->sni_name = "localhost";
+         ASSERT_EQ(0, channel.Init("127.0.0.1", port, &coptions));
+         for (int i = 0; i < NUM; ++i) {
+             google::protobuf::Closure* thrd_func =
+@@ -322,6 +325,7 @@ TEST_F(SSLTest, ssl_perf) {
+             brpc::CreateServerSSLContext("cert1.crt", "cert1.key",
+                                          brpc::SSLOptions(), NULL);
+     SSL* cli_ssl = brpc::CreateSSLSession(cli_ctx, 0, clifd, false);
++    SSL_set_tlsext_host_name(cli_ssl, "localhost");
+     SSL* serv_ssl = brpc::CreateSSLSession(serv_ctx, 0, servfd, true);
+     pthread_t cpid;
+     pthread_t spid;
+diff --git a/test/cert1.crt b/test/cert1.crt
+index d0f6628..1b0a939 100644
+--- a/test/cert1.crt
++++ b/test/cert1.crt
+@@ -1,14 +1,25 @@
+ -----BEGIN CERTIFICATE-----
+-MIICOTCCAaICCQD6TiOx55+OsDANBgkqhkiG9w0BAQUFADBhMQswCQYDVQQGEwJD
+-TjERMA8GA1UECAwIU2hhbmdoYWkxETAPBgNVBAcMCFNoYW5naGFpMQ4wDAYDVQQK
+-DAVCYWlkdTEMMAoGA1UECwwDQ0JVMQ4wDAYDVQQDDAVjZXJ0MTAeFw0xNjExMjgw
+-OTEzMzRaFw0yNjExMjYwOTEzMzRaMGExCzAJBgNVBAYTAkNOMREwDwYDVQQIDAhT
+-aGFuZ2hhaTERMA8GA1UEBwwIU2hhbmdoYWkxDjAMBgNVBAoMBUJhaWR1MQwwCgYD
+-VQQLDANDQlUxDjAMBgNVBAMMBWNlcnQxMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCB
+-iQKBgQC8r8469OdZ+MeZiWBsV/7XlusjjnwKP2asmEepzkZXmxX1YEuXRuKkH7zJ
+-VTg1DCwgTnpCvd0Y1kJ9WOonB5433gnDR32fJ2lswmpFmh+yaZmcTn5MZmE1b4AM
+-QJ/BEXJcIiKWYMgqh6nw/N+eWymQzmZSC9R/JWgmee/kRRoaiQIDAQABMA0GCSqG
+-SIb3DQEBBQUAA4GBAGs1o7SkRa9YcDjcbZziNPLOdoZueACxtCLPn4/DZWOiFPku
+-PitB9UaGkiivKYKwmC1nnE2VyYcCIIGqIQ6GtagNPE6DAcd8TFviIHs6jnGhC7Y/
+-ZEePLNpEx9HFkJiQzmH+mMfGftZFBwu9cF4Qa7DzCjMSb+s5qrT/WUXobEch
++MIIENjCCAx6gAwIBAgIJAPpOI7Hnn46wMA0GCSqGSIb3DQEBCwUAMGExCzAJBgNV
++BAYTAkNOMREwDwYDVQQIDAhTaGFuZ2hhaTERMA8GA1UEBwwIU2hhbmdoYWkxDjAM
++BgNVBAoMBUJhaWR1MQwwCgYDVQQLDANDQlUxDjAMBgNVBAMMBWNlcnQxMB4XDTE5
++MDEyMzIyMTU0MVoXDTI5MDEyMDIyMTU0MVowYTELMAkGA1UEBhMCQ04xETAPBgNV
++BAgMCFNoYW5naGFpMREwDwYDVQQHDAhTaGFuZ2hhaTEOMAwGA1UECgwFQmFpZHUx
++DDAKBgNVBAsMA0NCVTEOMAwGA1UEAwwFY2VydDEwggEiMA0GCSqGSIb3DQEBAQUA
++A4IBDwAwggEKAoIBAQC0ypYQmHvVlMaxe5phlUpvKNZrwQSrg/CGN6jrDkV8u7d4
++5pI6zcbA1g2fq1Q5EuwexeuWRPt/zSL6PYcOQjZcHIrQwXrilfjw6gOPhFUg54jN
++Xzj8XqdZkZp/0qNksPROoeJMnNH+RMjWZox9WLdLAaC7t2R90OMzpBN675XMWGrj
++XJo3ZgWkrv0AtiE7AGGed/gL+iybDwKhN9qftywt6TRqYUOsk2/j6PtWEKg9EfRk
++rkdh0jQkpXeh+tk1nUtlnohFqhxz4XPN5+wHtmZinliSMWEXh6XaXyk6ojXdjPMy
++vpWCxmHz9R9sNP7T/gHkN02pEXbZScGnoPmr635bAgMBAAGjgfAwge0wDAYDVR0T
++AQH/BAIwADALBgNVHQ8EBAMCBsAwHQYDVR0OBBYEFAktYxDf0c02h0XkYdeGBtLd
++pkuDMIGTBgNVHSMEgYswgYiAFAktYxDf0c02h0XkYdeGBtLdpkuDoWWkYzBhMQsw
++CQYDVQQGEwJDTjERMA8GA1UECAwIU2hhbmdoYWkxETAPBgNVBAcMCFNoYW5naGFp
++MQ4wDAYDVQQKDAVCYWlkdTEMMAoGA1UECwwDQ0JVMQ4wDAYDVQQDDAVjZXJ0MYIJ
++APpOI7Hnn46wMBsGA1UdEQQUMBKCBWNlcnQxgglsb2NhbGhvc3QwDQYJKoZIhvcN
++AQELBQADggEBAAN0NWqqAGpqmxBd5VcnCX26pt6WeY5i0XjTVpmrf18qz4JN4Zwo
++yHELON9qCNradCNFOUD0kGNGokOSPw4HakQx6mRPwzAxkctI12nj/ArBhTYC+QEQ
++WsYCu9rIr3TzT5mz2LpTC1RA+HVkvC7uB1ROc+rl88n1Tuyy2mwj5PbteE3Lpnif
++dYgPrU3PM6AVs+1wV1tMUc+DH5UYEaVR7VbN54yiMe4mjwCmsrrC/Y22WgxTBqwG
++Z7+YjHT6p2MvRlJ2a0kwb15X492iC1KeBsb/NomWO40WTFTxL0zxk8XEnjwcRPs0
++rT3UGBMRPbGDV6fnbf5r3cuOcv7qlHf+7xM=
+ -----END CERTIFICATE-----
+diff --git a/test/cert1.key b/test/cert1.key
+index 4abc495..0c5f632 100644
+--- a/test/cert1.key
++++ b/test/cert1.key
+@@ -1,15 +1,28 @@
+------BEGIN RSA PRIVATE KEY-----
+-MIICXAIBAAKBgQC8r8469OdZ+MeZiWBsV/7XlusjjnwKP2asmEepzkZXmxX1YEuX
+-RuKkH7zJVTg1DCwgTnpCvd0Y1kJ9WOonB5433gnDR32fJ2lswmpFmh+yaZmcTn5M
+-ZmE1b4AMQJ/BEXJcIiKWYMgqh6nw/N+eWymQzmZSC9R/JWgmee/kRRoaiQIDAQAB
+-AoGAEaGr975iz/l7TVGU/QrL+YFUv6HU3XBHO+GO8MMht5X6W0+AQMaS7xs4HOgl
+-tG9KwEoVCp+LRYLf+66PUs5Xbl/qSYnrGz4r+H/Fv1xf1PjUFwlHyLW8dkh4kibq
+-jQ2W9zrEjkZi+MhkYBAMvczAjmunI+ZehIDyQJ3SJnN5qrECQQDkYYyPGGmrqMWY
+-B6dZdB78JN03ip9PLljV9MqoAR2NUlFhLLlwSkLN8lrAwQ2XxvfhbDdaRnx8z6x/
+-E0sG3lfbAkEA04FcKr2db2lspwfb3WFx9S/cdiTrkGCtPXVovrbit0p6tm9hv8gD
+-rSC+WQNmZXs2QzFNdm2eWrowEdI4XCjGawJAQ/MOKgkeb5eAatJkJUZabbTeKMdS
+-zPFCNy5lGYVzcHe8hMgUyGcf5zyjadRGohDt8aEL+w0bvtrfPNPVr855nwJBAM2g
+-D14SOJRPV23QSyYgja0FGf3WiRo1k1eT5QC9Rw9RnpntEYhlSYWwtr5NeuigcDHF
+-Jf1EN1cXepJo4Zhfn/8CQDgRvF9tesalPfRMQTP+OitLQw60ngMaOCXgr9cevWU0
+-iPiToCki18hVQtM5pWt/83K0B2NLYbluoOXNKBkEQvA=
+------END RSA PRIVATE KEY-----
++-----BEGIN PRIVATE KEY-----
++MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC0ypYQmHvVlMax
++e5phlUpvKNZrwQSrg/CGN6jrDkV8u7d45pI6zcbA1g2fq1Q5EuwexeuWRPt/zSL6
++PYcOQjZcHIrQwXrilfjw6gOPhFUg54jNXzj8XqdZkZp/0qNksPROoeJMnNH+RMjW
++Zox9WLdLAaC7t2R90OMzpBN675XMWGrjXJo3ZgWkrv0AtiE7AGGed/gL+iybDwKh
++N9qftywt6TRqYUOsk2/j6PtWEKg9EfRkrkdh0jQkpXeh+tk1nUtlnohFqhxz4XPN
++5+wHtmZinliSMWEXh6XaXyk6ojXdjPMyvpWCxmHz9R9sNP7T/gHkN02pEXbZScGn
++oPmr635bAgMBAAECggEAC5d5q7K7LeSOIM8WBO+3iA0MQnhrvjuFbnWfJQMTPX4j
++s2LFOXP8LF0NHpGzor0t2oNCKa5emcEjXvwW7rkcFyfVVrExGdoXzgqTE96ePq/Z
++u6FBXB0NidamG0/8Hfaik3AZvGPJqw3p+qU0mMzZY7vE/IQzs0Vza9o3TYiTCDj/
++WBMEaNLRMymK8Ejyoj7Dm90Tr0TN9PRNBl24KAVOuxYhqajFJV8SkVITXD8ujOt8
++JnpeLnteYsi2Du9cOmu90hc0kRvwQGn4j++T25FvESITz490/7ZEfMG59jTzF0be
+++TJjhqMJ6AcUp5/DtKWhcBYvxhVrOowO3dV0DFLU0QKBgQDtoR+Hut8ZPWZynTSQ
++m7k8lvmLFa+l0nIMSEEciInQSKgZLWeDRrIR9F7GyFhmBRf2u2V4uK0P/g8bhj73
++D91KdYXImPqGapCkvTBed0UzSVE236i4rnBO3/e+2Oux806a9sqXvSqENj/OjSVE
++de5wrV1y0IH4s9ukwsqZhPnBxwKBgQDCxJeyW+tS4LglY2Qk1kR5ELZhfMe11Mg4
++Gqeh1oJcuXV0cVfj2MS8li/gGBrIuzQL62plk7o6j6ybPxraXNObNMF3ZnisEbWj
++cykgcQyD+HRuPT1xwH/+dHs7mLtuk/p19e4ZPy1wn41PAC2fDHbEKdYWDAdujUl5
++BEEe2xoezQKBgQDGyQq/WKxZSOvy5V+buSl0bjfDChkt9qZBcBBH9lCTVLSKm1kE
++kJdWPb8rO133ujsZxBpWqubbggTRWbRCqZrNNxL7hD3PREZMCZf07oGNLcAqz18t
++X3/D+8gcdwp0ir0vFVTVKwHuKBOojpqmcqFM0TpjWdngW1VatzkUxBDK8QKBgQCm
++jY0Xlekvr0Fpn4vkwGI/kR4VUapKgNJSv+B30cMa3fFmCQLaseTTTC9Wl+ZXn1aL
++lt4eTOzk5TX6cEVbVCQURlHm8/bfVimYw4L43hOQyydtmerwWmhZxWwYc6xcjCiT
++NSJN7qvB8n7ZftKEfxkU+J29rr2wORwKY6v4Ye79RQKBgBMxrOmLnCfXgt/Mzm3Q
++LGwXjmsC7O4wgmQBhkpimXOOVwRW4KFpkODfAk6vb/rMeKkhg1h18oFlxHduN/kw
++5BNDnDDdZgOV8dUTjFAJEJsuOi3B8rLsC2TEmIwZN1wmqDPcHCwPP4+ttqDsalzL
++wV+3rZ8xTyFAVZmTokIPMlqE
++-----END PRIVATE KEY-----
+diff --git a/test/cert2.crt b/test/cert2.crt
+index cc9763e..ec4ad35 100644
+--- a/test/cert2.crt
++++ b/test/cert2.crt
+@@ -1,14 +1,25 @@
+ -----BEGIN CERTIFICATE-----
+-MIICOTCCAaICCQDwZoNAUJYKizANBgkqhkiG9w0BAQUFADBhMQswCQYDVQQGEwJD
+-TjERMA8GA1UECAwIU2hhbmdoYWkxETAPBgNVBAcMCFNoYW5naGFpMQ4wDAYDVQQK
+-DAVCYWlkdTEMMAoGA1UECwwDQ0JVMQ4wDAYDVQQDDAVjZXJ0MjAeFw0xNjExMjgw
+-OTE2MDRaFw0yNjExMjYwOTE2MDRaMGExCzAJBgNVBAYTAkNOMREwDwYDVQQIDAhT
+-aGFuZ2hhaTERMA8GA1UEBwwIU2hhbmdoYWkxDjAMBgNVBAoMBUJhaWR1MQwwCgYD
+-VQQLDANDQlUxDjAMBgNVBAMMBWNlcnQyMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCB
+-iQKBgQDB37VXm4I4apWHysL77GX6ohqLaGxhZ6fnl7qGVqpCe4c5+jMLDKRagNmV
+-dDFObjDFnchZ5qM0lbW21jp5v1gxz9C/j6X7Hsl/HO6hS09B1I/Q3UhTjKKsnZSY
+-WRcUF/t9YVWtzEDKtKgTcLBQrotxzh9qP/GliHbTLsojvmsVgQIDAQABMA0GCSqG
+-SIb3DQEBBQUAA4GBAA1Y17J13GE7gvfGPz5fKkD1eQUFtiR0JGltaU64neuzYG4C
+-R+tlnngtzpJf1bcNqITcSwCiEqrkccIbYTCXfHpV1G2w/7Ce13dTOZwsViI2tJWt
+-8dWCAHcRvQXRqWm9G8TWwx8hDJJT8U2O71FNkIvqEBSkY0mLgfHXj5cnh0WQ
++MIIENjCCAx6gAwIBAgIJAPBmg0BQlgqLMA0GCSqGSIb3DQEBCwUAMGExCzAJBgNV
++BAYTAkNOMREwDwYDVQQIDAhTaGFuZ2hhaTERMA8GA1UEBwwIU2hhbmdoYWkxDjAM
++BgNVBAoMBUJhaWR1MQwwCgYDVQQLDANDQlUxDjAMBgNVBAMMBWNlcnQyMB4XDTE5
++MDEyMzIyMTU0MVoXDTI5MDEyMDIyMTU0MVowYTELMAkGA1UEBhMCQ04xETAPBgNV
++BAgMCFNoYW5naGFpMREwDwYDVQQHDAhTaGFuZ2hhaTEOMAwGA1UECgwFQmFpZHUx
++DDAKBgNVBAsMA0NCVTEOMAwGA1UEAwwFY2VydDIwggEiMA0GCSqGSIb3DQEBAQUA
++A4IBDwAwggEKAoIBAQCcbPV5j9eex7cnAsUMMreZ9H76yUgp1Y54gR3TqSELYjtu
++XwudIKVQGawPcoFIysvapDBXSj6LgEWVXSqs8bVSUW7lmraSKGJ+wIXmZFHvweaY
++7rXpSma357i0do5VLvIZS9ZRN40SAS6EaSqgpvD3ISeT4xHaiQ/XtKLc/dCSmNSd
++tXsH/CHvcGxEH78i+n2lNjHnabZ+aLTnEQ59R2wDPqymHb2j9gz3QMlM50m7vK83
++v42lhObPQ/JZBs/0taWv6GbFIMYVLwUiCmIb7ecJk1/k3gBo6VYQ5tnnyhcUdTvv
++sWv94KuUU8OmPzJLSo6nKXSE63cIgTOGDR1YmqhNAgMBAAGjgfAwge0wDAYDVR0T
++AQH/BAIwADALBgNVHQ8EBAMCBsAwHQYDVR0OBBYEFOuA5h9dbBrkxeUiH7cSNxV5
++ygP0MIGTBgNVHSMEgYswgYiAFOuA5h9dbBrkxeUiH7cSNxV5ygP0oWWkYzBhMQsw
++CQYDVQQGEwJDTjERMA8GA1UECAwIU2hhbmdoYWkxETAPBgNVBAcMCFNoYW5naGFp
++MQ4wDAYDVQQKDAVCYWlkdTEMMAoGA1UECwwDQ0JVMQ4wDAYDVQQDDAVjZXJ0MoIJ
++APBmg0BQlgqLMBsGA1UdEQQUMBKCBWNlcnQygglsb2NhbGhvc3QwDQYJKoZIhvcN
++AQELBQADggEBAGlEgAyI0R/phfGbdbMdF2WtcbflZrs1wsX4y2zUcmKJt7CkAED/
++tj33gHh0qg3eWADUQ3AZ5iCalY86NcKsDoIT2mJn7oO6ejovGOnjQbF53HhY7MIy
++1xqGu3MYWc8XuuqnvSqS//sokEVqIm9bAnZaY32cjsrHqZcYCPZbMqSOwqSnz3Ia
++fDMw21GOVtgWIXrRFVykTZ9nzey16EB21ry9gci89+1sy5bz0fhXUG1XFguXj8zH
++clAzL1mzjYQ1SWMzMmCX7GiiwjkNkiTr6grGQCDBTaIg5E1firkJm3GFJRXmZKSZ
++FYR32SX4H3vj6cHf2iu7ilN5t9EQ60KPQ+k=
+ -----END CERTIFICATE-----
+diff --git a/test/cert2.key b/test/cert2.key
+index c7e71a1..ef4c625 100644
+--- a/test/cert2.key
++++ b/test/cert2.key
+@@ -1,15 +1,28 @@
+------BEGIN RSA PRIVATE KEY-----
+-MIICXgIBAAKBgQDB37VXm4I4apWHysL77GX6ohqLaGxhZ6fnl7qGVqpCe4c5+jML
+-DKRagNmVdDFObjDFnchZ5qM0lbW21jp5v1gxz9C/j6X7Hsl/HO6hS09B1I/Q3UhT
+-jKKsnZSYWRcUF/t9YVWtzEDKtKgTcLBQrotxzh9qP/GliHbTLsojvmsVgQIDAQAB
+-AoGBAKodxB+lYrRiQecvcbxgiHNN/oDJFiC6NciviIoMTcWcYuHquxM8+pI3cbUE
+-iadKZR1h/8Vy7U5c92ABxrnBvn4epy1hKm9N1oidb+wSGLcaV+9YGzuNIQeqXmM5
+-26IUjzQsObULM2cp/AianzrlkBL2j7kH/A3a4shdrtj4P1OBAkEA8UiCwAEMPIGY
+-nDMr6JeNBHkkBQcoY5kuuW902qTCI5M8g6canNsjYEA0Im8YvHsz+9K2YhdIj8F7
+-KZtM5mkWCQJBAM2y7eYJhZmKaCwhLGLrO+QLoJ7DOzPg/JAUKWDEhEs1uSUPqTwg
+-ghAOynyP6wHxXLIaD9BC88zWoM26IVxLIbkCQQCcHMFUP5lOML+wGL/JHv1Drqmq
+-gyYTwxHjMwUVTlK6N9KIj/79DCBIb2IMAXusv74zqfMNZmkxcgshMXVBAy8ZAkBM
+-1NuVQ9M6IX99lDp/DDxHlqw9ANE5NH1B17YI5f5AFWX9WNculTnfg5bQZfUyuZOV
+-FrT3ZjqoNTbFARP65DlJAkEAtlBLITLqHdq2C4jzHLjXm9vRe2Fsz759ywDy1RCk
+-2f54B9uUFjzaHl5Z8WVpO6loVBcOu685ROCwfMVW1HRWzA==
+------END RSA PRIVATE KEY-----
++-----BEGIN PRIVATE KEY-----
++MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCcbPV5j9eex7cn
++AsUMMreZ9H76yUgp1Y54gR3TqSELYjtuXwudIKVQGawPcoFIysvapDBXSj6LgEWV
++XSqs8bVSUW7lmraSKGJ+wIXmZFHvweaY7rXpSma357i0do5VLvIZS9ZRN40SAS6E
++aSqgpvD3ISeT4xHaiQ/XtKLc/dCSmNSdtXsH/CHvcGxEH78i+n2lNjHnabZ+aLTn
++EQ59R2wDPqymHb2j9gz3QMlM50m7vK83v42lhObPQ/JZBs/0taWv6GbFIMYVLwUi
++CmIb7ecJk1/k3gBo6VYQ5tnnyhcUdTvvsWv94KuUU8OmPzJLSo6nKXSE63cIgTOG
++DR1YmqhNAgMBAAECggEAHPp+e1evfUXIY1y6/miC5O2LfJA/Yyih7ScWTHjfm0lG
++c0r+TsyWc4FeA7qVwtN28nlKT1F8xsErouEQn9tjWO2nGrgPrIH4xTyLUcQx/bWx
++L5HBd4eGAfnWmPABrDw3M4J+IKum4bgAUx1cfUiQCWhF+bquOwr7OV3IciI/Onj1
++fXBOn98EamJD5SoQwV0WOqWE2grj3bXQd04sHYfYjCb0C3uDqKa3YGyCIB5axK8s
++SBMnQ0tEKlgF7GY4i9OXXq//wLIEMM23rby5k5oJxPlFvN1MCnQOShHSrK2cprtl
++1KhZxkL/xXJr8NhMumfDgTEKmpQyPpssWRiYKA1GwQKBgQDIzrLPI1NlYxgRUjGN
++PsILc6c3jj73wW7NEPUyLAGkmA4GRhkXusC+pNlO1baEUPm7wWVEo7qndG8rsWjC
++nDjCxiVY/5rGYBchwXZUKEh9nowMmDcfwhXb+zJf45aj+jA72pOrMTYGHQ/X/xzj
++aVFyABhcUStcM3ts0CvmQnWZkQKBgQDHa3LYbBQI9DLGXfPjwqfUJEen7xypbdlI
++UkoXqJa5kMZqpspoIHHMxOa9Rcbhu/E2qCXLypkQ9CPyWzNBPHu499F3kHob5xFt
++A6qxnHG+ilGYSd4qej/HIPvAU4TVP6yfwyyBALCB5/wYSRDxT6Zfv3OGvaIaj+qT
++qBdLW3Gk/QKBgEGrFt6WdtdZKK3Ba2L9ewezsqOAaScsosd9HDJkIcVp1GxI0Dvq
++Xs35qvcU/LMYqBK2lB92S7wnX5OyWMgLvqQzmFMag8sL8YSgd8ndwpcSGkqkHKLO
++HcfqxfaFvuWxE8T/HfuGBFzLdDr2usPD1VaqoUzPXpawX1SeXzzVzw+BAoGAQktz
++K4WKh4t/EbkMKkx89KZ299oi4iR1lnhcz06phNkfTTdTlJgsnNFcj9GRk1uijfQK
++VJxulFdFV/1/pZFQ5CXmieQK5BnGDkKozVDf82MSSxlLdT2c1Dsf1kktoKMBZT9C
++HUS4aQdRJFWt/zrmaXBBHKsQJ9puNlYsIE4vEpUCgYEAvN1sBXbt/8R8ELvOrhQv
++HO136LtI/KRPpxXRRdBFj//ijwfMchUfChGVk4P0fYXyUA8tF19DJ3GbqtmObYV4
++TFYli0z1xDN3Pwo+55Kxwx42Ir7GHmevvNa+RitQYePZVsdLGxY+azh11/5bOZ14
++ZkVDf9Glu7bDIwn1wz4HpFw=
++-----END PRIVATE KEY-----
