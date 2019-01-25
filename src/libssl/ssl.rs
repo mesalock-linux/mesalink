@@ -3658,4 +3658,27 @@ mod tests {
         mesalink_SSL_free(ssl);
         mesalink_SSL_CTX_free(ctx);
     }
+
+    #[test]
+    fn test_sgx_verifier() {
+        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
+        let mr_signer_ptr = b"12345678123456781234567812345678".as_ptr() as *const c_char;
+        assert_eq!(
+            SSL_FAILURE,
+            mesalink_SSL_CTX_set_sgx_verify(ptr::null_mut(), mr_signer_ptr, 7)
+        );
+        assert_eq!(
+            SSL_FAILURE,
+            mesalink_SSL_CTX_set_sgx_verify(ctx_ptr, ptr::null(), 7)
+        );
+        assert_eq!(
+            SSL_FAILURE,
+            mesalink_SSL_CTX_set_sgx_verify(ctx_ptr, ptr::null(), 100)
+        );
+        assert_eq!(
+            SSL_SUCCESS,
+            mesalink_SSL_CTX_set_sgx_verify(ctx_ptr, mr_signer_ptr, 7)
+        );
+        mesalink_SSL_CTX_free(ctx_ptr);
+    }
 }
