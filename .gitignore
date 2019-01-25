@@ -8,9 +8,11 @@ libmesalink.la
 mesalink/options.h
 mesalink/version.h
 examples/client/client
+examples/sgx_uera_client/sgx_uera_client
 examples/0rtt_client/0rtt_client
 examples/server/server
 examples/client/.libs/
+examples/sgx_uera_client/.libs/
 examples/0rtt_client/.libs/
 examples/server/.libs/
 Makefile

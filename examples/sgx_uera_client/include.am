@@ -1,0 +1,6 @@
+if BUILD_EXAMPLE_SGX
+noinst_PROGRAMS += examples/sgx_uera_client/sgx_uera_client
+examples_sgx_uera_client_sgx_uera_client_SOURCES = examples/sgx_uera_client/sgx_uera_client.c
+examples_sgx_uera_client_sgx_uera_client_LDADD = libmesalink.la
+DISTCLEANFILES+= examples/sgx_uera_client/.libs/sgx_uera_client
+endif
