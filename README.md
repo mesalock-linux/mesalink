@@ -8,29 +8,25 @@
 [![Release](https://img.shields.io/github/release/mesalock-linux/mesalink.svg)](https://github.com/mesalock-linux/mesalink/releases)
 [![License](https://img.shields.io/badge/license-BSD-blue.svg)](LICENSE)
 
-MesaLink is a memory-safe and OpenSSL-compatible TLS library. To achieve better
-security, we apply [Non-bypassable Security Paradigm
-(NbSP)](https://github.com/baidu/rust-sgx-sdk/blob/master/documents/nbsp.pdf) to
-the system design and implementation.
-
-MesaLink is part of [Open AI System Security Alliance](https://oases.io/) and
-[Baidu AIoT Security Solutions](https://aiotsec.baidu.com/). Integration of
-MesaLink into Android apps and Android-based smart TVs is now in progress.
-
-Also visit us on our new website: [https://mesalink.io](https://mesalink.io).
+MesaLink is a memory-safe and OpenSSL-compatible TLS library.
+Also visit us on our website: [https://mesalink.io](https://mesalink.io).
 
 ## Release history
-* 0.8.0 (Upcoming release)
-  - File BIO and memory BIO APIs
-  - EVP_PKEY APIs for storing RSA/EC private keys
-  - PEM and X509 APIs for loading certs and keys
-  - Refactored and new SSL/SSL_CTX APIs
-  - TLS backend for curl (since 7.62.0)
-  - Discontinue support for SHA1 signatures
-  - Move to Rust 2018 edition
+* 0.8.0 (01-25-2019)
+  - 40 new OpenSSL APIs, covering BIO, EVP_PKEY, PEM and X509
+  - SSL_CTX and SSL are thread-safe
+  - Configurable session cache
+  - SHA1 signatures discontinued
+  - Tested with rust-san memory and leak sanitizers
+  - Rust 2018 edition
+  - Based on rustls 0.15, webpki 0.19, and \*ring\* 0.14
+  - TLS backend for curl since 7.62.0
+  - TLS backend for brpc, an industrial-grade RPC framework; see the `patches`
+    directory
+  - Experimental SGX Remote Attestation for Untrusted Enclaves (see
+    [SGX_README.md](examples/sgx_uera_client/SGX_README.md))
 * 0.7.2 (11-24-2018)
-  - Client authentication with `SSL_CTX_load_verify_location`,
-    `SSL_CTX_use_certificate_chain_file`, and `SSL_CTX_use_PrivateKey_file`
+  - Client authentication
   - Use armv7-linux-androideabi for Android builds
 * 0.7.1 (09-05-2018)
   - SSL_CTX_load_verify_location
@@ -50,21 +46,7 @@ Also visit us on our new website: [https://mesalink.io](https://mesalink.io).
     directory
   - `cargo-fmt` and `cargo-clippy` lint checks
 
-* 0.6.1 (04-09-2018)
-  - TLS 1.3 Draft 23
-  - Coverage tests with `cargo tarpaulin`
-
-* 0.6.0 (04-02-2018)
-  - First public release
-  - TLS 1.2 and TLS 1.3 Draft 22
-  - SSL_CTX and METHOD APIs
-  - SSL APIs
-  - Dynamic pointer sanity checks for opaque pointer types
-  - Autotools
-  - Configurable ciphersuites, curves, and TLS versions
-  - Linux, macOS, and Android builds on x86_64/arm/arm64
-  - Unit tests and BoringSSL BoGo tests
-  - Crypto benchmarks
+See [OLD_CHANGES.md](OLD_CHANGES.md) for further change history.
 
 ## Feature highlights
 
@@ -83,8 +65,8 @@ MesaLink depends on two Rust crates: [rustls](https://github.com/ctz/rustls) and
 [sct](https://github.com/ctz/sct.rs). With them, MesaLink provides the following
 features that are considered secure for most use cases:
 
-* TLS 1.2 and TLS 1.3 draft 23
-* ECDSA or RSA server authentication
+* TLS 1.2 and TLS 1.3 draft 28
+* ECDSA and RSA server authentication
 * Forced hostname validation
 * Forward secrecy using ECDHE; with curve25519, nistp256 or nistp384 curves.
 * Safe and fast crypto primitives from BoringSSL
