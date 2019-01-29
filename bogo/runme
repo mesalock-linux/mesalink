@@ -21,8 +21,8 @@
 
 set -xe
 
-if [ ! -e ../target/release/examples/bogo_shim ] ; then
-  cargo test --release --no-run
+if [ ! -e ../target/debug/examples/bogo_shim ] ; then
+  cargo test --no-run
 fi
 
 if [ ! -e bogo/ ] ; then
@@ -34,6 +34,6 @@ fi
 case $OSTYPE in darwin*) set +e ;; esac
 
 set -o pipefail
-( cd bogo && ./bogo.test -shim-path ../../target/release/examples/bogo_shim \
+( cd bogo && ./bogo.test -shim-path ../../target/debug/examples/bogo_shim \
      -shim-config ../config.json \
      -pipe -allow-unimplemented  )
