@@ -23,7 +23,7 @@ matrix:
     env: ARCH=x86_64_macos
   - name: rust-san
     rust: nightly
-    env: ARCH=x86_64_linux
+    env: ARCH=x86_64_linux SAN=yes
     before_install:
     install:
     before_script:
@@ -51,6 +51,8 @@ matrix:
     - cargo fmt --all -- --check `find src -iname "*.rs"`
     - docker run --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin
       cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID
+  allow_failures:
+    - rust: nightly
   fast_finish: true
 before_install:
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -qq; fi
