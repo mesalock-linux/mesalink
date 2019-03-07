@@ -36,25 +36,29 @@ int
 tls_client(SSL_CTX *ctx, const char *hostname)
 {
   SSL *ssl = NULL;
-  int sockfd = -1;
-  struct hostent *hp;
-  struct sockaddr_in addr;
+
+  struct addrinfo hints;
+  struct addrinfo *result, *rp;
+  int fd, s, j;
+
   char sendbuf[8192] = { 0 };
   char recvbuf[8192] = { 0 };
 
-  if((hp = gethostbyname(hostname)) == NULL) {
-    fprintf(stderr, "[-] Gethostname error\n");
+  s = getaddrinfo(hostname, "443", &hints, &result);
+  if(s != 0) {
+    fprintf(stderr, "[-] getaddrinfo error: %s\n", gai_strerror(s));
     goto fail;
   }
-  memset(&addr, 0, sizeof(addr));
-  memmove(&addr.sin_addr, hp->h_addr, hp->h_length);
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(443);
-  sockfd = socket(AF_INET, SOCK_STREAM, 0);
-  if(connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
-    fprintf(stderr, "[-] Connect error\n");
-    goto fail;
+
+  for(rp = result; rp != NULL; rp = rp->ai_next) {
+    fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+    if(fd == -1)
+      continue;
+    if(connect(fd, rp->ai_addr, rp->ai_addrlen) != -1)
+      break; /* Success */
+    close(fd);
   }
+
   ssl = SSL_new(ctx);
   if(ssl == NULL) {
     fprintf(stderr, "[-] Failed to create SSL\n");
@@ -67,7 +71,7 @@ tls_client(SSL_CTX *ctx, const char *hostname)
     fprintf(stderr, "[-] Failed to set hostname\n");
     goto fail;
   }
-  if(SSL_set_fd(ssl, sockfd) != SSL_SUCCESS) {
+  if(SSL_set_fd(ssl, fd) != SSL_SUCCESS) {
     fprintf(stderr, "[-] Faield to set fd\n");
     goto fail;
   }
@@ -132,12 +136,11 @@ tls_client(SSL_CTX *ctx, const char *hostname)
     goto fail;
   }
 fail:
-
   if(ssl) {
     SSL_free(ssl);
   }
-  if(!sockfd) {
-    close(sockfd);
+  if(!fd) {
+    close(fd);
   }
   return -1;
 }
