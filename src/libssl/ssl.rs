@@ -35,6 +35,7 @@
 
 // Module imports
 
+use super::cache::{ClientSessionMemoryCache, ServerSessionMemoryCache};
 use super::err::{ErrorCode, MesalinkBuiltinError, MesalinkError, MesalinkInnerResult};
 use super::safestack::MESALINK_STACK_MESALINK_X509;
 use super::x509::MESALINK_X509;
@@ -131,13 +132,13 @@ impl rustls::ServerCertVerifier for NoServerAuth {
 }
 
 struct MesalinkClientSessionCache {
-    cache: Arc<rustls::ClientSessionMemoryCache>,
+    cache: Arc<ClientSessionMemoryCache>,
 }
 
 impl MesalinkClientSessionCache {
     fn with_capacity(cache_size: usize) -> Arc<MesalinkClientSessionCache> {
         let session_cache = MesalinkClientSessionCache {
-            cache: rustls::ClientSessionMemoryCache::new(cache_size),
+            cache: ClientSessionMemoryCache::new(cache_size),
         };
         Arc::new(session_cache)
     }
@@ -211,7 +212,7 @@ impl MESALINK_CTX {
         client_config.set_persistence(MesalinkClientSessionCache::with_capacity(
             SSL_SESSION_CACHE_MAX_SIZE_DEFAULT,
         ));
-        server_config.set_persistence(rustls::ServerSessionMemoryCache::new(
+        server_config.set_persistence(ServerSessionMemoryCache::new(
             SSL_SESSION_CACHE_MAX_SIZE_DEFAULT,
         ));
 
@@ -1430,7 +1431,7 @@ fn inner_mesalink_ssl_ctx_set_session_cache_mode(
             .set_persistence(Arc::new(rustls::NoClientSessionStorage {}));
         ctx_mut
             .server_config
-            .set_persistence(rustls::ServerSessionMemoryCache::new(sess_size));
+            .set_persistence(ServerSessionMemoryCache::new(sess_size));
         ctx_mut.session_cache_mode = SslSessionCacheModes::Server;
     } else if mode == SslSessionCacheModes::Both as c_long {
         ctx_mut
@@ -1438,7 +1439,7 @@ fn inner_mesalink_ssl_ctx_set_session_cache_mode(
             .set_persistence(MesalinkClientSessionCache::with_capacity(sess_size));
         ctx_mut
             .server_config
-            .set_persistence(rustls::ServerSessionMemoryCache::new(sess_size));
+            .set_persistence(ServerSessionMemoryCache::new(sess_size));
         ctx_mut.session_cache_mode = SslSessionCacheModes::Both;
     }
     Ok(prev_mode)
@@ -1507,7 +1508,7 @@ fn inner_mesalink_ssl_ctx_sess_set_cache_size(
         SslSessionCacheModes::Server => {
             ctx_mut
                 .server_config
-                .set_persistence(rustls::ServerSessionMemoryCache::new(t as usize));
+                .set_persistence(ServerSessionMemoryCache::new(t as usize));
         }
         SslSessionCacheModes::Both => {
             ctx_mut
@@ -1515,7 +1516,7 @@ fn inner_mesalink_ssl_ctx_sess_set_cache_size(
                 .set_persistence(MesalinkClientSessionCache::with_capacity(t as usize));
             ctx_mut
                 .server_config
-                .set_persistence(rustls::ServerSessionMemoryCache::new(t as usize));
+                .set_persistence(ServerSessionMemoryCache::new(t as usize));
         }
         _ => (),
     }

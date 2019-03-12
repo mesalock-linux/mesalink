@@ -30,6 +30,11 @@ pub mod x509;
 /// Please also refer to the header file at mesalink/openssl/safestack.h
 pub mod safestack;
 
+/// This module is essentially the same as the SessionCache implementations from
+/// rustls, except that it uses `hashbrown` and `parking_lot` for better
+/// performance.
+mod cache;
+
 /// Flags reserved for SGX remote attestation
 #[cfg(feature = "sgx")]
 mod sgx;

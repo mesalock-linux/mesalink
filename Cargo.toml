@@ -43,6 +43,8 @@ lazy_static = "1.0.0"
 enum_to_u8_slice_derive = "0.1"
 bitflags = "1.0.4"
 base64 = "0.10"
+parking_lot = "0.7.1"
+hashbrown = "0.1.8"
 
 [dependencies.rustls]
 git = "https://github.com/mesalock-linux/rustls"
