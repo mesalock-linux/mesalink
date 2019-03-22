@@ -131,7 +131,7 @@ CONFIG_OPTIONS=""
 AC_ARG_ENABLE([jemalloc],
     [AS_HELP_STRING([--enable-jemalloc], [Enable Jemalloc memory allocator (default: enabled)])],
     [ ENABLE_JEMALLOC=$enableval ],
-    [ ENABLE_JEMALLOC=yes ]
+    [ ENABLE_JEMALLOC=no ]
     )
 if test "$ENABLE_JEMALLOC" = "yes"
 then
