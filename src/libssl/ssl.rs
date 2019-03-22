@@ -44,7 +44,7 @@ use crate::error_san::*;
 use crate::libcrypto::evp::MESALINK_EVP_PKEY;
 use crate::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use libc::{c_char, c_int, c_long, c_uchar, c_void, size_t};
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 use rustls;
 use std::sync::Arc;
 use std::{ffi, fs, io, net, path, ptr, slice};
@@ -284,8 +284,8 @@ pub struct MESALINK_SSL {
     client_config: Arc<rustls::ClientConfig>,
     server_config: Arc<rustls::ServerConfig>,
     hostname: Option<String>,
-    io: Option<Mutex<net::TcpStream>>,
-    session: Option<ClientOrServerSession>,
+    io: Option<net::TcpStream>,
+    session: Option<RwLock<ClientOrServerSession>>,
     error: ErrorCode,
     eof: bool,
     mode: ClientOrServerMode,
@@ -375,8 +375,9 @@ impl MESALINK_SSL {
     pub(crate) fn ssl_read(&mut self, buf: &mut [u8]) -> Result<usize, MesalinkError> {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => loop {
+                let mut session = session.write(); // Lock read
                 match session.read(buf) {
-                    Ok(0) => match complete_io(session, io.lock().deref_mut()) {
+                    Ok(0) => match complete_io(&mut session, io) {
                         Err(e) => return Err(e),
                         Ok((rdlen, wrlen)) => {
                             if rdlen == 0 && wrlen == 0 {
@@ -403,8 +404,9 @@ impl MESALINK_SSL {
     pub(crate) fn ssl_write(&mut self, buf: &[u8]) -> Result<usize, MesalinkError> {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => {
+                let mut session = session.write();
                 let len = session.write(buf).map_err(|e| error!(e.into()))?;
-                match session.write_tls(io.lock().deref_mut()) {
+                match session.write_tls(io) {
                     Ok(_) => Ok(len),
                     Err(e) => match e.kind() {
                         io::ErrorKind::WouldBlock => {
@@ -421,8 +423,9 @@ impl MESALINK_SSL {
     pub(crate) fn ssl_flush(&mut self) -> Result<(), MesalinkError> {
         match (self.session.as_mut(), self.io.as_mut()) {
             (Some(session), Some(io)) => {
+                let mut session = session.write();
                 session.flush().map_err(|e| error!(e.into()))?;
-                match session.write_tls(io.lock().deref_mut()) {
+                match session.write_tls(io) {
                     Ok(_) => Ok(()),
                     Err(e) => match e.kind() {
                         io::ErrorKind::WouldBlock => {
@@ -440,7 +443,8 @@ impl MESALINK_SSL {
         use std::io::Write;
         match self.session.as_mut() {
             Some(session) => {
-                let client_session = session.assert_client();
+                let mut session = session.write();
+                let client_session = session.deref_mut().assert_client();
                 let mut early_writer = client_session.early_data().ok_or(error!(
                     io::Error::new(io::ErrorKind::InvalidData, "Early data not supported").into()
                 ))?;
@@ -1646,6 +1650,7 @@ fn inner_mesalink_ssl_get_current_cipher(
         .as_ref()
         .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     let ciphersuite = session
+        .read()
         .get_negotiated_ciphersuite()
         .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     Ok(Box::into_raw(Box::new(MESALINK_CIPHER::new(ciphersuite)))) // Allocates memory!
@@ -1887,6 +1892,7 @@ fn get_peer_certificates(ssl: &MESALINK_SSL) -> MesalinkInnerResult<Vec<rustls::
         .as_ref()
         .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     session
+        .read()
         .get_peer_certificates()
         .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))
         .and_then(|certs| {
@@ -1956,7 +1962,7 @@ fn inner_mesalink_ssl_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> MesalinkI
         return Err(error!(MesalinkBuiltinError::BadFuncArg.into()));
     }
     let socket = unsafe { net::TcpStream::from_raw_fd(fd) };
-    ssl.io = Some(Mutex::new(socket));
+    ssl.io = Some(socket);
     Ok(SSL_SUCCESS)
 }
 
@@ -1978,7 +1984,7 @@ fn inner_measlink_ssl_get_fd(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
         .io
         .as_ref()
         .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
-    Ok(socket.lock().as_raw_fd())
+    Ok(socket.as_raw_fd())
 }
 
 /// `SSL_set_connect_state` sets *ssl* to work in client mode.
@@ -2077,11 +2083,11 @@ fn setup_ssl_if_ready(ssl: &mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
                 let dnsname = webpki::DNSNameRef::try_from_ascii_str(&hostname)
                     .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
                 let client_session = rustls::ClientSession::new(&ssl.client_config, dnsname);
-                ssl.session = Some(ClientOrServerSession::Client(client_session));
+                ssl.session = Some(RwLock::new(ClientOrServerSession::Client(client_session)));
             }
             ClientOrServerMode::Server => {
                 let server_session = rustls::ServerSession::new(&ssl.server_config);
-                ssl.session = Some(ClientOrServerSession::Server(server_session));
+                ssl.session = Some(RwLock::new(ClientOrServerSession::Server(server_session)));
             }
         }
     }
@@ -2091,8 +2097,9 @@ fn setup_ssl_if_ready(ssl: &mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
 fn do_handshake(ssl: &mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     match (ssl.session.as_mut(), ssl.io.as_mut()) {
         (Some(session), Some(io)) => {
+            let mut session = session.write();
             if session.is_handshaking() {
-                match complete_io(session, io.lock().deref_mut()) {
+                match complete_io(&mut session, io) {
                     Err(e) => {
                         ssl.error = ErrorCode::from(&e);
                         match ssl.error {
@@ -2386,7 +2393,8 @@ fn inner_mesalink_ssl_get_early_data_status(
         .session
         .as_mut()
         .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
-    if session.assert_client().is_early_data_accepted() {
+    let mut session = session.write();
+    if session.deref_mut().assert_client().is_early_data_accepted() {
         Ok(2)
     } else {
         Ok(1)
@@ -2411,7 +2419,7 @@ fn inner_mesalink_ssl_shutdown(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResul
         .session
         .as_mut()
         .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
-    session.send_close_notify();
+    session.write().send_close_notify();
     Ok(SSL_SUCCESS)
 }
 
@@ -2436,6 +2444,7 @@ fn inner_mesalink_ssl_get_version(
         .as_ref()
         .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     let version = session
+        .read()
         .get_protocol_version()
         .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     match version {
