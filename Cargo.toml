@@ -22,7 +22,7 @@ crate-type = ["lib", "staticlib"]
 [features]
 client_apis = []
 server_apis = []
-default = ["client_apis", "server_apis", "error_strings", "tls13", "aesgcm", "chachapoly", "x25519", "ecdh", "ecdsa", "verifier", "sgx"]
+default = ["client_apis", "server_apis", "error_strings", "tls13", "aesgcm", "chachapoly", "x25519", "ecdh", "ecdsa", "verifier", "sgx", "jemalloc_allocator"]
 error_strings = ["rustls/logging"]
 tls13 = ["rustls/tls13"]
 aesgcm = ["rustls/aesgcm"]
@@ -33,6 +33,7 @@ ecdsa = ["rustls/ecdsa"]
 verifier = ["rustls/dangerous_configuration"]
 sgx = ["rustls/sgx"]
 nightly = []
+jemalloc_allocator = ["jemallocator"]
 
 [dependencies]
 ring = "0.14"
@@ -45,6 +46,7 @@ bitflags = "1.0.4"
 base64 = "0.10"
 parking_lot = "0.7.1"
 hashbrown = "0.1.8"
+jemallocator = { version = "0.3.0", optional = true }
 
 [dependencies.rustls]
 git = "https://github.com/mesalock-linux/rustls"

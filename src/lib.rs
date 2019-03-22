@@ -51,6 +51,10 @@
 #![deny(trivial_numeric_casts, unused_qualifications)]
 #![forbid(anonymous_parameters, unused_import_braces, unused_results, warnings)]
 
+#[cfg(feature = "jemalloc_allocator")]
+#[global_allocator]
+static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+
 // enum_to_str_derive for human-readable error numbers
 #[cfg(feature = "error_strings")]
 #[macro_use]
