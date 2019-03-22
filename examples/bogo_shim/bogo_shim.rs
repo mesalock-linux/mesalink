@@ -203,7 +203,7 @@ fn setup_ctx(opts: &Options) -> *mut ssl::MESALINK_CTX_ARC {
     ctx
 }
 
-fn cleanup(ssl: *mut ssl::MESALINK_SSL_ARC, ctx: *mut ssl::MESALINK_CTX_ARC) {
+fn cleanup(ssl: *mut ssl::MESALINK_SSL, ctx: *mut ssl::MESALINK_CTX_ARC) {
     if !ssl.is_null() {
         ssl::mesalink_SSL_free(ssl);
     }
@@ -218,7 +218,7 @@ fn do_connection(opts: &Options, ctx: *mut ssl::MESALINK_CTX_ARC, count: usize) 
     let mut sent_shutdown = false;
     let mut seen_eof = false;
 
-    let ssl: *mut ssl::MESALINK_SSL_ARC = ssl::mesalink_SSL_new(ctx);
+    let ssl: *mut ssl::MESALINK_SSL = ssl::mesalink_SSL_new(ctx);
 
     if ssl.is_null() {
         ssl::mesalink_SSL_CTX_free(ctx);
