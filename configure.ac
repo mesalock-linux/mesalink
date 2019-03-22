@@ -128,6 +128,16 @@ CARGO_FEATURES=$CARGO_FEATURES" \""
 
 CONFIG_OPTIONS=""
 
+AC_ARG_ENABLE([jemalloc],
+    [AS_HELP_STRING([--enable-jemalloc], [Enable Jemalloc memory allocator (default: enabled)])],
+    [ ENABLE_JEMALLOC=$enableval ],
+    [ ENABLE_JEMALLOC=yes ]
+    )
+if test "$ENABLE_JEMALLOC" = "yes"
+then
+    CARGO_FEATURES=$CARGO_FEATURES" jemalloc_allocator"
+fi
+
 AC_ARG_ENABLE([client],
     [AS_HELP_STRING([--enable-client], [Enable client APIs (default: enabled)])],
     [ ENABLE_CLIENT=$enableval ],
@@ -333,6 +343,7 @@ echo "   * Nightly Rust:               $RUST_IS_NIGHTLY"
 echo "   * Examples:                   $ENABLE_EXAMPLES"
 echo
 echo "   Features "
+echo "   * Jemalloc:                   $ENABLE_JEMALLOC"
 echo "   * Logging and error strings:  $ENABLE_ERROR_STRINGS"
 echo "   * AES-GCM:                    $ENABLE_AESGCM"
 echo "   * Chacha20-Poly1305:          $ENABLE_CHACHAPOLY"
