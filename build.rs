@@ -13,14 +13,14 @@
  *
  */
 
-use std::env;
-use std::fs;
-use std::fs::File;
-use std::io::prelude::*;
-use std::os::unix::fs::symlink;
-use std::path::PathBuf;
-
+#[cfg(unix)]
 fn generate_la(lib: &str) -> std::io::Result<()> {
+    use std::env;
+    use std::fs;
+    use std::fs::File;
+    use std::io::prelude::*;
+    use std::path::PathBuf;
+
     let self_version = env!("CARGO_PKG_VERSION");
     let top_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let profile = env::var("PROFILE").unwrap();
@@ -59,11 +59,14 @@ fn generate_la(lib: &str) -> std::io::Result<()> {
     }
     writeln!(file, "installed=no")?;
     writeln!(file, "shouldnotlink=no")?;
-    symlink(&old_lib_path, &new_lib_path)?;
+    std::os::unix::fs::symlink(&old_lib_path, &new_lib_path)?;
     Ok(())
 }
 
+#[cfg(windows)]
+fn generate_la(_lib: &str) -> std::io::Result<()> { Ok(()) }
+
 fn main() {
-    let lib_name = format!("{}{}", "lib", env::var("CARGO_PKG_NAME").unwrap(),);
+    let lib_name = format!("{}{}", "lib", std::env::var("CARGO_PKG_NAME").unwrap(),);
     let _ = generate_la(lib_name.as_str());
 }

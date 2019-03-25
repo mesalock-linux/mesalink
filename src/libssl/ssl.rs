@@ -52,7 +52,10 @@ use webpki;
 
 // Trait imports
 use std::ops::{Deref, DerefMut};
+#[cfg(unix)]
 use std::os::unix::io::{AsRawFd, FromRawFd};
+#[cfg(windows)]
+use std::os::windows::io::{AsRawSocket, FromRawSocket};
 
 const SSL_SESSION_CACHE_MAX_SIZE_DEFAULT: usize = 1024 * 20;
 
@@ -1951,11 +1954,13 @@ fn inner_mesalink_ssl_set_tlsext_host_name(
 ///
 /// int SSL_set_fd(SSL *ssl, int fd);
 /// ```
+#[cfg(unix)]
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> c_int {
     check_inner_result!(inner_mesalink_ssl_set_fd(ssl_ptr, fd), SSL_FAILURE)
 }
 
+#[cfg(unix)]
 fn inner_mesalink_ssl_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> MesalinkInnerResult<c_int> {
     let mut ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     if fd < 0 {
@@ -1973,11 +1978,13 @@ fn inner_mesalink_ssl_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> MesalinkI
 ///
 /// int SSL_get_fd(const SSL *ssl);
 /// ```
+#[cfg(unix)]
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_fd(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     check_inner_result!(inner_measlink_ssl_get_fd(ssl_ptr), SSL_FAILURE)
 }
 
+#[cfg(unix)]
 fn inner_measlink_ssl_get_fd(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let ssl = sanitize_ptr_for_ref(ssl_ptr)?;
     let socket = ssl
@@ -1985,6 +1992,55 @@ fn inner_measlink_ssl_get_fd(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<
         .as_ref()
         .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     Ok(socket.as_raw_fd())
+}
+
+/// `SSL_set_socket` - set the Windows raw socket as the input/output facility for the
+/// TLS/SSL (encrypted) side of ssl. fd will typically be the socket file
+/// descriptor of a network connection.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_set_socket(SSL *ssl, int fd);
+/// ```
+#[cfg(windows)]
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_set_socket(ssl_ptr: *mut MESALINK_SSL, sock: libc::SOCKET) -> c_int {
+    check_inner_result!(inner_mesalink_ssl_set_socket(ssl_ptr, sock), SSL_FAILURE)
+}
+
+#[cfg(windows)]
+fn inner_mesalink_ssl_set_socket(ssl_ptr: *mut MESALINK_SSL, sock: libc::SOCKET) -> MesalinkInnerResult<c_int> {
+    let mut ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
+    if sock == 0 {
+        return Err(error!(MesalinkBuiltinError::BadFuncArg.into()));
+    }
+    let socket = unsafe { net::TcpStream::from_raw_socket(sock as u64) };
+    ssl.io = Some(socket);
+    Ok(SSL_SUCCESS)
+}
+
+/// `SSL_get_socket` - return the socket which is linked to ssl.
+///
+/// ```c
+/// #include <mesalink/openssl/ssl.h>
+///
+/// int SSL_get_socket(const SSL *ssl);
+/// ```
+#[cfg(windows)]
+#[no_mangle]
+pub extern "C" fn mesalink_SSL_get_socket(ssl_ptr: *mut MESALINK_SSL) -> libc::SOCKET {
+    check_inner_result!(inner_measlink_ssl_get_socket(ssl_ptr), 0)
+}
+
+#[cfg(windows)]
+fn inner_measlink_ssl_get_socket(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<libc::SOCKET> {
+    let ssl = sanitize_ptr_for_ref(ssl_ptr)?;
+    let socket = ssl
+        .io
+        .as_ref()
+        .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+    Ok(socket.as_raw_socket() as usize)
 }
 
 /// `SSL_set_connect_state` sets *ssl* to work in client mode.

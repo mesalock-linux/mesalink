@@ -17,13 +17,16 @@ use crate::error_san::*;
 use crate::libcrypto::{CRYPTO_FAILURE, CRYPTO_SUCCESS};
 use crate::libssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
 use crate::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
-use libc::{c_char, c_int, c_long, c_void, FILE};
+use libc::{c_char, c_int, c_long, c_void};
 use std::{ffi, fs, io, mem, ptr, slice};
 
 // Trait imports
 use std::io::{Read, Seek, Write};
 use std::ops::{Deref, DerefMut};
+#[cfg(unix)]
 use std::os::unix::io::{FromRawFd, IntoRawFd};
+#[cfg(windows)]
+use std::os::windows::io::{FromRawHandle, IntoRawHandle};
 
 #[doc(hidden)]
 pub trait BioRW: Read + Write + Seek {}
@@ -267,7 +270,10 @@ fn inner_mesalink_bio_free(bio_ptr: *mut MESALINK_BIO<'_>) -> MesalinkInnerResul
     let inner = mem::replace(&mut bio.inner, MesalinkBioInner::Unspecified);
     if BioFlags::BIO_NOCLOSE == bio.flags & BioFlags::BIO_NOCLOSE {
         if let MesalinkBioInner::File(f) = inner {
+            #[cfg(unix)]
             let _ = f.into_raw_fd();
+            #[cfg(windows)]
+            let _ = f.into_raw_handle();
         }
     }
     Ok(CRYPTO_SUCCESS)
@@ -586,21 +592,27 @@ pub extern "C" fn mesalink_BIO_rw_filename(
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_BIO_new_fp<'a>(
-    stream: *mut FILE,
+    stream: *mut libc::FILE,
     flags: c_int,
 ) -> *mut MESALINK_BIO<'a> {
     check_inner_result!(inner_mesalink_bio_new_fp(stream, flags), ptr::null_mut())
 }
 
 fn inner_mesalink_bio_new_fp<'a>(
-    stream: *mut FILE,
+    stream: *mut libc::FILE,
     flags: c_int,
 ) -> MesalinkInnerResult<*mut MESALINK_BIO<'a>> {
     if stream.is_null() {
         return Err(error!(MesalinkBuiltinError::NullPointer.into()));
     }
-    let fd = unsafe { libc::fileno(stream) };
-    let file = unsafe { fs::File::from_raw_fd(fd) };
+    #[cfg(unix)]
+    let file = unsafe { fs::File::from_raw_fd(libc::fileno(stream)) };
+    #[cfg(windows)]
+    let file = unsafe {
+        let fd = libc::fileno(stream);
+        let osf_handle = libc::get_osfhandle(fd);
+        fs::File::from_raw_handle(osf_handle as *mut _)
+    };
     let flags =
         BioFlags::from_bits(flags as u32).ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     let bio = MESALINK_BIO {
@@ -619,17 +631,19 @@ fn inner_mesalink_bio_new_fp<'a>(
 ///
 /// BIO_set_fp(BIO *b,FILE *fp, int flags);
 /// ```
+#[cfg(unix)]
 #[no_mangle]
-pub extern "C" fn mesalink_BIO_set_fp(bio_ptr: *mut MESALINK_BIO<'_>, fp: *mut FILE, flags: c_int) {
+pub extern "C" fn mesalink_BIO_set_fp(bio_ptr: *mut MESALINK_BIO<'_>, fp: *mut libc::FILE, flags: c_int) {
     let _ = check_inner_result!(
         inner_mesalink_bio_set_fp(bio_ptr, fp, flags),
         CRYPTO_FAILURE
     );
 }
 
+#[cfg(unix)]
 fn inner_mesalink_bio_set_fp(
     bio_ptr: *mut MESALINK_BIO<'_>,
-    fp: *mut FILE,
+    fp: *mut libc::FILE,
     flags: c_int,
 ) -> MesalinkInnerResult<c_int> {
     let bio = sanitize_ptr_for_mut_ref(bio_ptr)?;

@@ -772,6 +772,7 @@ pub extern "C" fn mesalink_ERR_clear_error() {
 ///
 /// void ERR_print_errors_fp(FILE *fp);
 /// ```
+#[cfg(unix)]
 #[no_mangle]
 pub unsafe extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
     use std::io::Write;
