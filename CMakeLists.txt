@@ -10,10 +10,29 @@ include(CMakeCargo)
 project(MesaLink VERSION 12.0.0)
 set(LIB_NAME mesalink)
 
-add_subdirectory(src)
-get_property(install_lib_file GLOBAL PROPERTY install_lib_file_property)
+# Config options
+set(CONFIG_FEATURES "")
+option(WITH_TLS_13 "Enable TLS 1.3" ON)
+
+if(WITH_TLS_13)
+    list(APPEND CONFIG_FEATURES "tls13")
+endif()
+
+# Build MesaLink and its examples
+
+cargo_build(NAME mesalink)
+set_target_properties(mesalink PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/mesalink"
+)
+add_executable(client_example examples/client/client.c)
+target_link_libraries(client_example mesalink)
+add_executable(server_example examples/server/server.c)
+target_link_libraries(server_example mesalink)
+
+# Install the MesaLink shared library and headers
 
 include(GNUInstallDirs)
+get_property(install_lib_file GLOBAL PROPERTY install_lib_file_property)
 install(FILES ${install_lib_file} 
     DESTINATION ${CMAKE_INSTALL_LIBDIR}
     PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
