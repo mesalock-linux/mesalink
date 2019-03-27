@@ -7,12 +7,26 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 enable_language(Rust)
 include(CMakeCargo)
 
-project(mesalink VERSION 12.0.0 DESCRIPTION "This is a description")
+project(MesaLink LANGUAGES C VERSION 12.0.0)
 
 add_subdirectory(src)
 add_library(${PROJECT_NAME} SHARED src)
-target_link_libraries(${PROJECT_NAME} PRIVATE src)
-target_include_directories(${PROJECT_NAME} PUBLIC mesalink)
+
+if(CMAKE_SYSTEM_NAME STREQUAL Darwin)
+    set(LD_FLAGS_PRE "-Wl,-force_load")
+    set(LD_FLAGS_POST "-Wl,-dead_strip -lm -ldl -lresolv -framework Security")
+elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
+    set(LD_FLAGS_PRE "--Wl,--whole-archive")
+    set(LD_FLAGS_POST "-Wl,--no-whole-archive -Wl,--gc-sections -pthread -lm -ldl")
+elseif(CMAKE_SYSTEM_NAME STREQUAL Windows)
+    set(LD_FLAGS_PRE "/WHOLEARCHIVE:")
+endif()
+
+target_link_libraries(${PROJECT_NAME} PUBLIC
+    ${LD_FLAGS_PRE}
+    mesalink
+    ${LD_FLAGS_POST}
+)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${PROJECT_VERSION})

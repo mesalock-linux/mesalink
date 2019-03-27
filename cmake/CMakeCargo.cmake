@@ -60,6 +60,7 @@ function(cargo_build)
     add_custom_command(
         OUTPUT ${LIB_FILE}
         COMMAND ${CARGO_ENV_COMMAND} ${CARGO_EXECUTABLE} ARGS ${CARGO_ARGS}
+        COMMAND ${CMAKE_AR} d ${LIB_FILE} floatdisf.o clzsi2.o
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         DEPENDS ${LIB_SOURCES}
         COMMENT "running cargo")

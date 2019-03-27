@@ -1,1 +1,1 @@
-cargo_build(NAME src)
+cargo_build(NAME mesalink)
