@@ -28,6 +28,14 @@ set(LIB_NAME mesalink)
 set(MESALINK_VERSION ${PROJECT_VERSION})
 configure_file(${PROJECT_SOURCE_DIR}/mesalink/version.h.cmake.in ${PROJECT_SOURCE_DIR}/mesalink/version.h @ONLY)
 
+if(WIN32)
+set(HAVE_WINDOWS ON)
+endif()
+
+if(UNIX)
+set(HAVE_UNIX ON)
+endif()
+
 option(HAVE_CLIENT "Enable client APIs (default: enabled)" ON)
 if(HAVE_CLIENT)
     string(APPEND CONFIG_FEATURES client_apis,)

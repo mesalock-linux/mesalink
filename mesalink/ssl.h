@@ -155,9 +155,16 @@ MESALINK_API MESALINK_X509 *mesalink_SSL_get_peer_certificate(
   const MESALINK_SSL *);
 MESALINK_API int mesalink_SSL_set_tlsext_host_name(MESALINK_SSL *,
                                                    const char *);
+MESALINK_API int mesalink_SSL_do_handshake(MESALINK_SSL *);
+
+#ifdef HAVE_WINDOWS
+#include <winsock2.h>
+MESALINK_API int mesalink_SSL_set_socket(MESALINK_SSL *, SOCKET);
+MESALINK_API SOCKET mesalink_SSL_get_socket(const MESALINK_SSL *);
+#else
 MESALINK_API int mesalink_SSL_set_fd(MESALINK_SSL *, int);
 MESALINK_API int mesalink_SSL_get_fd(const MESALINK_SSL *);
-MESALINK_API int mesalink_SSL_do_handshake(MESALINK_SSL *);
+#endif
 
 #ifdef HAVE_CLIENT
 MESALINK_API int mesalink_SSL_connect(MESALINK_SSL *);

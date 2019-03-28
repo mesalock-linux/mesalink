@@ -32,6 +32,8 @@ extern "C" {
 #cmakedefine HAVE_ECDH
 #cmakedefine HAVE_ECDSA
 #cmakedefine HAVE_SGX
+#cmakedefine HAVE_WINDOWS
+#cmakedefine HAVE_UNIX
 
 #ifdef __cplusplus
 }

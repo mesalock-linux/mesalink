@@ -126,8 +126,15 @@ extern "C" {
 #define SSL_set_tlsext_host_name mesalink_SSL_set_tlsext_host_name
 #define SSL_get_SSL_CTX mesalink_SSL_get_SSL_CTX
 #define SSL_set_SSL_CTX mesalink_SSL_set_SSL_CTX
+
+#ifdef HAVE_WINDOWS
+#define SSL_set_fd mesalink_SSL_set_socket
+#define SSL_get_fd mesalink_SSL_get_socket
+#else
 #define SSL_set_fd mesalink_SSL_set_fd
 #define SSL_get_fd mesalink_SSL_get_fd
+#endif
+
 #define SSL_do_handshake mesalink_SSL_do_handshake
 
 #ifdef HAVE_CLIENT
