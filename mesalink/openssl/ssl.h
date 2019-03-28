@@ -128,8 +128,8 @@ extern "C" {
 #define SSL_set_SSL_CTX mesalink_SSL_set_SSL_CTX
 
 #ifdef HAVE_WINDOWS
-#define SSL_set_fd mesalink_SSL_set_socket
-#define SSL_get_fd mesalink_SSL_get_socket
+#define SSL_set_socket mesalink_SSL_set_socket
+#define SSL_get_socket mesalink_SSL_get_socket
 #else
 #define SSL_set_fd mesalink_SSL_set_fd
 #define SSL_get_fd mesalink_SSL_get_fd
