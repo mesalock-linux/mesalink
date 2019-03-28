@@ -10,6 +10,12 @@ include(CMakeCargo)
 project(MesaLink VERSION 12.0.0)
 set(LIB_NAME mesalink)
 
+# Set up CPack
+SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "MesaLink TLS Library")
+SET(CPACK_GENERATOR "TGZ")
+SET(CPACK_DEBIAN_PACKAGE_MAINTAINER "Yiming Jing (jingyiming@baidu.com)")
+INCLUDE(CPack)
+
 # Config options
 set(MESALINK_VERSION ${PROJECT_VERSION})
 configure_file(${PROJECT_SOURCE_DIR}/mesalink/version.h.cmake.in ${PROJECT_SOURCE_DIR}/mesalink/version.h @ONLY)
