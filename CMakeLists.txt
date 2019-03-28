@@ -86,7 +86,7 @@ endif()
 
 string(APPEND CONFIG_FEATURES verifier,)
 
-option(HAVE_JEMALLOC "Enable Jemalloc" ON)
+option(HAVE_JEMALLOC "Enable Jemalloc" OFF)
 if(HAVE_JEMALLOC)
     string(APPEND CONFIG_FEATURES jemalloc_allocator,)
 endif()
