@@ -1,7 +1,8 @@
 function(cargo_build)
-    cmake_parse_arguments(CARGO "" "NAME" "" ${ARGN})
+    cmake_parse_arguments(CARGO "" "NAME" "FEATURES" ${ARGN})
     string(REPLACE "-" "_" LIB_NAME ${CARGO_NAME})
-
+    set(CARGO_FEATURE_ARG --no-default-features --features ${CARGO_FEATURES})
+    
     set(CARGO_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
     if(WIN32)
@@ -76,7 +77,7 @@ function(cargo_build)
 
     add_custom_command(
         OUTPUT ${LIB_FILE}
-        COMMAND ${CARGO_ENV_COMMAND} ${CARGO_LINKER_ARGS_COMMAND} ${CARGO_EXECUTABLE} ARGS ${CARGO_ARGS}
+        COMMAND ${CARGO_ENV_COMMAND} ${CARGO_LINKER_ARGS_COMMAND} ${CARGO_EXECUTABLE} ARGS ${CARGO_ARGS} ${CARGO_FEATURE_ARG}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         DEPENDS ${LIB_SOURCES}
         COMMENT "running cargo")

@@ -11,16 +11,66 @@ project(MesaLink VERSION 12.0.0)
 set(LIB_NAME mesalink)
 
 # Config options
-set(CONFIG_FEATURES "")
-option(WITH_TLS_13 "Enable TLS 1.3" ON)
+option(WITH_CLIENT "Enable client APIs (default: enabled)" ON)
+if(WITH_CLIENT)
+    string(APPEND CONFIG_FEATURES client_apis,)
+endif()
 
+option(WITH_SERVER "Enable server APIs (default: enabled)" ON)
+if(WITH_SERVER)
+    string(APPEND CONFIG_FEATURES server_apis,)
+endif()
+
+option(WITH_ERROR_STRINGS "Enable error string table (default: enabled)" ON)
+if(WITH_ERROR_STRINGS)
+    string(APPEND CONFIG_FEATURES error_strings,)
+endif()
+
+option(WITH_AES_GCM "Enable AES-GCM bulk encryption (default: enabled)" ON)
+if(WITH_AES_GCM)
+    string(APPEND CONFIG_FEATURES aesgcm,)
+endif()
+
+option(WITH_CHACHA_POLY "Enable Chacha20Poly1305 bulk encryption (default: enabled)" ON)
+if(WITH_CHACHA_POLY)
+    string(APPEND CONFIG_FEATURES chachapoly,)
+endif()
+
+option(WITH_TLS_13 "Enable TLS 1.3" ON)
 if(WITH_TLS_13)
-    list(APPEND CONFIG_FEATURES "tls13")
+    string(APPEND CONFIG_FEATURES tls13,)
+endif()
+
+option(WITH_X25519 "Enable Curve25519 for key exchange (default: enabled)" ON)
+if(WITH_X25519)
+    string(APPEND CONFIG_FEATURES x25519,)
+endif()
+
+option(WITH_ECDH "Enable curve secp256r1 and secp384r1 for key exchange (default: enabled)" ON)
+if(WITH_ECDH)
+    string(APPEND CONFIG_FEATURES ecdh,)
+endif()
+
+option(WITH_ECDSA "Enable curve secp256r1 and secp384r1 for signature verification (default: enabled)" ON)
+if(WITH_ECDSA)
+    string(APPEND CONFIG_FEATURES ecdsa,)
+endif()
+
+option(WITH_SGX "Enable experimental SGX attestation (default: disabled)" OFF)
+if(WITH_SGX)
+    string(APPEND CONFIG_FEATURES sgx,)
+endif()
+
+string(APPEND CONFIG_FEATURES verifier,)
+
+option(WITH_JEMALLOC "Enable Jemalloc" ON)
+if(WITH_JEMALLOC)
+    string(APPEND CONFIG_FEATURES jemalloc_allocator,)
 endif()
 
 # Build MesaLink and its examples
+cargo_build(NAME mesalink FEATURES ${CONFIG_FEATURES})
 
-cargo_build(NAME mesalink)
 set_target_properties(mesalink PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/mesalink"
 )
