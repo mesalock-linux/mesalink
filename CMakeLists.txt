@@ -133,6 +133,10 @@ if(UNIX)
     install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${LIB} ${SYMLINK_SHORT})")
 endif()
 
+if(WINDOWS)
+
+endif()
+
 install(DIRECTORY mesalink 
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     COMPONENT headers
