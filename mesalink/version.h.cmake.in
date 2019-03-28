@@ -13,19 +13,17 @@
  *
  */
 
-/* default blank options for autoconf */
-
-#ifndef MESALINK_OPTIONS_H
-#define MESALINK_OPTIONS_H
+#ifndef MESALINK_VERSION_H
+#define MESALINK_VERSION_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-
+#cmakedefine MESALINK_VERSION_STRING "@MESALINK_VERSION@"
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* MESALINK_OPTIONS_H */
+#endif /* MESALINK_VERSION_H */

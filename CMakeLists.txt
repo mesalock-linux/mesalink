@@ -12,7 +12,7 @@ set(LIB_NAME mesalink)
 
 # Config options
 set(MESALINK_VERSION ${PROJECT_VERSION})
-configure_file(${PROJECT_SOURCE_DIR}/mesalink/version.h.in ${PROJECT_SOURCE_DIR}/mesalink/version.h @ONLY)
+configure_file(${PROJECT_SOURCE_DIR}/mesalink/version.h.cmake.in ${PROJECT_SOURCE_DIR}/mesalink/version.h @ONLY)
 
 option(HAVE_CLIENT "Enable client APIs (default: enabled)" ON)
 if(HAVE_CLIENT)
@@ -71,7 +71,7 @@ if(HAVE_JEMALLOC)
     string(APPEND CONFIG_FEATURES jemalloc_allocator,)
 endif()
 
-configure_file(${PROJECT_SOURCE_DIR}/mesalink/options.h.in ${PROJECT_SOURCE_DIR}/mesalink/options.h @ONLY)
+configure_file(${PROJECT_SOURCE_DIR}/mesalink/options.h.cmake.in ${PROJECT_SOURCE_DIR}/mesalink/options.h @ONLY)
 
 # Build MesaLink and its examples
 cargo_build(NAME mesalink FEATURES ${CONFIG_FEATURES})
