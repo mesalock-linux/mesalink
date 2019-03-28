@@ -18,7 +18,12 @@
 #ifndef MESALINK_VISIBILITY_H
 #define MESALINK_VISIBILITY_H
 
+#ifdef HAVE_UNIX
 #define MESALINK_API __attribute__((visibility("default")))
 #define MESALINK_LOCAL __attribute__((visiblity("hidden")))
+#else
+#define MESALINK_API
+#define MESALINK_LOCAL
+#endif
 
 #endif /* MESALINK_VISIBILITY_H */
