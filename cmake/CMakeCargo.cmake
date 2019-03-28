@@ -34,7 +34,7 @@ function(cargo_build)
     endif()
 
     if(NOT CMAKE_BUILD_TYPE)
-        set(LIB_BUILD_TYPE "debug")
+        set(LIB_BUILD_TYPE "release")
     elseif(${CMAKE_BUILD_TYPE} STREQUAL "Release")
         set(LIB_BUILD_TYPE "release")
     else()
