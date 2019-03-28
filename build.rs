@@ -64,7 +64,9 @@ fn generate_la(lib: &str) -> std::io::Result<()> {
 }
 
 #[cfg(windows)]
-fn generate_la(_lib: &str) -> std::io::Result<()> { Ok(()) }
+fn generate_la(_lib: &str) -> std::io::Result<()> {
+    Ok(())
+}
 
 fn main() {
     let lib_name = format!("{}{}", "lib", std::env::var("CARGO_PKG_NAME").unwrap(),);

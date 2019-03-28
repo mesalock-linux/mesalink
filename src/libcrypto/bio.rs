@@ -633,7 +633,11 @@ fn inner_mesalink_bio_new_fp<'a>(
 /// ```
 #[cfg(unix)]
 #[no_mangle]
-pub extern "C" fn mesalink_BIO_set_fp(bio_ptr: *mut MESALINK_BIO<'_>, fp: *mut libc::FILE, flags: c_int) {
+pub extern "C" fn mesalink_BIO_set_fp(
+    bio_ptr: *mut MESALINK_BIO<'_>,
+    fp: *mut libc::FILE,
+    flags: c_int,
+) {
     let _ = check_inner_result!(
         inner_mesalink_bio_set_fp(bio_ptr, fp, flags),
         CRYPTO_FAILURE
