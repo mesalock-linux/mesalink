@@ -1,3 +1,17 @@
+#
+#   __  __                 _     _       _
+#  |  \/  | ___  ___  __ _| |   (_)_ __ | | __
+#  | |\/| |/ _ \/ __|/ _` | |   | | '_ \| |/ /
+#  | |  | |  __/\__ \ (_| | |___| | | | |   <
+#  |_|  |_|\___||___/\__,_|_____|_|_| |_|_|\_\
+#
+# Copyright (c) 2017-2018, The MesaLink Authors.
+# All rights reserved.
+#
+# This work is licensed under the terms of the BSD 3-Clause License.
+# For a copy, see the LICENSE file.
+#
+
 cmake_minimum_required(VERSION 3.0)
 
 project(MesaLink C CXX)
@@ -93,8 +107,8 @@ target_link_libraries(server_example mesalink)
 # Install the MesaLink shared library and headers
 
 include(GNUInstallDirs)
-get_property(install_lib_file GLOBAL PROPERTY install_lib_file_property)
-install(FILES ${install_lib_file} 
+get_property(install_lib_files GLOBAL PROPERTY install_lib_files_property)
+install(FILES ${install_lib_files} 
     DESTINATION ${CMAKE_INSTALL_LIBDIR}
     PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
 )
