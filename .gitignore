@@ -2,6 +2,7 @@
 /build/
 **/*.rs.bk
 .DS_Store
+.vscode/
 **/*.o
 /.libs/
 mesalink-config
