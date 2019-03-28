@@ -125,7 +125,9 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
     set(SYMLINK_SHORT "${CMAKE_INSTALL_FULL_LIBDIR}/${CMAKE_SHARED_LIBRARY_PREFIX}${LIB_NAME}.${PROJECT_VERSION_MAJOR}${CMAKE_SHARED_LIBRARY_SUFFIX}")
 endif()
 
-install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${LIB} ${SYMLINK_LONG})")
-install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${LIB} ${SYMLINK_SHORT})")
+if(UNIX)
+    install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${LIB} ${SYMLINK_LONG})")
+    install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${LIB} ${SYMLINK_SHORT})")
+}
 
 install(DIRECTORY mesalink DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
