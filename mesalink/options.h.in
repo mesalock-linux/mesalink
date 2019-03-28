@@ -22,6 +22,16 @@
 extern "C" {
 #endif
 
+#cmakedefine HAVE_CLIENT
+#cmakedefine HAVE_SERVER
+#cmakedefine HAVE_ERROR_STRINGS
+#cmakedefine HAVE_AESGCM
+#cmakedefine HAVE_CHACHAPOLY
+#cmakedefine HAVE_TLS13
+#cmakedefine HAVE_X25519
+#cmakedefine HAVE_ECDH
+#cmakedefine HAVE_ECDSA
+#cmakedefine HAVE_SGX
 
 #ifdef __cplusplus
 }
