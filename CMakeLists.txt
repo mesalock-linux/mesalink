@@ -96,13 +96,15 @@ configure_file(${PROJECT_SOURCE_DIR}/mesalink/options.h.cmake.in ${PROJECT_SOURC
 # Build MesaLink and its examples
 cargo_build(NAME mesalink FEATURES ${CONFIG_FEATURES})
 
-set_target_properties(mesalink PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/mesalink"
-)
-add_executable(client_example examples/client/client.c)
-target_link_libraries(client_example mesalink)
-add_executable(server_example examples/server/server.c)
-target_link_libraries(server_example mesalink)
+if(UNIX)
+    set_target_properties(mesalink PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/mesalink"
+    )
+    add_executable(client_example examples/client/client.c)
+    target_link_libraries(client_example mesalink)
+    add_executable(server_example examples/server/server.c)
+    target_link_libraries(server_example mesalink)
+endif()
 
 # Install the MesaLink shared library and headers
 
