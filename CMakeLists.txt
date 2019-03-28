@@ -128,6 +128,6 @@ endif()
 if(UNIX)
     install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${LIB} ${SYMLINK_LONG})")
     install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${LIB} ${SYMLINK_SHORT})")
-}
+endif()
 
 install(DIRECTORY mesalink DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
