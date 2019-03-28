@@ -2010,12 +2010,15 @@ pub extern "C" fn mesalink_SSL_set_socket(ssl_ptr: *mut MESALINK_SSL, sock: libc
 }
 
 #[cfg(windows)]
-fn inner_mesalink_ssl_set_socket(ssl_ptr: *mut MESALINK_SSL, sock: libc::SOCKET) -> MesalinkInnerResult<c_int> {
+fn inner_mesalink_ssl_set_socket(
+    ssl_ptr: *mut MESALINK_SSL,
+    sock: libc::SOCKET,
+) -> MesalinkInnerResult<c_int> {
     let mut ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     if sock == 0 {
         return Err(error!(MesalinkBuiltinError::BadFuncArg.into()));
     }
-    let socket = unsafe { net::TcpStream::from_raw_socket(sock as u64) };
+    let socket = unsafe { net::TcpStream::from_raw_socket(sock as std::os::windows::raw::SOCKET) };
     ssl.io = Some(socket);
     Ok(SSL_SUCCESS)
 }
