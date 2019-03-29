@@ -21,6 +21,10 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 enable_language(Rust)
 include(CMakeCargo)
 
+if(RUSTC_VERSION VERSION_LESS 1.31)
+    message(FATAL_ERROR "Rust is too old, please install at least 1.31 to support the Rust 2018 edition")
+endif()
+
 project(MesaLink VERSION 12.0.0)
 set(LIB_NAME mesalink)
 

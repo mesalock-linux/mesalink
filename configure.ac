@@ -103,7 +103,7 @@ else
 fi
 
 RUSTC_VERSION=$( rustc --version | sed 's/[^0-9.]*\([0-9.]*\).*/\1/' )
-AX_COMPARE_VERSION([$RUSTC_VERSION], [ge], [1.28.0])
+AX_COMPARE_VERSION([$RUSTC_VERSION], [ge], [1.31.0])
 
 IS_NIGHTLY=$( rustc --version | grep nightly )
 RUST_IS_NIGHTLY="no"
