@@ -16,6 +16,7 @@ cmake_minimum_required(VERSION 3.0)
 
 project(MesaLink C CXX)
 set(DEFAULT_BUILD_TYPE "Release")
+set(MESALINK_RELEASE_VERSION 1.0.0)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 enable_language(Rust)
@@ -29,7 +30,6 @@ project(MesaLink VERSION 12.0.0)
 set(LIB_NAME mesalink)
 
 # Config options
-set(MESALINK_VERSION ${PROJECT_VERSION})
 configure_file(${PROJECT_SOURCE_DIR}/mesalink/version.h.cmake.in ${PROJECT_SOURCE_DIR}/mesalink/version.h @ONLY)
 
 if(WIN32)
@@ -39,6 +39,8 @@ endif()
 if(UNIX)
     set(HAVE_UNIX ON)
 endif()
+
+option(HAVE_EXAMPLES "Enable examples (default: disabled)" OFF)
 
 option(HAVE_CLIENT "Enable client APIs (default: enabled)" ON)
 if(HAVE_CLIENT)
@@ -102,21 +104,21 @@ configure_file(${PROJECT_SOURCE_DIR}/mesalink/options.h.cmake.in ${PROJECT_SOURC
 # Build MesaLink and its examples
 cargo_build(NAME mesalink CROSS_RUST_TARGET ${RUST_TARGET} FEATURES ${CONFIG_FEATURES})
 
-set_target_properties(mesalink PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/mesalink"
-)
-if(UNIX)
-    add_executable(tls_client examples/client/client.c)
-    target_link_libraries(tls_client mesalink)
-    add_executable(tls_server examples/server/server.c)
-    target_link_libraries(tls_server mesalink)
+if(UNIX AND HAVE_EXAMPLES)
+    add_executable(client examples/client/client.c)
+    target_include_directories(client PUBLIC ${CMAKE_SOURCE_DIR})
+    target_link_libraries(client mesalink)
+
+    add_executable(server examples/server/server.c)
+    target_include_directories(server PUBLIC ${CMAKE_SOURCE_DIR})
+    target_link_libraries(server mesalink)
 endif()
 
 # Install the MesaLink shared library and headers
 
 include(GNUInstallDirs)
 get_property(install_lib_files GLOBAL PROPERTY install_lib_files_property)
-install(FILES ${install_lib_files} 
+install(FILES ${install_lib_files}
     DESTINATION ${CMAKE_INSTALL_LIBDIR}
     PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
     COMPONENT libraries
@@ -137,7 +139,7 @@ if(UNIX)
     install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${LIB} ${SYMLINK_SHORT})")
 endif()
 
-install(DIRECTORY mesalink 
+install(DIRECTORY mesalink
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     COMPONENT headers
 )
@@ -146,7 +148,7 @@ install(DIRECTORY mesalink
 set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
 set(CPACK_PACKAGE_VENDOR "Github")
 SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "MesaLink - A memory-safe and OpenSSL-compatible TLS Library")
-set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+set(CPACK_PACKAGE_VERSION ${MESALINK_RELEASE_VERSION})
 set(CPACK_RESOURCE_FILE_LICENSE ${PROJECT_SOURCE_DIR}/LICENSE)
 
 set(CPACK_COMPONENTS_ALL libraries headers)
@@ -154,7 +156,7 @@ set(CPACK_COMPONENT_LIBRARIES_DISPLAY_NAME "Libraries")
 set(CPACK_COMPONENT_HEADERS_DISPLAY_NAME "C Headers")
 set(CPACK_COMPONENT_LIBRARIES_DESCRIPTION
   "Shared and static libraries of MesaLink")
-set(CPACK_COMPONENT_HEADERS_DESCRIPTION 
+set(CPACK_COMPONENT_HEADERS_DESCRIPTION
   "C/C++ header files. OpenSSL compatible.")
 set(CPACK_COMPONENT_HEADERS_DEPENDS libraries)
 set(CPACK_COMPONENT_LIBRARIES_GROUP "Development")

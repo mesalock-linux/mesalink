@@ -1,4 +1,4 @@
-# apt-get install gcc-aarch64-linux-gnu libc6-arm64-cross libc6-dev-arm64-cross
+# apt-get install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-arm64-cross libc6-dev-arm64-cross
 # rustup target add aarch64-unknown-linux-gnu
 
 set(CMAKE_SYSTEM_NAME Linux)

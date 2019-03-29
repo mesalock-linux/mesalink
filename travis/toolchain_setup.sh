@@ -4,10 +4,13 @@ set -xev
 
 if [[ "$TARGET" == "arm-linux-gnueabi" ]]
 then
-    sudo apt-get install -qq gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf libc6-armel-cross libc6-dev-armel-cross
+    sudo apt-get install -qq gcc-arm-linux-gnueabi g++-arm-linux-gnueabi gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf libc6-armel-cross libc6-dev-armel-cross
 elif [[ "$TARGET" == "aarch64-linux-gnu" ]]
 then
-    sudo apt-get install -qq gcc-aarch64-linux-gnu libc6-arm64-cross libc6-dev-arm64-cross
+    sudo apt-get install -qq gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-arm64-cross libc6-dev-arm64-cross
+elif [[ "$TARGET" == *"windows-gnu"* ]]
+then
+    sudo apt-get install -qq mingw-w64
 fi
 
 if [[ "$TARGET" = *"android"* ]]

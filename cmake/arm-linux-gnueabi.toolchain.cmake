@@ -1,4 +1,4 @@
-# apt-get install gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf libc6-armel-cross libc6-dev-armel-cross
+# apt-get install gcc-arm-linux-gnueabi g++-arm-linux-gnueabi gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf libc6-armel-cross libc6-dev-armel-cross
 # rustup target add arm-unknown-linux-gnueabi
 
 set(CMAKE_SYSTEM_NAME Linux)

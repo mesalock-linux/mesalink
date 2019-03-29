@@ -13,23 +13,26 @@ env:
   NDK_API=21 NDK_ARCH=arm64
 - ARCH=x86_64_android TARGET=x86_64-linux-android RUST_TARGET=x86_64-linux-android
   NDK_API=21 NDK_ARCH=x86_64
+- ARCH=x86_64_windows_mingw TARGET=x86_64-windows-gnu RUST_TARGET=x86_64-pc-windows-gnu
 matrix:
   include:
   - os: osx
     rust: stable
     env: ARCH=x86_64_macos
-  - os: osx
-    rust: nightly
-    env: ARCH=x86_64_macos
-  - name: rust-san
-    rust: nightly
-    env: ARCH=x86_64_linux SAN=yes
+  - name: cargo test
+    rust: stable
     before_install:
     install:
     before_script:
     script:
-    - RUSTFLAGS="-Z sanitizer=address" cargo test --target x86_64-unknown-linux-gnu
-    - RUSTFLAGS="-Z sanitizer=leak" cargo test --target x86_64-unknown-linux-gnu
+    - RUST_BACKTRACE=1 cargo test
+  - name: bogo test
+    rust: stable
+    before_install:
+    install:
+    before_script:
+    script:
+    - cd bogo && ./runme
   - name: cargo-clippy
     rust: stable
     env: CLIPPY=yes
@@ -57,10 +60,10 @@ matrix:
 before_install:
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -qq; fi
 install:
-- "./ci-scripts/install.sh"
+- "./travis/toolchain_setup.sh"
 - if [[ "$TARGET" = *"android"* ]]; then export PATH="$PATH:$PWD/cross/bin"; fi
-script: "./ci-scripts/script.sh"
-before_deploy: "./ci-scripts/before_deploy.sh"
+script: "./travis/build.sh"
+before_deploy: "./travis/deploy_setup.sh"
 notifications:
   email:
     on_success: never

@@ -3,7 +3,7 @@ function(cargo_build)
     cmake_parse_arguments(CARGO "" "${one_value_args}" "FEATURES" ${ARGN})
     string(REPLACE "-" "_" LIB_NAME ${CARGO_NAME})
     set(CARGO_FEATURE_ARG --no-default-features --features ${CARGO_FEATURES})
-    
+
     set(CARGO_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
     if(CARGO_CROSS_RUST_TARGET)
@@ -46,17 +46,24 @@ function(cargo_build)
         set(LIB_BUILD_TYPE "debug")
     endif()
 
+    if(WIN32)
+        set(CMAKE_STATIC_LIBRARY_PREFIX "")
+        set(CMAKE_STATIC_LIBRARY_SUFFIX ".lib")
+        set(CMAKE_SHARED_LIBRARY_PREFIX "")
+        set(CMAKE_SHARED_LIBRARY_SUFFIX ".dll")
+
+        if(MSVC)
+            set(SHARED_LIB_INDEX_FILE "${CARGO_TARGET_DIR}/${LIB_TARGET}/${LIB_BUILD_TYPE}/${CMAKE_STATIC_LIBRARY_PREFIX}${LIB_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+            list(APPEND LIB_FILES ${SHARED_LIB_INDEX_FILE})
+        endif()
+    endif()
+
     set(STATIC_LIB_FILE "${CARGO_TARGET_DIR}/${LIB_TARGET}/${LIB_BUILD_TYPE}/${CMAKE_STATIC_LIBRARY_PREFIX}${LIB_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}")
-    
+
     set(SHARED_LIB_FILE "${CARGO_TARGET_DIR}/${LIB_TARGET}/${LIB_BUILD_TYPE}/${CMAKE_SHARED_LIBRARY_PREFIX}${LIB_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
-    
+
     list(APPEND LIB_FILES ${STATIC_LIB_FILE})
     list(APPEND LIB_FILES ${SHARED_LIB_FILE})
-
-    if(WIN32)
-        set(SHARED_LIB_INDEX_FILE "${CARGO_TARGET_DIR}/${LIB_TARGET}/${LIB_BUILD_TYPE}/${CMAKE_STATIC_LIBRARY_PREFIX}${LIB_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}${CMAKE_STATIC_LIBRARY_SUFFIX}")
-        list(APPEND LIB_FILES ${SHARED_LIB_INDEX_FILE})
-    endif()
 
     set_property(GLOBAL PROPERTY install_lib_files_property ${LIB_FILES})
 
@@ -88,8 +95,6 @@ function(cargo_build)
             -C link-arg=-Wl,-install_name -C link-arg=-Wl,${SONAME} \
             -C link-arg=-Wl,-compatibility_version -C link-arg=-Wl,${PROJECT_VERSION_MAJOR} \
             -C link-arg=-Wl,-current_version -C link-arg=-Wl,${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}" VERBATIM)
-    else()
-        set(CARGO_LINKER_ARGS "-C linker=${CMAKE_C_COMPILER}" VERBATIM)
     endif()
 
     set(CARGO_ENV_COMMAND ${CMAKE_COMMAND} -E env "CARGO_TARGET_DIR=${CARGO_TARGET_DIR}" "RUSTFLAGS=${CARGO_LINKER_ARGS}")
