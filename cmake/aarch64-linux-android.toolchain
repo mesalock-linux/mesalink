@@ -1,4 +1,0 @@
-set(CMAKE_SYSTEM_NAME Android)
-set(CMAKE_SYSTEM_PROCESSOR arm)
-set(CMAKE_C_COMPILER aarch64-linux-android-gcc)
-set(RUST_TARGET aarch64-linux-android)
