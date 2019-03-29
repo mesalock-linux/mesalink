@@ -4,4 +4,5 @@
 set(CMAKE_SYSTEM_NAME Android)
 set(CMAKE_SYSTEM_PROCESSOR arm)
 set(CMAKE_C_COMPILER arm-linux-androideabi-gcc)
+set(CMAKE_CXX_COMPILER arm-linux-androideabi-g++)
 set(RUST_TARGET armv7-linux-androideabi)
