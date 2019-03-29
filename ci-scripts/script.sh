@@ -10,10 +10,12 @@ fi
 
 if [[ x"$TARGET" == "x" ]]
 then
-    ./autogen.sh --enable-examples
+    #./autogen.sh --enable-examples
+    mkdir build && cd build && cmake ..
 else
     rustup target add $RUST_TARGET
-    ./autogen.sh --host=$TARGET --enable-rusthost=$RUST_TARGET
+    #./autogen.sh --host=$TARGET --enable-rusthost=$RUST_TARGET
+    mkdir build && cd build && cmake -DCMAKE_TOOLCHAIN_FILE=../cmake/${TARGET}.cmake.toolchain ..
 fi
 
 make
