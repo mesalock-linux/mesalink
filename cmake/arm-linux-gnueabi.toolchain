@@ -1,0 +1,4 @@
+SET(CMAKE_SYSTEM_NAME Linux)
+
+SET(CMAKE_C_COMPILER arm-linux-gnueabi-gcc)
+SET(RUST_TARGET arm-unknown-linux-gnueabi)

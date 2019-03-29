@@ -29,11 +29,11 @@ set(MESALINK_VERSION ${PROJECT_VERSION})
 configure_file(${PROJECT_SOURCE_DIR}/mesalink/version.h.cmake.in ${PROJECT_SOURCE_DIR}/mesalink/version.h @ONLY)
 
 if(WIN32)
-set(HAVE_WINDOWS ON)
+    set(HAVE_WINDOWS ON)
 endif()
 
 if(UNIX)
-set(HAVE_UNIX ON)
+    set(HAVE_UNIX ON)
 endif()
 
 option(HAVE_CLIENT "Enable client APIs (default: enabled)" ON)
@@ -96,7 +96,7 @@ endif()
 configure_file(${PROJECT_SOURCE_DIR}/mesalink/options.h.cmake.in ${PROJECT_SOURCE_DIR}/mesalink/options.h @ONLY)
 
 # Build MesaLink and its examples
-cargo_build(NAME mesalink FEATURES ${CONFIG_FEATURES})
+cargo_build(NAME mesalink CROSS_RUST_TARGET ${RUST_TARGET} FEATURES ${CONFIG_FEATURES})
 
 set_target_properties(mesalink PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/mesalink"
