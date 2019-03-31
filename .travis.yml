@@ -31,6 +31,7 @@ matrix:
     before_install:
     install:
     before_script:
+    before_deploy:
     script:
     - cd bogo && ./runme
   - name: cargo-clippy
@@ -38,6 +39,7 @@ matrix:
     env: CLIPPY=yes
     before_install:
     install:
+    before_deploy:
     before_script:
     - rustup component add clippy-preview
     script:
@@ -48,6 +50,7 @@ matrix:
     env: COV=yes
     before_install:
     install:
+    before_deploy:
     before_script:
     - rustup component add rustfmt-preview
     script:
