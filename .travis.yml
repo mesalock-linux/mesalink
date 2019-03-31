@@ -55,7 +55,7 @@ matrix:
     - rustup component add rustfmt-preview
     script:
     - cargo fmt --all -- --check `find src -iname "*.rs"`
-    - docker run --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin
+    - docker run --cpuset-cpus="0" --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin
       cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID
   allow_failures:
     - rust: nightly
