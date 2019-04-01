@@ -99,7 +99,6 @@ trigger:
   branches:
     include:
       - master
-      - azure_pipelines
   tags:
     include:
       - v*

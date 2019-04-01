@@ -11,9 +11,20 @@
 [![License](https://img.shields.io/badge/license-BSD-blue.svg)](LICENSE)
 
 MesaLink is a memory-safe and OpenSSL-compatible TLS library.
-Also visit us on our website: [https://mesalink.io](https://mesalink.io).
+MesaLink has been in production at Baidu with >10 million monthly active users.
+
+Visit us on our website: [https://mesalink.io](https://mesalink.io).
 
 ## Release history
+* 1.0.0 (🎂 04-02-2019 🎂)
+  - CMake support
+  - Windows builds (MSVC and MinGW)
+  - CI/CD migrated to Azure Pipelines
+  - NSIS installer for Win64 available
+  - Mutex/RwLock from [parking_lot](https://crates.io/crates/parking_lot)
+  - Session caches with [hashbrown](https://crates.io/crates/hashbrown)
+  - Optional jemalloc memory allocator with [jemallocator](https://crates.io/crates/jemallocator)
+  - Renovated website
 * 0.8.0 (01-25-2019)
   - 40 new OpenSSL APIs, covering BIO, EVP_PKEY, PEM and X509
   - SSL_CTX and SSL are thread-safe
@@ -33,20 +44,6 @@ Also visit us on our website: [https://mesalink.io](https://mesalink.io).
 * 0.7.1 (09-05-2018)
   - SSL_CTX_load_verify_location
   - Fix duplicate `floatdisf` symbols
-* 0.7.0 (08-14-2018)
-  - TLS 1.3 draft 28
-  - Client-side support for TLS 1.3 0-RTT ([rustls PR
-    #185](https://github.com/ctz/rustls/pull/185))
-  - SSL_connect and SSL_do_handshake
-  - Experimental X509 and STACK APIs for Android HostnameVerifier
-  - Non-blocking socket support
-  - Refactored thread-local error queue, now includes error line numbers for
-    debugging
-  - `catch_unwind` at FFI boundaries to prevent undefined behavior
-  - Link time optimization if built with nightly Rust or stable Rust >1.28
-  - Curl support tested with official CI scripts and git 2.18; see the `patches`
-    directory
-  - `cargo-fmt` and `cargo-clippy` lint checks
 
 See [OLD_CHANGES.md](OLD_CHANGES.md) for further change history.
 
