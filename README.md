@@ -17,7 +17,7 @@ Visit us on our website: [https://mesalink.io](https://mesalink.io).
 
 ## Release history
 * 1.0.0 (🎂 04-02-2019 🎂)
-  - CMake support
+  - CMake support; see the updated [CROSS_COMPILE.md](https://github.com/mesalock-linux/mesalink/blob/master/CROSS_COMPILE.md) for cross-compilation instructions
   - Windows builds (MSVC and MinGW)
   - CI/CD migrated to Azure Pipelines
   - NSIS installer for Win64 available
