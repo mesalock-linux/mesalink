@@ -1,0 +1,14 @@
+steps:
+  - task: GithubRelease@0
+    condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
+    inputs:
+      gitHubConnection: 'mesalink'
+      repositoryName: 'mesalock-linux/mesalink'
+      action: 'edit'
+      target: '$(build.sourceVersion)'
+      tag: '$(build.my_tag)'
+      tagSource: 'manual'
+      assets: '$(Build.ArtifactStagingDirectory)/*'
+      title: '$(build.my_tag)'
+      assetUploadMode: 'replace'
+      addChangeLog: false

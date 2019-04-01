@@ -63,10 +63,10 @@ matrix:
 before_install:
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -qq; fi
 install:
-- "./travis/toolchain_setup.sh"
+- "./ci/travis/toolchain_setup.sh"
 - if [[ "$TARGET" = *"android"* ]]; then export PATH="$PATH:$PWD/cross/bin"; fi
-script: "./travis/build.sh"
-before_deploy: "./travis/deploy_setup.sh"
+script: "./ci/travis/build.sh"
+before_deploy: "./ci/travis/deploy_setup.sh"
 notifications:
   email:
     on_success: never

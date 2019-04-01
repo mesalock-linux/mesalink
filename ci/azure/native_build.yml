@@ -1,0 +1,15 @@
+steps:
+  - bash: |
+      mkdir build && cd build
+      cmake -DCMAKE_INSTALL_PREFIX=$(Build.BinariesDirectory)/inst/usr/local ..
+      make && make install
+      du -sh $(Build.BinariesDirectory)/inst/usr/local/lib/*
+    condition: ne( variables['Agent.OS'], 'Windows_NT' )
+    displayName: "CMake build (Linux/macOS)"
+  - bash: |
+      mkdir build && cd build
+      cmake -G "Visual Studio 15 2017 Win64" ..
+      cmake --build .
+      "C:/Program Files/CMake/bin/cpack.exe" -D CPACK_GENERATOR="NSIS64"
+    condition: eq( variables['Agent.OS'], 'Windows_NT' )
+    displayName: "CMake build (Windows)"

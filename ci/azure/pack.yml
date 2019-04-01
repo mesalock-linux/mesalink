@@ -1,0 +1,23 @@
+steps:
+  - bash: |
+      MY_TAG="$(Build.SourceBranch)"
+      MY_TAG=${MY_TAG#refs/tags/}
+      echo $MY_TAG
+      echo "##vso[task.setvariable variable=build.my_tag]$MY_TAG"
+    displayName: "Create the TAG variable"
+  - task: ArchiveFiles@2
+    displayName: Generate release tarballs
+    condition: ne( variables['Agent.OS'], 'Windows_NT' )
+    inputs:
+      rootFolderOrFile: '$(Build.BinariesDirectory)/inst'
+      includeRootFolder: false
+      archiveType: 'tar'
+      tarCompression: 'gz'
+      archiveFile: '$(Build.ArtifactStagingDirectory)/MesaLink-$(build.my_tag)-$(arch).tar.gz'
+  - task: CopyFiles@2
+    displayName: Copy the NSIS installer
+    condition: eq( variables['Agent.OS'], 'Windows_NT' )
+    inputs:
+      sourceFolder: '$(Build.SourcesDirectory)/build'
+      contents: 'MesaLink*.exe'
+      targetFolder: '$(Build.ArtifactStagingDirectory)'

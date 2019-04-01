@@ -1,0 +1,4 @@
+steps:
+  - script: ./runme
+    workingDirectory: bogo
+    displayName: "Run BOGO"

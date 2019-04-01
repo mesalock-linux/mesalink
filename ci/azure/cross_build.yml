@@ -1,0 +1,40 @@
+parameters:
+  c_target: ''
+
+steps:
+  - bash: |
+      sudo apt-get -qq update
+
+      if [[ "$TARGET" == "arm-linux-gnueabi" ]]
+      then
+        sudo apt-get install -qq gcc-arm-linux-gnueabi g++-arm-linux-gnueabi gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf libc6-armel-cross libc6-dev-armel-cross
+      elif [[ "$TARGET" == "aarch64-linux-gnu" ]]
+      then
+        sudo apt-get install -qq gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-arm64-cross libc6-dev-arm64-cross
+      elif [[ "$TARGET" == *"windows-gnu"* ]]
+      then
+        sudo apt-get install -qq mingw-w64
+      elif [[ "$TARGET" = *"android"* ]]
+      then
+        wget -nv -4 https://dl.google.com/android/repository/android-ndk-r17b-linux-x86_64.zip
+        unzip -o android-ndk-r17b-linux-x86_64.zip 2>&1 >/dev/null
+        if [[ "$TARGET" = *"arm"* ]]
+        then
+          ./android-ndk-r17b/build/tools/make_standalone_toolchain.py --arch arm --api 19 --install-dir $PWD/cross
+        elif [[ "$TARGET" = *"aarch64"* ]]
+        then
+          ./android-ndk-r17b/build/tools/make_standalone_toolchain.py --arch arm64 --api 21 --install-dir $PWD/cross
+        elif [[ "$TARGET" = *"x86_64"* ]]
+        then
+          ./android-ndk-r17b/build/tools/make_standalone_toolchain.py --arch x86_64 --api 21 --install-dir $PWD/cross
+        fi
+        export PATH="$PATH:$PWD/cross/bin"
+      fi
+
+      mkdir build && cd build
+      cmake -DCMAKE_INSTALL_PREFIX=$(Build.BinariesDirectory)/inst/usr/local -DCMAKE_TOOLCHAIN_FILE=../cmake/${{ parameters.c_target }}.toolchain.cmake ..
+      make && make install
+      du -sh $(Build.BinariesDirectory)/inst/usr/local/lib/*
+    env:
+      TARGET: $(c_target)
+    displayName: "Cross compiling for ${{ parameters.c_target }}"

@@ -220,7 +220,6 @@ impl MESALINK_CTX {
             SSL_SESSION_CACHE_MAX_SIZE_DEFAULT,
         ));
 
-        use webpki_roots;
         client_config
             .root_store
             .add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
@@ -492,7 +491,6 @@ pub extern "C" fn mesalink_library_init() -> c_int {
 
 #[cfg(feature = "error_strings")]
 fn init_logger() {
-    use env_logger;
     env_logger::Builder::new().parse("trace").init()
 }
 
@@ -949,7 +947,6 @@ fn inner_mesalink_ssl_ctx_use_certificate_chain_file(
     filename_ptr: *const c_char,
 ) -> MesalinkInnerResult<c_int> {
     use crate::libcrypto::pem;
-    use std::fs;
 
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     if filename_ptr.is_null() {
@@ -1139,7 +1136,6 @@ fn inner_mesalink_ssl_ctx_use_privatekey_file(
     filename_ptr: *const c_char,
 ) -> MesalinkInnerResult<c_int> {
     use crate::libcrypto::pem;
-    use std::fs;
 
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     if filename_ptr.is_null() {
@@ -3651,6 +3647,7 @@ mod tests {
         mesalink_SSL_CTX_free(ctx);
     }
 
+    #[cfg(feature = "sgx")]
     #[test]
     fn test_sgx_verifier() {
         let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_client_method());

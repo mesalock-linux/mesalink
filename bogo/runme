@@ -33,7 +33,6 @@ fi
 # Best effort on OS-X
 case $OSTYPE in darwin*) set +e ;; esac
 
-set -o pipefail
 ( cd bogo && ./bogo.test -shim-path ../../target/debug/examples/bogo_shim \
      -shim-config ../config.json \
      -pipe -allow-unimplemented  )
