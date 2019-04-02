@@ -66,17 +66,6 @@ install:
 - "./ci/travis/toolchain_setup.sh"
 - if [[ "$TARGET" = *"android"* ]]; then export PATH="$PATH:$PWD/cross/bin"; fi
 script: "./ci/travis/build.sh"
-before_deploy: "./ci/travis/deploy_setup.sh"
 notifications:
   email:
     on_success: never
-deploy:
-  provider: releases
-  api_key:
-    secure: TU3ZnaluAtciaAvjBseLZvz5WOXd1/FgxngVinXI0ZSbq6yT6RGFbkddjqjTgTL9c0MyPcaHzXhk9r+aCB8iGaNmCfzos0NwpOAtM9Gn/dQZkO2l4FC0QWX2dZUGll9aeNvXdO7Xq8RopWebNvNd3Gntgf9n+G4LjiQKmQRe8JiuDKdABk78tjj0I+9uy6LoJjokewdjEh9wIAP13jYdBtyPbHkpQ0opLrJ4UZHsTWx6Vjj2qOznjcV/BWN2aOEtU4ZLgNGOXg1tQeJo+bq3dmS3GDsE2rAdXIRqBQEuSsgQKBx1EoXKx6VKj8/i1HyAH3JM/s5trnVjxn26CEb5IFfWEk9oVilcO2/vJcP1biMjfYKo4WSwC7e8xONURnJjm/3g7MBLvtKv/kXNmC5YQFf6XAF7OEVD30c0dWvjEJjMz5rZXE3InDjILx8D/Wai70ECUfrJgUnRbexHqk81IwIE6zNmByyEZFH+FlZaruuz5SUeQ2Caa8S7Iqcb8oZhJ9XEmgcnIXZ4N8thAtYd/cWmoJcBH8B4G/11S/TA7qkN2szkPIrd+i+KYhxDh4qHxWkMlnHgJevuwlmYKZn9fnZSxPtqllYTJepRWQ8X7D3R3tgNc+iQJjAjrh8Rehz8mNs7eK0stBlNB33eTq2PtivBC3kZOB8tAiEmQ5ltBTc=
-  file: releases/*
-  file_glob: true
-  skip_cleanup: true
-  on:
-    repo: mesalock-linux/mesalink
-    tags: true
