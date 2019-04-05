@@ -22,7 +22,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 enable_language(Rust)
 include(CMakeCargo)
 
-if(RUSTC_VERSION VERSION_LESS 1.31)
+if(RUSTC_VERSION AND RUSTC_VERSION VERSION_LESS 1.31)
     message(FATAL_ERROR "Rust is too old, please install at least 1.31 to support the Rust 2018 edition")
 endif()
 
