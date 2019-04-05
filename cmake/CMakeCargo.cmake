@@ -2,7 +2,7 @@ function(cargo_build)
     set(one_value_args NAME CROSS_RUST_TARGET)
     cmake_parse_arguments(CARGO "" "${one_value_args}" "FEATURES" ${ARGN})
     string(REPLACE "-" "_" LIB_NAME ${CARGO_NAME})
-    set(CARGO_FEATURE_ARG --no-default-features --features ${CARGO_FEATURES})
+    set(CARGO_FEATURE_ARGS --no-default-features --features ${CARGO_FEATURES})
 
     set(CARGO_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -87,10 +87,13 @@ function(cargo_build)
 
     file(GLOB_RECURSE LIB_SOURCES "*.rs")
 
-    if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
-        set(CARGO_LINKER_ARGS "-C linker=${CMAKE_C_COMPILER} -C link-arg=-Wl,-soname -C link-arg=-Wl,${SONAME}" VERBATIM)
-    elseif(CMAKE_CXX_COMPILER_ID STREQUAL Clang)
-        set(CARGO_LINKER_ARGS "\
+    if(CMAKE_C_COMPILER_ID STREQUAL GNU)
+        set(CARGO_LINKER_ARGS "--emit=asm \
+            -C linker=${CMAKE_C_COMPILER} \
+            -C link-arg=-Wl,-soname \
+            -C link-arg=-Wl,${SONAME}" VERBATIM)
+    elseif(CMAKE_C_COMPILER_ID STREQUAL AppleClang OR CMAKE_C_COMPILER_ID STREQUAL AppleClang)
+        set(CARGO_LINKER_ARGS "--emit=asm \
             -C linker=${CMAKE_C_COMPILER} \
             -C link-arg=-Wl,-install_name -C link-arg=-Wl,${SONAME} \
             -C link-arg=-Wl,-compatibility_version -C link-arg=-Wl,${PROJECT_VERSION_MAJOR} \
@@ -101,7 +104,7 @@ function(cargo_build)
 
     add_custom_command(
         OUTPUT ${LIB_FILES}
-        COMMAND ${CARGO_ENV_COMMAND} ${CARGO_LINKER_ARGS_COMMAND} ${CARGO_EXECUTABLE} ARGS ${CARGO_ARGS} ${CARGO_FEATURE_ARG}
+        COMMAND ${CARGO_ENV_COMMAND} ${CARGO_LINKER_ARGS_COMMAND} ${CARGO_EXECUTABLE} ARGS ${CARGO_ARGS} ${CARGO_FEATURE_ARGS}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         DEPENDS ${LIB_SOURCES}
         COMMENT "running cargo")

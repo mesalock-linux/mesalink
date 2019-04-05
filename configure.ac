@@ -63,7 +63,7 @@ then
 fi
 AC_SUBST([LT_LINKER_ARGS])
 
-CARGO_RUSTC_ARGS="-- -C overflow-checks=yes"
+CARGO_RUSTC_ARGS="-- --emit asm"
 OPTIMIZE_CFLAGS="-Os -fvisibility=hidden -ffunction-sections -fdata-sections"
 DEBUG_CFLAGS="-g -ggdb -O0 -Wall"
 
@@ -111,11 +111,6 @@ if test "x$IS_NIGHTLY" != "x"
 then
     RUST_IS_NIGHTLY="yes"
     CARGO_FEATURES=$CARGO_FEATURES" nightly"
-fi
-
-if test "$ax_compare_version" = "true" || test "$RUST_IS_NIGHTLY" = "yes"
-then
-    CARGO_RUSTC_ARGS="$CARGO_RUSTC_ARGS -C opt-level=z"
 fi
 
 AC_SUBST([CARGO_TARGET_ARGS])
