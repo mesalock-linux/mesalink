@@ -92,7 +92,7 @@ function(cargo_build)
             -C linker=${CMAKE_C_COMPILER} \
             -C link-arg=-Wl,-soname \
             -C link-arg=-Wl,${SONAME}" VERBATIM)
-    elseif(CMAKE_C_COMPILER_ID STREQUAL AppleClang OR CMAKE_C_COMPILER_ID STREQUAL AppleClang)
+    elseif(CMAKE_C_COMPILER_ID STREQUAL Clang OR CMAKE_C_COMPILER_ID STREQUAL AppleClang)
         set(CARGO_LINKER_ARGS "--emit=asm \
             -C linker=${CMAKE_C_COMPILER} \
             -C link-arg=-Wl,-install_name -C link-arg=-Wl,${SONAME} \
@@ -113,3 +113,4 @@ function(cargo_build)
     add_dependencies(${CARGO_NAME} ${CARGO_NAME}_target)
     set_target_properties(${CARGO_NAME} PROPERTIES IMPORTED_LOCATION ${SHARED_LIB_FILE})
 endfunction()
+
