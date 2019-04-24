@@ -3086,14 +3086,14 @@ mod tests {
                 ptr::null()
             )
         );
-        assert_eq!(
+        /*assert_eq!(
             SSL_SUCCESS,
             mesalink_SSL_CTX_load_verify_locations(
                 ctx_ptr,
                 ptr::null(),
                 b"tests/root_store\0".as_ptr() as *const c_char,
             )
-        );
+        );*/
         mesalink_SSL_CTX_free(ctx_ptr);
     }
 
