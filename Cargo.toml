@@ -50,7 +50,7 @@ jemallocator = { version = "0.3.0", optional = true }
 
 [dependencies.rustls]
 git = "https://github.com/mesalock-linux/rustls"
-tag = "v1.0.0"
+branch = "mesalink"
 default-features = false
 
 [dependencies.webpki]

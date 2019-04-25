@@ -2553,10 +2553,8 @@ mod util {
     pub(crate) const CONST_TLS12_STR: &[u8] = b"TLS1.2\0";
     pub const CONST_TLS13_STR: &[u8] = b"TLS1.3\0";
 
-    #[cfg(feature = "server_apis")]
     use rustls;
 
-    #[cfg(feature = "server_apis")]
     pub fn try_get_context_certs_and_key(
         ctx: &mut ssl::MESALINK_CTX_ARC,
     ) -> Result<(Vec<rustls::Certificate>, rustls::PrivateKey), ()> {
