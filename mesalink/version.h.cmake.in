@@ -20,7 +20,7 @@
 extern "C" {
 #endif
 
-#cmakedefine MESALINK_VERSION_STRING "@MESALINK_VERSION@"
+#cmakedefine MESALINK_VERSION_STRING "@MESALINK_VERSION_STRING@"
 
 #ifdef __cplusplus
 }
