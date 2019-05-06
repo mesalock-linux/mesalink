@@ -68,23 +68,6 @@ jobs:
         c_target: $(c_target)
     - template: ci/azure/pack.yml
     - template: ci/azure/release.yml
-- job: test
-  pool:
-    vmImage: macos-10.13
-  strategy:
-    matrix:
-      stable:
-        rustup_toolchain: stable
-      nightly:
-        rustup_toolchain: nightly
-      minimum:
-        rustup_toolchain: ${{ variables.minimum_toolchain }}
-  steps:
-    - template: az-pipeline/unstable/rustup.yml@templates
-      parameters:
-        rustup_toolchain: $(rustup_toolchain)
-    - template: ci/azure/test.yml
-    - template: ci/azure/bogo.yml
 - template: az-pipeline/unstable/rustfmt.yml@templates
 - template: az-pipeline/unstable/clippy.yml@templates
   parameters:
