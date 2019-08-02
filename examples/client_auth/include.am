@@ -1,0 +1,6 @@
+if BUILD_EXAMPLE_CLIENT
+noinst_PROGRAMS += examples/client_auth/client_auth
+examples_client_auth_client_auth_SOURCES = examples/client_auth/client_auth.c
+examples_client_auth_client_auth_LDADD = libmesalink.la
+DISTCLEANFILES+= examples/client_auth/.libs/client_auth
+endif
