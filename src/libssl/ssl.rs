@@ -467,12 +467,14 @@ impl MESALINK_SSL {
     }
 }
 
-#[doc(hidden)]
-#[repr(C)]
-pub(self) enum VerifyModes {
-    VerifyNone = 0,
-    VerifyPeer = 1,
-    //VerifyFailIfNoPeerCert = 2,
+use bitflags::bitflags;
+bitflags! {
+    #[derive(Default)]
+    struct VerifyModes: i32 {
+        const VERIFY_NONE = 0x00;
+        const VERIFY_PEER   = 0x01;
+        const VERIFY_FAIL_IF_NO_PEER_CERT = 0x02;
+    }
 }
 
 /// For OpenSSL compatibility only. Always returns 1.
@@ -1308,14 +1310,19 @@ fn inner_mesalink_ssl_ctx_set_verify(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     mode: c_int,
 ) -> MesalinkInnerResult<c_int> {
+    let mode =
+        VerifyModes::from_bits(mode).ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
-    if mode == VerifyModes::VerifyNone as c_int {
+    if mode == VerifyModes::VERIFY_NONE {
         util::get_context_mut(ctx)
             .client_config
             .dangerous()
             .set_certificate_verifier(Arc::new(NoServerAuth {}));
-    } else if mode == VerifyModes::VerifyPeer as c_int {
+    } else if mode == VerifyModes::VERIFY_PEER | VerifyModes::VERIFY_FAIL_IF_NO_PEER_CERT {
         let client_auth = rustls::AllowAnyAuthenticatedClient::new(ctx.ca_roots.clone());
+        util::get_context_mut(ctx).server_config.verifier = client_auth;
+    } else if mode == VerifyModes::VERIFY_PEER {
+        let client_auth = rustls::AllowAnyAnonymousOrAuthenticatedClient::new(ctx.ca_roots.clone());
         util::get_context_mut(ctx).server_config.verifier = client_auth;
     }
     Ok(SSL_SUCCESS)
