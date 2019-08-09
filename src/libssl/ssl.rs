@@ -867,7 +867,6 @@ fn inner_mesalink_ssl_ctx_load_verify_locations(
     cafile_ptr: *const c_char,
     capath_ptr: *const c_char,
 ) -> MesalinkInnerResult<c_int> {
-    println!("Entering SSL_CTX_load_verify_locations");
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     if cafile_ptr.is_null() && capath_ptr.is_null() {
         return Err(error!(MesalinkBuiltinError::NullPointer.into()));
@@ -879,7 +878,6 @@ fn inner_mesalink_ssl_ctx_load_verify_locations(
                 .to_str()
                 .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?
         };
-        println!("Loading ca file: {}", cafile);
         load_cert_into_root_store(ctx, path::Path::new(cafile))?;
     }
     if !capath_ptr.is_null() {
@@ -1315,13 +1313,16 @@ fn inner_mesalink_ssl_ctx_set_verify(
     let mode =
         VerifyModes::from_bits(mode).ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
-    if VerifyModes::VERIFY_NONE == mode {
+    if mode == VerifyModes::VERIFY_NONE {
         util::get_context_mut(ctx)
             .client_config
             .dangerous()
             .set_certificate_verifier(Arc::new(NoServerAuth {}));
-    } else if VerifyModes::VERIFY_PEER == VerifyModes::VERIFY_PEER & mode {
+    } else if mode == VerifyModes::VERIFY_PEER | VerifyModes::VERIFY_FAIL_IF_NO_PEER_CERT {
         let client_auth = rustls::AllowAnyAuthenticatedClient::new(ctx.ca_roots.clone());
+        util::get_context_mut(ctx).server_config.verifier = client_auth;
+    } else if mode == VerifyModes::VERIFY_PEER {
+        let client_auth = rustls::AllowAnyAnonymousOrAuthenticatedClient::new(ctx.ca_roots.clone());
         util::get_context_mut(ctx).server_config.verifier = client_auth;
     }
     Ok(SSL_SUCCESS)
