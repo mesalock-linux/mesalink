@@ -1,5 +1,5 @@
 variables:
-  clippy_toolchain: 1.33.0
+  clippy_toolchain: 1.36.0
   minimum_toolchain: 1.31.0
 
 resources:
