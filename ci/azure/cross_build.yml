@@ -32,9 +32,9 @@ steps:
       fi
 
       mkdir build && cd build
-      cmake -DCMAKE_INSTALL_PREFIX=$(Build.BinariesDirectory)/inst/usr/local -DCMAKE_TOOLCHAIN_FILE=../cmake/${{ parameters.c_target }}.toolchain.cmake ..
+      cmake -DCMAKE_INSTALL_PREFIX=$(Build.BinariesDirectory)/inst -DCMAKE_TOOLCHAIN_FILE=../cmake/${{ parameters.c_target }}.toolchain.cmake ..
       make && make install
-      du -sh $(Build.BinariesDirectory)/inst/usr/local/lib/*
+      du -sh $(Build.BinariesDirectory)/inst/lib/*
     env:
       TARGET: $(c_target)
     displayName: "Cross compiling for ${{ parameters.c_target }}"
