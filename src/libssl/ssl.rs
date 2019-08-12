@@ -493,7 +493,7 @@ pub extern "C" fn mesalink_library_init() -> c_int {
 
 #[cfg(feature = "error_strings")]
 fn init_logger() {
-    env_logger::Builder::new().parse("trace").init()
+    env_logger::init();
 }
 
 #[cfg(not(feature = "error_strings"))]
