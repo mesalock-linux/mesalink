@@ -1,9 +1,9 @@
 steps:
   - bash: |
       mkdir build && cd build
-      cmake -DCMAKE_INSTALL_PREFIX=$(Build.BinariesDirectory)/inst/usr/local ..
+      cmake -DCMAKE_INSTALL_PREFIX=$(Build.BinariesDirectory)/inst ..
       make && make install
-      du -sh $(Build.BinariesDirectory)/inst/usr/local/lib/*
+      du -sh $(Build.BinariesDirectory)/inst/lib/*
     condition: ne( variables['Agent.OS'], 'Windows_NT' )
     displayName: "CMake build (Linux/macOS)"
   - bash: |

@@ -72,7 +72,12 @@ log = "0.4"
 env_logger = "0.6"
 
 [profile.release]
+opt-level = 3
+debug = false
+rpath = false
 lto = true
+debug-assertions = false
+codegen-units = 1
 panic = "unwind"
 overflow-checks = true
 
