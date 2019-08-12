@@ -134,8 +134,7 @@ fn inner_mesalink_x509_get_alt_subject_names(
     x509_ptr: *mut MESALINK_X509,
 ) -> MesalinkInnerResult<*mut MESALINK_STACK_MESALINK_X509_NAME> {
     let cert = sanitize_ptr_for_ref(x509_ptr)?;
-    let cert_der = untrusted::Input::from(&cert.inner.0);
-    let x509 = webpki::EndEntityCert::from(cert_der)
+    let x509 = webpki::EndEntityCert::from(&cert.inner.0)
         .map_err(|e| error!(rustls::TLSError::WebPKIError(e).into()))?;
     let subject_alt_name = x509
         .inner
@@ -174,8 +173,7 @@ fn inner_mesalink_x509_get_subject(
     x509_ptr: *mut MESALINK_X509,
 ) -> MesalinkInnerResult<*mut MESALINK_X509_NAME> {
     let cert = sanitize_ptr_for_ref(x509_ptr)?;
-    let cert_der = untrusted::Input::from(&cert.inner.0);
-    let x509 = webpki::EndEntityCert::from(cert_der)
+    let x509 = webpki::EndEntityCert::from(&cert.inner.0)
         .map_err(|e| error!(rustls::TLSError::WebPKIError(e).into()))?;
     let subject = x509.inner.subject.as_slice_less_safe();
     let subject_len = subject.len();
@@ -227,8 +225,7 @@ fn inner_mesalink_x509_get_subject_name(
     x509_ptr: *mut MESALINK_X509,
 ) -> MesalinkInnerResult<*mut MESALINK_X509_NAME> {
     let cert = sanitize_ptr_for_ref(x509_ptr)?;
-    let cert_der = untrusted::Input::from(&cert.inner.0);
-    let x509 = webpki::EndEntityCert::from(cert_der)
+    let x509 = webpki::EndEntityCert::from(&cert.inner.0)
         .map_err(|e| error!(rustls::TLSError::WebPKIError(e).into()))?;
 
     let mut subject_name = String::new();

@@ -14,9 +14,8 @@
  */
 
 // Module imports
-
-use hashbrown::HashMap;
 use parking_lot::Mutex;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 /// An implementor of `StoresClientSessions` that stores everything
