@@ -338,13 +338,15 @@ fn inner_mesalink_x509_name_oneline(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::libssl::safestack::*;
-    use rustls::internal::pemfile;
-    use std::fs::File;
-    use std::io::BufReader;
-
+   
     #[test]
+    #[cfg(feature = "forked_deps")]
     fn x509_get_subject_name_and_alt_names() {
+        use crate::libssl::safestack::*;
+        use rustls::internal::pemfile;
+        use std::fs::File;
+        use std::io::BufReader;
+
         let mut certs_io = BufReader::new(File::open("tests/end.fullchain").unwrap());
         let certs = pemfile::certs(&mut certs_io).unwrap();
         assert_eq!(true, certs.len() > 0);

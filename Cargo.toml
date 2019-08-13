@@ -1,6 +1,6 @@
 [package]
 name = "mesalink"
-version = "1.1.0-beta"
+version = "1.1.0-cratesio"
 edition = "2018"
 authors = ["The MesaLink Project Contributors"]
 license = "BSD-3-Clause"
@@ -20,11 +20,17 @@ name = "mesalink"
 crate-type = ["lib", "staticlib", "cdylib"]
 
 [features]
-default = ["client_apis", "server_apis", "error_strings", "verifier"]
+default = ["client_apis", "server_apis", "error_strings", "tls13", "aesgcm", "chachapoly", "x25519", "ecdh", "ecdsa", "verifier"]
 forked_deps = []
 client_apis = []
 server_apis = []
 error_strings = []
+tls13 = []
+aesgcm = []
+chachapoly = []
+x25519 = []
+ecdh = []
+ecdsa = []
 verifier = ["rustls/dangerous_configuration"]
 nightly = []
 jemalloc_allocator = ["jemallocator"]

@@ -43,7 +43,7 @@ use super::{SslSessionCacheModes, SSL_ERROR, SSL_FAILURE, SSL_SUCCESS};
 use crate::error_san::*;
 use crate::libcrypto::evp::MESALINK_EVP_PKEY;
 use crate::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
-use libc::{c_char, c_int, c_long, c_uchar, size_t};
+use libc::{c_char, c_int, c_long, c_uchar, c_void, size_t};
 use parking_lot::RwLock;
 use rustls;
 use std::sync::Arc;
@@ -122,7 +122,6 @@ impl MESALINK_METHOD {
     }
 }
 
-#[allow(unused)]
 struct NoServerAuth {}
 impl rustls::ServerCertVerifier for NoServerAuth {
     fn verify_server_cert(
@@ -1296,7 +1295,6 @@ fn inner_mesalink_ssl_check_private_key(ssl_ptr: *mut MESALINK_SSL) -> MesalinkI
 /// int SSL_CTX_set_verify(const SSL_CTX *ctx, int mode, void *ignored_cb);
 /// ```
 #[no_mangle]
-#[cfg(feature = "forked_deps")]
 pub extern "C" fn mesalink_SSL_CTX_set_verify(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     mode: c_int,
@@ -1328,6 +1326,24 @@ fn inner_mesalink_ssl_ctx_set_verify(
         let client_auth = rustls::AllowAnyAnonymousOrAuthenticatedClient::new(ctx.ca_roots.clone());
         util::get_context_mut(ctx).server_config.verifier = client_auth;
     }
+    Ok(SSL_SUCCESS)
+}
+
+#[cfg(not(feature = "forked_deps"))]
+fn inner_mesalink_ssl_ctx_set_verify(
+    ctx_ptr: *mut MESALINK_CTX_ARC,
+    mode: c_int,
+) -> MesalinkInnerResult<c_int> {
+    let mode =
+        VerifyModes::from_bits(mode).ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+    let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
+    if mode == VerifyModes::VERIFY_NONE {
+        util::get_context_mut(ctx)
+            .client_config
+            .dangerous()
+            .set_certificate_verifier(Arc::new(NoServerAuth {}));
+    }
+    // FIXME: add client authentication
     Ok(SSL_SUCCESS)
 }
 

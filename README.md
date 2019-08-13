@@ -5,12 +5,16 @@
 [![Build Status](https://travis-ci.com/mesalock-linux/mesalink.svg?branch=master)](https://travis-ci.com/mesalock-linux/mesalink)
 [![Build Status](https://dev.azure.com/mesalink/MesaLink/_apis/build/status/mesalock-linux.mesalink?branchName=master)](https://dev.azure.com/mesalink/MesaLink/_build/latest?definitionId=1&branchName=master)
 [![Coverage Status](https://codecov.io/gh/mesalock-linux/mesalink/branch/master/graph/badge.svg)](https://codecov.io/gh/mesalock-linux/mesalink)
-[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](https://mesalock-linux.github.io/mesalink-doc/doc/mesalink/index.html)
 [![Release](https://img.shields.io/github/release/mesalock-linux/mesalink.svg)](https://github.com/mesalock-linux/mesalink/releases)
 [![License](https://img.shields.io/badge/license-BSD-blue.svg)](LICENSE)
 
 MesaLink is a memory-safe and OpenSSL-compatible TLS library.
 MesaLink has been in production at Baidu with >10 million monthly active users.
+
+**This is a special version of MesaLink distributed as a `openssl-sys`-like
+crate on crates.io. CMake/Autotools is not necessary to build this crate. This
+version uses [rustls](https://crates.io/crates/rustls) and
+[webpki](https://crates.io/crates/rustls) on crates.io instead of our forks.**
 
 Visit us on our website: [https://mesalink.io](https://mesalink.io).
 
@@ -89,90 +93,6 @@ features that are considered secure for most use cases:
 * TLS-ECDHE-RSA-WITH-AES-256-GCM-SHA384
 * TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256
 
-## Building instructions for Autotools
-
-```
-$ sudo apt-get install m4 autoconf automake libtool make gcc curl
-$ curl https://sh.rustup.rs -sSf | sh
-
-$ git clone https://github.com/mesalock-linux/mesalink.git
-$ ./autogen.sh --enable-examples
-$ make
-```
-
-## Building instructions for CMake
-
-```
-$ sudo apt-get install cmake make gcc curl
-$ curl https://sh.rustup.rs -sSf | sh
-
-$ git clone https://github.com/mesalock-linux/mesalink.git
-$ mkdir build && cd build
-$ cmake ..
-$ cmake --build .
-```
-
-## Examples
-MesaLink comes with two examples that demonstrate a TLS client and a TLS
-server. Both of them are located at `examples/`.
-
-The client example connects to a remote HTTPS server and prints the server's
-response.
-
-```
-$ ./examples/client/client api.ipify.org
-[+] Negotiated ciphersuite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, enc_length=16, version=TLS1.2
-[+] Subject name: /OU=Domain Control Validated/OU=PositiveSSL Wildcard/CN=*.ipify.org
-[+] Subject alternative names:*.ipify.org ipify.org
-[+] Sent 85 bytes
-
-GET / HTTP/1.0
-Host: api.ipify.org
-Connection: close
-Accept-Encoding: identity
-
-
-HTTP/1.1 200 OK
-Server: Cowboy
-Connection: close
-Content-Type: text/plain
-Vary: Origin
-Date: Thu, 09 Aug 2018 21:44:35 GMT
-Content-Length: 10
-Via: 1.1 vegur
-
-1.2.3.4
-[+] TLS protocol version: TLS1.2
-
-[+] Received 177 bytes
-```
-
-The server example comes with a pair of certificate and private key. The
-certificate file is in the PEM format and contains a chain of certificates from
-the server's certificate to the root CA certificate. The private key file
-contains a PKCS8-encoded private key in the PEM format. Once the server is up
-and running, open [https://127.0.0.1:8443](https://127.0.0.1:8443) and expect to
-see the hello message.
-
-```
-$ ./examples/server/server
-Usage: ./examples/server/server <portnum> <cert_file> <private_key_file>
-$ cd examples/server/server
-$ ./server 8443 certificates private_key
-[+] Listening at 0.0.0.0:8443
-[+] Negotiated ciphersuite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, enc_length=16, version=TLS1.2
-[+] Received:
-GET / HTTP/1.1
-Host: 127.0.0.1:8443
-Connection: keep-alive
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/537.36
-(KHTML, like Gecko) Chrome/63.0.3239.84 Safari/537.36
-Upgrade-Insecure-Requests: 1
-Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng
-Accept-Encoding: gzip, deflate, br
-Accept-Language: en-US,en;q=0.9
-```
-
 ## Unit tests
 MesaLink uses cargo for unit tests. Simply run `cargo test`.
 
@@ -209,11 +129,6 @@ inspiration!
 ## Maintainer
 
  * Yiming Jing `<jingyiming@baidu.com>` [@kevinis](https://github.com/kevinis)
-
-## Steering Committee
-
-  - Tao Wei
-  - Yulong Zhang
 
 ## License
 MesaLink is provided under the 3-Clause BSD license. For a copy, see the LICENSE
