@@ -2,12 +2,6 @@
 
 set -xev
 
-# Skip building MesaLink if testing for coverage only
-if [[ "$COVERAGE" == "yes" ]]
-then
-    exit 0
-fi
-
 if [[ x"$TARGET" == "x" ]]
 then
     #./autogen.sh --enable-examples
