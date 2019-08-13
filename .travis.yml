@@ -34,29 +34,17 @@ matrix:
     before_deploy:
     script:
     - cd bogo && ./runme
-  - name: cargo-clippy
+  - name: cargo-fmt and cargo-clippy
     rust: stable
-    env: CLIPPY=yes
-    before_install:
-    install:
-    before_deploy:
-    before_script:
-    - rustup component add clippy-preview
-    script:
-    - cargo clippy
-  - name: cargo-fmt and cargo-tarpaulin
-    sudo: required
-    rust: stable
-    env: COV=yes
     before_install:
     install:
     before_deploy:
     before_script:
     - rustup component add rustfmt-preview
+    - rustup component add clippy-preview
     script:
     - cargo fmt --all -- --check `find src -iname "*.rs"`
-    - docker run --cpuset-cpus="0" --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin
-      cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID
+    - cargo clippy
   allow_failures:
     - rust: nightly
   fast_finish: true
