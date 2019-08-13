@@ -14,16 +14,13 @@
  */
 
 use super::err::{MesalinkBuiltinError, MesalinkInnerResult};
+#[cfg(feature = "forked_deps")]
 use super::safestack::MESALINK_STACK_MESALINK_X509_NAME;
 use super::{SSL_FAILURE, SSL_SUCCESS};
 use crate::error_san::*;
 use crate::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use libc::{c_char, c_int};
-use ring::io::der;
-use rustls;
-use std::{ptr, slice, str};
-use untrusted;
-use webpki;
+use std::{ptr, slice};
 
 /// An OpenSSL X509 object
 #[allow(non_camel_case_types)]
@@ -82,6 +79,7 @@ impl<'a> MesalinkOpaquePointerType for MESALINK_X509_NAME {
 }
 
 impl<'a> MESALINK_X509_NAME {
+    #[allow(unused)]
     pub(crate) fn new(name: &[u8]) -> MESALINK_X509_NAME {
         MESALINK_X509_NAME {
             magic: *MAGIC,
@@ -121,6 +119,7 @@ fn inner_mesalink_x509_name_free(
 /// STACK_OF(X509_NAME) *X509_get_alt_subject_names(const X509 *x);;
 /// ```
 #[no_mangle]
+#[cfg(feature = "forked_deps")]
 pub extern "C" fn mesalink_X509_get_alt_subject_names(
     x509_ptr: *mut MESALINK_X509,
 ) -> *mut MESALINK_STACK_MESALINK_X509_NAME {
@@ -130,6 +129,7 @@ pub extern "C" fn mesalink_X509_get_alt_subject_names(
     )
 }
 
+#[cfg(feature = "forked_deps")]
 fn inner_mesalink_x509_get_alt_subject_names(
     x509_ptr: *mut MESALINK_X509,
 ) -> MesalinkInnerResult<*mut MESALINK_STACK_MESALINK_X509_NAME> {
@@ -163,12 +163,14 @@ fn inner_mesalink_x509_get_alt_subject_names(
 /// X509_NAME *X509_get_subject(const X509 *x);;
 /// ```
 #[no_mangle]
+#[cfg(feature = "forked_deps")]
 pub extern "C" fn mesalink_X509_get_subject(
     x509_ptr: *mut MESALINK_X509,
 ) -> *mut MESALINK_X509_NAME {
     check_inner_result!(inner_mesalink_x509_get_subject(x509_ptr), ptr::null_mut())
 }
 
+#[cfg(feature = "forked_deps")]
 fn inner_mesalink_x509_get_subject(
     x509_ptr: *mut MESALINK_X509,
 ) -> MesalinkInnerResult<*mut MESALINK_X509_NAME> {
@@ -212,6 +214,7 @@ fn inner_mesalink_x509_get_subject(
 /// X509_NAME *X509_get_subject_name(const X509 *x);;
 /// ```
 #[no_mangle]
+#[cfg(feature = "forked_deps")]
 pub extern "C" fn mesalink_X509_get_subject_name(
     x509_ptr: *mut MESALINK_X509,
 ) -> *mut MESALINK_X509_NAME {
@@ -221,6 +224,7 @@ pub extern "C" fn mesalink_X509_get_subject_name(
     )
 }
 
+#[cfg(feature = "forked_deps")]
 fn inner_mesalink_x509_get_subject_name(
     x509_ptr: *mut MESALINK_X509,
 ) -> MesalinkInnerResult<*mut MESALINK_X509_NAME> {

@@ -20,22 +20,20 @@ name = "mesalink"
 crate-type = ["lib", "staticlib", "cdylib"]
 
 [features]
-default = ["client_apis", "server_apis", "error_strings", "tls13", "aesgcm", "chachapoly", "x25519", "ecdh", "ecdsa", "verifier", "sgx"]
+default = ["client_apis", "server_apis", "error_strings", "verifier"]
+forked_deps = []
 client_apis = []
 server_apis = []
-error_strings = ["rustls/logging"]
-tls13 = ["rustls/tls13"]
-aesgcm = ["rustls/aesgcm"]
-chachapoly = ["rustls/chachapoly"]
-x25519 = ["rustls/x25519"]
-ecdh = ["rustls/ecdh"]
-ecdsa = ["rustls/ecdsa"]
+error_strings = []
 verifier = ["rustls/dangerous_configuration"]
-sgx = ["rustls/sgx"]
 nightly = []
 jemalloc_allocator = ["jemallocator"]
 
 [dependencies]
+rustls = "0.16.0"
+webpki = "0.21.0"
+webpki-roots = "0.17.0"
+sct = "0.6.0"
 ring = "0.16"
 untrusted = "0.7"
 env_logger = "0.6"
@@ -46,26 +44,6 @@ bitflags = "1.0"
 base64 = "0.10"
 parking_lot = "0.9"
 jemallocator = { version = "0.3", optional = true }
-
-[dependencies.rustls]
-git = "https://github.com/mesalock-linux/rustls"
-branch = "mesalink"
-default-features = false
-
-[dependencies.webpki]
-git = "https://github.com/mesalock-linux/webpki"
-tag = "v1.1.0"
-default-features = false
-
-[dependencies.sct]
-git = "https://github.com/mesalock-linux/sct.rs"
-tag = "v1.1.0"
-default-features = false
-
-[dependencies.webpki-roots]
-git = "https://github.com/mesalock-linux/webpki-roots"
-tag = "v1.1.0"
-default-features = false
 
 [dev-dependencies]
 log = "0.4"
