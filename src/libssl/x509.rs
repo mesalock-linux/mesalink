@@ -338,7 +338,7 @@ fn inner_mesalink_x509_name_oneline(
 #[cfg(test)]
 mod tests {
     use super::*;
-   
+
     #[test]
     #[cfg(feature = "forked_deps")]
     fn x509_get_subject_name_and_alt_names() {
