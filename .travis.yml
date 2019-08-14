@@ -51,11 +51,10 @@ matrix:
     install:
     before_deploy:
     before_script:
-    script: 
-      - docker run --cpuset-cpus="0" --security-opt seccomp=unconfined -v
-      "$PWD:/volume"   xd009642/tarpaulin sh -c "cargo tarpaulin --out Xml" bash
-      <(curl -s https://codecov.io/bash) 
-    allow_failures:
+    script:
+    - docker run --cpuset-cpus="0" --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin
+      sh -c "cargo tarpaulin --out Xml" bash <(curl -s https://codecov.io/bash)
+  allow_failures:
     - rust: nightly
   fast_finish: true
 before_install:
