@@ -13,13 +13,15 @@
  *
  */
 
+use std::env;
+use std::fs;
+use std::io::prelude::*;
+use std::path::PathBuf;
+use walkdir::WalkDir;
+
 #[cfg(unix)]
 fn generate_la(lib: &str) -> std::io::Result<()> {
-    use std::env;
-    use std::fs;
     use std::fs::File;
-    use std::io::prelude::*;
-    use std::path::PathBuf;
 
     let self_version = env!("CARGO_PKG_VERSION");
     let top_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
@@ -68,7 +70,127 @@ fn generate_la(_lib: &str) -> std::io::Result<()> {
     Ok(())
 }
 
+fn generate_headers() -> std::io::Result<()> {
+    let out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
+    let include_dir = out_dir.join("include");
+
+    println!("cargo:rerun-if-changed=mesalink");
+
+    let header_files = WalkDir::new("mesalink")
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_file())
+        .filter(|e| match e.path().extension() {
+            Some(extension) => extension == "h",
+            None => false,
+        });
+
+    for src in header_files {
+        let dest = include_dir.join(src.path());
+        fs::create_dir_all(dest.parent().unwrap())?;
+        fs::copy(src.path(), dest)?;
+    }
+
+    let version_h = fs::read_to_string("mesalink/version.h.in")?;
+    fs::write(
+        include_dir.join("mesalink/version.h"),
+        version_h.replace("@VERSION@", env::var("CARGO_PKG_VERSION").unwrap().as_str()),
+    )?;
+
+    let mut options_h = fs::File::create(include_dir.join("mesalink/options.h"))?;
+    options_h.write_all(
+        b"\
+        #ifndef MESALINK_OPTIONS_H\n\
+        #define MESALINK_OPTIONS_H\n\n\
+
+        #ifdef __cplusplus\n\
+        extern \"C\" {\n\
+        #endif\n\n\
+    ",
+    )?;
+
+    fn write_define(mut writer: impl Write, name: &str) -> std::io::Result<()> {
+        write!(writer, "\n#undef {}\n#define {}\n", name, name)
+    }
+
+    if cfg!(feature = "client_apis") {
+        write_define(&mut options_h, "HAVE_CLIENT")?;
+    } else {
+        write_define(&mut options_h, "NO_CLIENT")?;
+    }
+
+    if cfg!(feature = "server_apis") {
+        write_define(&mut options_h, "HAVE_SERVER")?;
+    } else {
+        write_define(&mut options_h, "NO_SERVER")?;
+    }
+
+    if cfg!(feature = "error_strings") {
+        write_define(&mut options_h, "HAVE_ERROR_STRINGS")?;
+    } else {
+        write_define(&mut options_h, "NO_ERROR_STRINGS")?;
+    }
+
+    if cfg!(feature = "aesgcm") {
+        write_define(&mut options_h, "HAVE_AESGCM")?;
+    } else {
+        write_define(&mut options_h, "NO_AESGCM")?;
+    }
+
+    if cfg!(feature = "chachapoly") {
+        write_define(&mut options_h, "HAVE_CHACHAPOLY")?;
+    } else {
+        write_define(&mut options_h, "NO_CHACHAPOLY")?;
+    }
+
+    if cfg!(feature = "tls13") {
+        write_define(&mut options_h, "HAVE_TLS13")?;
+    } else {
+        write_define(&mut options_h, "NO_TLS13")?;
+    }
+
+    if cfg!(feature = "x25519") {
+        write_define(&mut options_h, "HAVE_X25519")?;
+    } else {
+        write_define(&mut options_h, "NO_X25519")?;
+    }
+
+    if cfg!(feature = "ecdh") {
+        write_define(&mut options_h, "HAVE_ECDH")?;
+    } else {
+        write_define(&mut options_h, "NO_ECDH")?;
+    }
+
+    if cfg!(feature = "ecdsa") {
+        write_define(&mut options_h, "HAVE_ECDSA")?;
+    } else {
+        write_define(&mut options_h, "NO_ECDSA")?;
+    }
+
+    if cfg!(feature = "sgx") {
+        write_define(&mut options_h, "HAVE_SGX")?;
+    } else {
+        write_define(&mut options_h, "NO_SGX")?;
+    }
+
+    options_h.write_all(
+        b"\n\
+        #ifdef __cplusplus\n\
+        }\n\
+        #endif\n\
+
+        #endif /* MESALINK_OPTIONS_H */\n\
+    ",
+    )?;
+
+    println!("cargo:include={}", include_dir.display());
+
+    Ok(())
+}
+
 fn main() {
     let lib_name = format!("{}{}", "lib", std::env::var("CARGO_PKG_NAME").unwrap(),);
     let _ = generate_la(lib_name.as_str());
+
+    generate_headers().unwrap();
 }

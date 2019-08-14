@@ -10,6 +10,7 @@ keywords = ["tls", "ssl", "rust"]
 homepage = "https://github.com/mesalock-linux/mesalink"
 repository = "https://github.com/mesalock-linux/mesalink"
 categories = ["network-programming"]
+links = "mesalink"
 build = "build.rs"
 
 [badges]
@@ -50,6 +51,9 @@ bitflags = "1.0"
 base64 = "0.10"
 parking_lot = "0.9"
 jemallocator = { version = "0.3", optional = true }
+
+[build-dependencies]
+walkdir = "2"
 
 [dev-dependencies]
 log = "0.4"
