@@ -2,19 +2,16 @@
 
 <h1 align="center"> A memory-safe and OpenSSL-compatible TLS library </h1>
 
-[![Build Status](https://travis-ci.com/mesalock-linux/mesalink.svg?branch=master)](https://travis-ci.com/mesalock-linux/mesalink)
-[![Build Status](https://dev.azure.com/mesalink/MesaLink/_apis/build/status/mesalock-linux.mesalink?branchName=master)](https://dev.azure.com/mesalink/MesaLink/_build/latest?definitionId=1&branchName=master)
-[![Coverage Status](https://codecov.io/gh/mesalock-linux/mesalink/branch/master/graph/badge.svg)](https://codecov.io/gh/mesalock-linux/mesalink)
-[![Release](https://img.shields.io/github/release/mesalock-linux/mesalink.svg)](https://github.com/mesalock-linux/mesalink/releases)
-[![License](https://img.shields.io/badge/license-BSD-blue.svg)](LICENSE)
-
-MesaLink is a memory-safe and OpenSSL-compatible TLS library.
-MesaLink has been in production at Baidu with >10 million monthly active users.
-
 **This is a special version of MesaLink distributed as a `openssl-sys`-like
 crate on crates.io. CMake/Autotools is not necessary to build this crate. This
 version uses [rustls](https://crates.io/crates/rustls) and
 [webpki](https://crates.io/crates/rustls) on crates.io instead of our forks.**
+
+[![Build Status](https://api.travis-ci.com/mesalock-linux/mesalink.svg?branch=crates_io)](https://github.com/mesalock-linux/mesalink/tree/crates_io)
+[![Coverage Status](https://codecov.io/gh/mesalock-linux/mesalink/branch/crates_io/graph/badge.svg)](https://codecov.io/gh/mesalock-linux/mesalink/branch/crates_io)
+[![License](https://img.shields.io/badge/license-BSD-blue.svg)](LICENSE)
+
+MesaLink is a memory-safe and OpenSSL-compatible TLS library.
 
 Visit us on our website: [https://mesalink.io](https://mesalink.io).
 
