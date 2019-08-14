@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.0)
 
 project(MesaLink C CXX)
 set(DEFAULT_BUILD_TYPE "Release")
-set(MESALINK_VERSION_STRING "1.0.0")
+set(MESALINK_VERSION_STRING "1.1.0")
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 enable_language(Rust)
@@ -26,7 +26,7 @@ if(RUSTC_VERSION AND RUSTC_VERSION VERSION_LESS 1.31)
     message(FATAL_ERROR "Rust is too old, please install at least 1.31 to support the Rust 2018 edition")
 endif()
 
-project(MesaLink VERSION 15.0.0)
+project(MesaLink VERSION 15.1.0)
 set(LIB_NAME mesalink)
 
 # Config options
