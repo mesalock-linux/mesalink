@@ -772,11 +772,10 @@ pub extern "C" fn mesalink_ERR_clear_error() {
 ///
 /// void ERR_print_errors_fp(FILE *fp);
 /// ```
-#[cfg(unix)]
 #[no_mangle]
 pub unsafe extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
+    use crate::libcrypto::bio::FromFileStream;
     use std::io::Write;
-    use std::os::unix::io::FromRawFd;
     use std::{fs, str};
     if fp.is_null() {
         return;
@@ -785,7 +784,7 @@ pub unsafe extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
     if fd < 0 {
         return;
     }
-    let mut file = fs::File::from_raw_fd(fd);
+    let mut file = fs::File::from_file_stream(fp);
     ERROR_QUEUE.with(|q| {
         let mut queue = q.borrow_mut();
         for e in queue.drain(0..) {
@@ -1253,16 +1252,15 @@ mod tests {
 
     #[test]
     fn err_print_errors_fp() {
+        use crate::libcrypto::bio::OpenFileStream;
         use std::io;
-        use std::os::unix::io::AsRawFd;
 
         mesalink_ERR_load_error_strings();
         ErrorQueue::push_error(error!(MesalinkBuiltinError::None.into()));
         ErrorQueue::push_error(error!(MesalinkBuiltinError::BadFuncArg.into()));
         ErrorQueue::push_error(error!(MesalinkBuiltinError::MalformedObject.into()));
-        let fd = io::stderr().as_raw_fd();
-        let mode = b"wb\0".as_ptr() as *const c_char;
-        let file = unsafe { libc::fdopen(fd, mode) };
+        let stderr = io::stderr();
+        let file = unsafe { stderr.open_file_stream_w() };
         unsafe {
             mesalink_ERR_print_errors_fp(file);
             mesalink_ERR_print_errors_fp(ptr::null_mut());
@@ -1270,5 +1268,4 @@ mod tests {
         mesalink_ERR_clear_error();
         mesalink_ERR_free_error_strings();
     }
-
 }

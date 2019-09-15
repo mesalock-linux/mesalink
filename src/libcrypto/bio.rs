@@ -24,9 +24,9 @@ use std::{ffi, fs, io, mem, ptr, slice};
 use std::io::{Read, Seek, Write};
 use std::ops::{Deref, DerefMut};
 #[cfg(unix)]
-use std::os::unix::io::{FromRawFd, IntoRawFd};
+use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};
 #[cfg(windows)]
-use std::os::windows::io::{FromRawHandle, IntoRawHandle};
+use std::os::windows::io::{AsRawHandle, FromRawHandle, IntoRawHandle};
 
 #[doc(hidden)]
 pub trait BioRW: Read + Write + Seek {}
@@ -605,14 +605,7 @@ fn inner_mesalink_bio_new_fp<'a>(
     if stream.is_null() {
         return Err(error!(MesalinkBuiltinError::NullPointer.into()));
     }
-    #[cfg(unix)]
-    let file = unsafe { fs::File::from_raw_fd(libc::fileno(stream)) };
-    #[cfg(windows)]
-    let file = unsafe {
-        let fd = libc::fileno(stream);
-        let osf_handle = libc::get_osfhandle(fd);
-        fs::File::from_raw_handle(osf_handle as *mut _)
-    };
+    let file = unsafe { fs::File::from_file_stream(stream) };
     let flags =
         BioFlags::from_bits(flags as u32).ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     let bio = MESALINK_BIO {
@@ -631,7 +624,6 @@ fn inner_mesalink_bio_new_fp<'a>(
 ///
 /// BIO_set_fp(BIO *b,FILE *fp, int flags);
 /// ```
-#[cfg(unix)]
 #[no_mangle]
 pub extern "C" fn mesalink_BIO_set_fp(
     bio_ptr: *mut MESALINK_BIO<'_>,
@@ -644,15 +636,13 @@ pub extern "C" fn mesalink_BIO_set_fp(
     );
 }
 
-#[cfg(unix)]
 fn inner_mesalink_bio_set_fp(
     bio_ptr: *mut MESALINK_BIO<'_>,
     fp: *mut libc::FILE,
     flags: c_int,
 ) -> MesalinkInnerResult<c_int> {
     let bio = sanitize_ptr_for_mut_ref(bio_ptr)?;
-    let fd = unsafe { libc::fileno(fp) };
-    let file = unsafe { fs::File::from_raw_fd(fd) };
+    let file = unsafe { fs::File::from_file_stream(fp) };
     let flags =
         BioFlags::from_bits(flags as u32).ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     bio.inner = MesalinkBioInner::File(file);
@@ -750,12 +740,69 @@ pub extern "C" fn mesalink_BIO_new_mem_buf<'a>(
     Box::into_raw(Box::new(bio)) as *mut MESALINK_BIO<'_>
 }
 
+/// Helper trait for converting from FILE* in libc.
+pub(crate) trait FromFileStream {
+    unsafe fn from_file_stream(stream: *mut libc::FILE) -> Self;
+}
+
+#[cfg(unix)]
+impl<T: FromRawFd> FromFileStream for T {
+    unsafe fn from_file_stream(stream: *mut libc::FILE) -> Self {
+        Self::from_raw_fd(libc::fileno(stream))
+    }
+}
+
+#[cfg(windows)]
+impl<T: FromRawHandle> FromFileStream for T {
+    unsafe fn from_file_stream(stream: *mut libc::FILE) -> Self {
+        let fd = libc::fileno(stream);
+        let osf_handle = libc::get_osfhandle(fd);
+        Self::from_raw_handle(osf_handle as *mut _)
+    }
+}
+
+/// Helper trait for converting to FILE* in libc.
+pub(crate) trait OpenFileStream {
+    unsafe fn open_file_stream_r(&self) -> *mut libc::FILE;
+
+    unsafe fn open_file_stream_w(&self) -> *mut libc::FILE;
+}
+
+#[cfg(unix)]
+impl<T: AsRawFd> OpenFileStream for T {
+    unsafe fn open_file_stream_r(&self) -> *mut libc::FILE {
+        libc::fdopen(self.as_raw_fd(), b"r\0".as_ptr() as *const c_char)
+    }
+
+    unsafe fn open_file_stream_w(&self) -> *mut libc::FILE {
+        libc::fdopen(self.as_raw_fd(), b"w\0".as_ptr() as *const c_char)
+    }
+}
+
+#[cfg(windows)]
+impl<T: AsRawHandle> OpenFileStream for T {
+    unsafe fn open_file_stream_r(&self) -> *mut libc::FILE {
+        let handle = self.as_raw_handle();
+        match libc::open_osfhandle(handle as libc::intptr_t, 0) {
+            -1 => ptr::null_mut(),
+            fd => libc::fdopen(fd, b"r\0".as_ptr() as *const c_char),
+        }
+    }
+
+    unsafe fn open_file_stream_w(&self) -> *mut libc::FILE {
+        let handle = self.as_raw_handle();
+        match libc::open_osfhandle(handle as libc::intptr_t, 0) {
+            -1 => ptr::null_mut(),
+            fd => libc::fdopen(fd, b"w\0".as_ptr() as *const c_char),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use libc::{self, c_char, c_void};
     use std::fs;
-    use std::os::unix::io::AsRawFd;
 
     #[test]
     fn bio_methods() {
@@ -859,8 +906,7 @@ mod tests {
         assert_eq!(bio_ptr_f, ptr::null_mut());
 
         let file = fs::File::open("tests/ca.cert").unwrap(); // Read-only, "r"
-        let fd = file.as_raw_fd();
-        let fp = unsafe { libc::fdopen(fd, b"r\0".as_ptr() as *const c_char) };
+        let fp = unsafe { file.open_file_stream_r() };
         assert_ne!(fp, ptr::null_mut());
 
         let bio_ptr_f = mesalink_BIO_new_fp(fp, 0);
@@ -871,8 +917,7 @@ mod tests {
     #[test]
     fn bio_file_set_fp() {
         let file = fs::File::open("tests/ca.cert").unwrap(); // Read-only, "r"
-        let fd = file.as_raw_fd();
-        let fp = unsafe { libc::fdopen(fd, b"r\0".as_ptr() as *const c_char) };
+        let fp = unsafe { file.open_file_stream_r() };
         assert_ne!(fp, ptr::null_mut());
 
         let bio_ptr_f = mesalink_BIO_new(mesalink_BIO_s_file());

@@ -161,10 +161,10 @@ MESALINK_API int mesalink_SSL_do_handshake(MESALINK_SSL *);
 #include <winsock2.h>
 MESALINK_API int mesalink_SSL_set_socket(MESALINK_SSL *, SOCKET);
 MESALINK_API SOCKET mesalink_SSL_get_socket(const MESALINK_SSL *);
-#else
+#endif
+
 MESALINK_API int mesalink_SSL_set_fd(MESALINK_SSL *, int);
 MESALINK_API int mesalink_SSL_get_fd(const MESALINK_SSL *);
-#endif
 
 #ifdef HAVE_CLIENT
 MESALINK_API int mesalink_SSL_connect(MESALINK_SSL *);

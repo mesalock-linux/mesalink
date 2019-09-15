@@ -130,10 +130,10 @@ extern "C" {
 #ifdef HAVE_WINDOWS
 #define SSL_set_socket mesalink_SSL_set_socket
 #define SSL_get_socket mesalink_SSL_get_socket
-#else
+#endif
+
 #define SSL_set_fd mesalink_SSL_set_fd
 #define SSL_get_fd mesalink_SSL_get_fd
-#endif
 
 #define SSL_do_handshake mesalink_SSL_do_handshake
 

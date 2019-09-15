@@ -1957,10 +1957,20 @@ fn inner_mesalink_ssl_set_tlsext_host_name(
 ///
 /// int SSL_set_fd(SSL *ssl, int fd);
 /// ```
-#[cfg(unix)]
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> c_int {
-    check_inner_result!(inner_mesalink_ssl_set_fd(ssl_ptr, fd), SSL_FAILURE)
+    #[cfg(unix)]
+    {
+        check_inner_result!(inner_mesalink_ssl_set_fd(ssl_ptr, fd), SSL_FAILURE)
+    }
+
+    #[cfg(windows)]
+    {
+        check_inner_result!(
+            inner_mesalink_ssl_set_socket(ssl_ptr, fd as libc::SOCKET),
+            SSL_FAILURE
+        )
+    }
 }
 
 #[cfg(unix)]
@@ -1981,10 +1991,20 @@ fn inner_mesalink_ssl_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> MesalinkI
 ///
 /// int SSL_get_fd(const SSL *ssl);
 /// ```
-#[cfg(unix)]
 #[no_mangle]
 pub extern "C" fn mesalink_SSL_get_fd(ssl_ptr: *mut MESALINK_SSL) -> c_int {
-    check_inner_result!(inner_measlink_ssl_get_fd(ssl_ptr), SSL_FAILURE)
+    #[cfg(unix)]
+    {
+        check_inner_result!(inner_measlink_ssl_get_fd(ssl_ptr), SSL_FAILURE)
+    }
+
+    #[cfg(windows)]
+    {
+        check_inner_result!(
+            inner_measlink_ssl_get_socket(ssl_ptr).map(|socket| socket as c_int),
+            SSL_FAILURE
+        )
+    }
 }
 
 #[cfg(unix)]

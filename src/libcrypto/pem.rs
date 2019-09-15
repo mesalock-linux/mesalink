@@ -236,11 +236,10 @@ fn extract_one<A>(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::libcrypto::{bio, evp};
+    use crate::libcrypto::{bio, bio::OpenFileStream, evp};
     use crate::libssl::x509;
     use libc::c_char;
     use std::fs;
-    use std::os::unix::io::AsRawFd;
 
     #[test]
     fn pem_read_bio_private_key() {
@@ -263,8 +262,7 @@ mod test {
     #[test]
     fn pem_read_private_key() {
         let file = fs::File::open("tests/end.key").unwrap(); // Read-only, "r"
-        let fd = file.as_raw_fd();
-        let fp = unsafe { libc::fdopen(fd, b"r\0".as_ptr() as *const c_char) };
+        let fp = unsafe { file.open_file_stream_r() };
         assert_ne!(fp, ptr::null_mut());
         let pkey_ptr =
             mesalink_PEM_read_PrivateKey(fp, ptr::null_mut(), ptr::null_mut(), ptr::null_mut());
@@ -289,13 +287,11 @@ mod test {
     #[test]
     fn pem_read_x509() {
         let file = fs::File::open("tests/end.fullchain").unwrap(); // Read-only, "r"
-        let fd = file.as_raw_fd();
-        let fp = unsafe { libc::fdopen(fd, b"r\0".as_ptr() as *const c_char) };
+        let fp = unsafe { file.open_file_stream_r() };
         assert_ne!(fp, ptr::null_mut());
         let x509_ptr =
             mesalink_PEM_read_X509(fp, ptr::null_mut(), ptr::null_mut(), ptr::null_mut());
         assert_ne!(x509_ptr, ptr::null_mut());
         x509::mesalink_X509_free(x509_ptr);
     }
-
 }
