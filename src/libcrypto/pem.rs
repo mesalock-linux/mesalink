@@ -297,5 +297,4 @@ mod test {
         assert_ne!(x509_ptr, ptr::null_mut());
         x509::mesalink_X509_free(x509_ptr);
     }
-
 }
