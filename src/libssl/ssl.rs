@@ -53,9 +53,9 @@ use webpki;
 // Trait imports
 use std::ops::{Deref, DerefMut};
 #[cfg(unix)]
-use std::os::unix::io::{AsRawFd, FromRawFd};
+use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};
 #[cfg(windows)]
-use std::os::windows::io::{AsRawSocket, FromRawSocket};
+use std::os::windows::io::{AsRawSocket, FromRawSocket, IntoRawSocket};
 
 const SSL_SESSION_CACHE_MAX_SIZE_DEFAULT: usize = 1024 * 20;
 
@@ -296,6 +296,19 @@ pub struct MESALINK_SSL {
 impl MesalinkOpaquePointerType for MESALINK_SSL {
     fn check_magic(&self) -> bool {
         self.magic == *MAGIC
+    }
+}
+
+impl Drop for MESALINK_SSL {
+    fn drop(&mut self) {
+        if self.io.is_some() {
+            let stream_owned = std::mem::replace(&mut self.io, None).unwrap();
+            // Leak the file descriptor so that the C caller can close it.
+            #[cfg(unix)]
+            let _ = stream_owned.into_raw_fd();
+            #[cfg(windows)]
+            let _ = stream_owned.into_raw_socket();
+        }
     }
 }
 
@@ -1975,7 +1988,7 @@ pub extern "C" fn mesalink_SSL_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> 
 
 #[cfg(unix)]
 fn inner_mesalink_ssl_set_fd(ssl_ptr: *mut MESALINK_SSL, fd: c_int) -> MesalinkInnerResult<c_int> {
-    let mut ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
+    let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     if fd < 0 {
         return Err(error!(MesalinkBuiltinError::BadFuncArg.into()));
     }
@@ -2037,7 +2050,7 @@ fn inner_mesalink_ssl_set_socket(
     ssl_ptr: *mut MESALINK_SSL,
     sock: libc::SOCKET,
 ) -> MesalinkInnerResult<c_int> {
-    let mut ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
+    let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     if sock == 0 {
         return Err(error!(MesalinkBuiltinError::BadFuncArg.into()));
     }
