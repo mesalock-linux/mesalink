@@ -2030,7 +2030,7 @@ fn inner_mesalink_ssl_set_socket(
     ssl_ptr: *mut MESALINK_SSL,
     sock: libc::SOCKET,
 ) -> MesalinkInnerResult<c_int> {
-    let mut ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
+    let ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     if sock == 0 {
         return Err(error!(MesalinkBuiltinError::BadFuncArg.into()));
     }
