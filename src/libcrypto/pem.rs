@@ -168,7 +168,7 @@ pub(crate) fn get_either_rsa_or_ecdsa_private_key<T: Read + Seek>(
     }
 }
 
-pub(crate) fn get_certificate_chain(rd: &mut io::BufRead) -> Vec<rustls::Certificate> {
+pub(crate) fn get_certificate_chain(rd: &mut dyn io::BufRead) -> Vec<rustls::Certificate> {
     let mut certs = Vec::new();
     while let Ok(cert) = get_certificate(rd) {
         certs.push(cert);
@@ -176,7 +176,7 @@ pub(crate) fn get_certificate_chain(rd: &mut io::BufRead) -> Vec<rustls::Certifi
     certs
 }
 
-pub(crate) fn get_certificate(rd: &mut io::BufRead) -> Result<rustls::Certificate, ()> {
+pub(crate) fn get_certificate(rd: &mut dyn io::BufRead) -> Result<rustls::Certificate, ()> {
     extract_one(
         rd,
         "-----BEGIN CERTIFICATE-----",
@@ -185,7 +185,7 @@ pub(crate) fn get_certificate(rd: &mut io::BufRead) -> Result<rustls::Certificat
     )
 }
 
-pub(crate) fn get_rsa_private_key(rd: &mut io::BufRead) -> Result<rustls::PrivateKey, ()> {
+pub(crate) fn get_rsa_private_key(rd: &mut dyn io::BufRead) -> Result<rustls::PrivateKey, ()> {
     extract_one(
         rd,
         "-----BEGIN RSA PRIVATE KEY-----",
@@ -194,7 +194,7 @@ pub(crate) fn get_rsa_private_key(rd: &mut io::BufRead) -> Result<rustls::Privat
     )
 }
 
-pub(crate) fn get_ecdsa_private_key(rd: &mut io::BufRead) -> Result<rustls::PrivateKey, ()> {
+pub(crate) fn get_ecdsa_private_key(rd: &mut dyn io::BufRead) -> Result<rustls::PrivateKey, ()> {
     extract_one(
         rd,
         "-----BEGIN PRIVATE KEY-----",
@@ -204,10 +204,10 @@ pub(crate) fn get_ecdsa_private_key(rd: &mut io::BufRead) -> Result<rustls::Priv
 }
 
 fn extract_one<A>(
-    rd: &mut io::BufRead,
+    rd: &mut dyn io::BufRead,
     start_mark: &str,
     end_mark: &str,
-    f: &Fn(Vec<u8>) -> A,
+    f: &dyn Fn(Vec<u8>) -> A,
 ) -> Result<A, ()> {
     let mut b64buf = String::new();
     let mut take_base64 = false;
@@ -297,5 +297,4 @@ mod test {
         assert_ne!(x509_ptr, ptr::null_mut());
         x509::mesalink_X509_free(x509_ptr);
     }
-
 }

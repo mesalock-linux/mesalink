@@ -41,7 +41,7 @@ pub enum MesalinkBioInner<'a> {
 }
 
 impl<'a> Deref for MesalinkBioInner<'a> {
-    type Target = BioRW + 'a;
+    type Target = dyn BioRW + 'a;
 
     fn deref(&self) -> &Self::Target {
         match &self {
@@ -82,10 +82,10 @@ static MESALINK_BIO_METHOD_MEM: MESALINK_BIO_METHOD = MESALINK_BIO_METHOD::Mem;
 
 #[allow(non_camel_case_types)]
 pub struct MesalinkBioFunctions<'a> {
-    pub read: Box<Fn(&mut MesalinkBioInner<'a>, &mut [u8]) -> io::Result<usize>>,
-    pub write: Box<Fn(&mut MesalinkBioInner<'a>, &[u8]) -> io::Result<usize>>,
-    pub gets: Box<Fn(&mut MesalinkBioInner<'a>, &mut [u8]) -> io::Result<usize>>,
-    pub puts: Box<Fn(&mut MesalinkBioInner<'a>, &[u8]) -> io::Result<usize>>,
+    pub read: Box<dyn Fn(&mut MesalinkBioInner<'a>, &mut [u8]) -> io::Result<usize>>,
+    pub write: Box<dyn Fn(&mut MesalinkBioInner<'a>, &[u8]) -> io::Result<usize>>,
+    pub gets: Box<dyn Fn(&mut MesalinkBioInner<'a>, &mut [u8]) -> io::Result<usize>>,
+    pub puts: Box<dyn Fn(&mut MesalinkBioInner<'a>, &[u8]) -> io::Result<usize>>,
 }
 
 fn generic_read<'a>(b: &mut MesalinkBioInner<'a>, buf: &mut [u8]) -> io::Result<usize> {
@@ -156,12 +156,6 @@ impl<'a> From<&MESALINK_BIO_METHOD> for MesalinkBioFunctions<'a> {
     }
 }
 
-////////////////////////////////////////////////////
-///
-/// BIO
-///
-/// ////////////////////////////////////////////////
-
 bitflags! {
     #[derive(Default)]
     struct BioFlags: u32 {
@@ -171,6 +165,12 @@ bitflags! {
         const BIO_FLAGS_NONCLEAR_RST = 0x400;
     }
 }
+
+////////////////////////////////////////////////////
+///
+/// BIO implementations
+///
+/// ////////////////////////////////////////////////
 
 #[allow(non_camel_case_types)]
 pub struct MESALINK_BIO<'a> {

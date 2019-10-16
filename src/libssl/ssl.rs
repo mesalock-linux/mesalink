@@ -50,7 +50,7 @@ use {MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 
 // Trait imports
 use std::ops::{Deref, DerefMut};
-use std::os::unix::io::{AsRawFd, FromRawFd};
+use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};
 
 const SSL_SESSION_CACHE_MAX_SIZE_DEFAULT: usize = 1024 * 20;
 
@@ -215,7 +215,6 @@ impl MESALINK_CTX {
             SSL_SESSION_CACHE_MAX_SIZE_DEFAULT,
         ));
 
-        use webpki_roots;
         client_config
             .root_store
             .add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
@@ -242,7 +241,7 @@ enum ClientOrServerSession {
 }
 
 impl Deref for ClientOrServerSession {
-    type Target = rustls::Session;
+    type Target = dyn rustls::Session;
 
     fn deref(&self) -> &Self::Target {
         match &self {
@@ -303,6 +302,19 @@ impl MesalinkOpaquePointerType for MESALINK_SSL_ARC {
     fn check_magic(&self) -> bool {
         let reader = self.lock().unwrap();
         reader.magic == *MAGIC
+    }
+}
+
+impl Drop for MESALINK_SSL {
+    fn drop(&mut self) {
+        if self.io.is_some() {
+            let stream_owned = std::mem::replace(&mut self.io, None).unwrap();
+            // Leak the file descriptor so that the C caller can close it.
+            #[cfg(unix)]
+            let _ = stream_owned.into_raw_fd();
+            #[cfg(windows)]
+            let _ = stream_owned.into_raw_socket();
+        }
     }
 }
 
@@ -494,7 +506,6 @@ pub extern "C" fn mesalink_library_init() -> c_int {
 
 #[cfg(feature = "error_strings")]
 fn init_logger() {
-    use env_logger;
     env_logger::Builder::new().parse("trace").init()
 }
 
@@ -940,7 +951,6 @@ fn inner_mesalink_ssl_ctx_use_certificate_chain_file(
     filename_ptr: *const c_char,
 ) -> MesalinkInnerResult<c_int> {
     use libcrypto::pem;
-    use std::fs;
 
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     if filename_ptr.is_null() {
@@ -1130,7 +1140,6 @@ fn inner_mesalink_ssl_ctx_use_privatekey_file(
     filename_ptr: *const c_char,
 ) -> MesalinkInnerResult<c_int> {
     use libcrypto::pem;
-    use std::fs;
 
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     if filename_ptr.is_null() {
@@ -2949,8 +2958,8 @@ mod tests {
     fn ssl_ctx_is_thread_safe() {
         let context_ptr = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
         let context = sanitize_ptr_for_mut_ref(context_ptr);
-        let _ = &context as &Send;
-        let _ = &context as &Sync;
+        let _ = &context as &dyn Send;
+        let _ = &context as &dyn Sync;
     }
 
     #[test]
@@ -2958,8 +2967,8 @@ mod tests {
         let context_ptr = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
         let ssl_ptr = mesalink_SSL_new(context_ptr);
         let ssl = sanitize_ptr_for_mut_ref(ssl_ptr);
-        let _ = &ssl as &Send;
-        let _ = &ssl as &Sync;
+        let _ = &ssl as &dyn Send;
+        let _ = &ssl as &dyn Sync;
     }
 
     #[test]
@@ -3304,84 +3313,6 @@ mod tests {
             SslSessionCacheModes::Both as c_long
         );
         mesalink_SSL_CTX_free(ctx_ptr);
-    }
-
-    #[test]
-    fn early_data_to_mesalink_io() {
-        const HTTP_REQUEST: &[u8; 83] = b"GET / HTTP/1.1\r\n\
-            Host: mesalink.io\r\n\
-            Connection: close\r\n\
-            Accept-Encoding: identity\r\n\
-            \r\n";
-
-        let method = mesalink_TLSv1_3_client_method();
-        let ctx = mesalink_SSL_CTX_new(method);
-        let _ =
-            mesalink_SSL_CTX_set_session_cache_mode(ctx, SslSessionCacheModes::Client as c_long);
-
-        for i in 0..2 {
-            mesalink_ERR_clear_error();
-            let is_resuming = i != 0;
-            let ssl = mesalink_SSL_new(ctx);
-            assert_ne!(ssl, ptr::null_mut(), "SSL is null");
-            assert_eq!(
-                SSL_SUCCESS,
-                mesalink_SSL_set_tlsext_host_name(ssl, b"mesalink.io\0".as_ptr() as *const c_char),
-                "Failed to set SNI"
-            );
-            let sock = net::TcpStream::connect("mesalink.io:443").expect("Failed to connect");
-            assert_eq!(SSL_SUCCESS, mesalink_SSL_set_fd(ssl, sock.as_raw_fd()),);
-
-            let early_written_len_ptr = Box::into_raw(Box::new(0));
-            let ret = mesalink_SSL_write_early_data(
-                ssl,
-                HTTP_REQUEST.as_ptr() as *const c_uchar,
-                83,
-                early_written_len_ptr,
-            );
-            if is_resuming {
-                assert_eq!(true, ret == SSL_SUCCESS);
-            }
-            let early_written_len = unsafe { Box::from_raw(early_written_len_ptr) };
-            if is_resuming {
-                println!(
-                    "Resuming session, buffered {} bytes of early data",
-                    *early_written_len
-                );
-                assert_eq!(true, *early_written_len > 0);
-            }
-
-            if SSL_SUCCESS != mesalink_SSL_connect(ssl) {
-                let error = mesalink_SSL_get_error(ssl, -1);
-                panic!("Connect error: 0x{:X}\n", error);
-            }
-            if 2 != mesalink_SSL_get_early_data_status(ssl) {
-                let wr_len = mesalink_SSL_write(ssl, HTTP_REQUEST.as_ptr() as *const c_uchar, 83);
-                assert_eq!(true, wr_len > 0);
-            }
-            assert_eq!(SSL_SUCCESS, mesalink_SSL_flush(ssl));
-
-            let mut buf = [0u8; 2048];
-            loop {
-                let rd_len =
-                    mesalink_SSL_read(ssl, buf.as_mut_ptr() as *mut c_uchar, buf.len() as c_int);
-                println!("Read {} bytes", rd_len);
-                if rd_len <= 0 {
-                    break;
-                }
-            }
-
-            if is_resuming {
-                let error = mesalink_ERR_get_error();
-                assert_eq!(0, error);
-                let ssl_error = mesalink_SSL_get_error(ssl, -1);
-                assert_eq!(0, ssl_error);
-            }
-
-            assert_eq!(SSL_SUCCESS, mesalink_SSL_shutdown(ssl));
-            mesalink_SSL_free(ssl);
-        }
-        mesalink_SSL_CTX_free(ctx);
     }
 
     #[test]

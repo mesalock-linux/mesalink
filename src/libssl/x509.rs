@@ -382,7 +382,7 @@ mod tests {
         let name_count = mesalink_sk_X509_NAME_num(name_stack_ptr) as usize;
         assert_eq!(true, name_count > 0);
         for index in 0..name_count {
-            let mut name_ptr = mesalink_sk_X509_NAME_value(name_stack_ptr, index as c_int);
+            let name_ptr = mesalink_sk_X509_NAME_value(name_stack_ptr, index as c_int);
             assert_ne!(name_ptr, ptr::null_mut());
             let buf = [0u8; 253];
             let _ = mesalink_X509_NAME_oneline(
