@@ -35,15 +35,15 @@ nightly = []
 [dependencies]
 rustls = "0.13.0"
 webpki = "0.18.1"
-ring = { version = "0.13.2", features = ["rsa_signing", ] }
+ring = { version = "= 0.13.2", features = ["rsa_signing", ] }
 untrusted = "0.6.2"
 webpki-roots = "0.15.0"
 env_logger = "0.5"
 libc = "0.2.42"
-lazy_static = "1.0.0"
+lazy_static = "1.4.0"
 enum_to_u8_slice_derive = "0.1"
-bitflags = "1.0.4"
 base64 = "0.10"
+bitflags = "*"
 
 [patch.crates-io]
 rustls = { git = "https://github.com/mesalock-linux/rustls", tag = "v0.7.0", default-features = false }
