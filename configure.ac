@@ -133,6 +133,16 @@ then
     CARGO_FEATURES=$CARGO_FEATURES" jemalloc_allocator"
 fi
 
+AC_ARG_ENABLE([sni],
+    [AS_HELP_STRING([--enable-sni], [Enable SNI support (default: enabled)])],
+    [ ENABLE_SNI=$enableval ],
+    [ ENABLE_SNI=yes ]
+    )
+if test "$ENABLE_SNI" = "no"
+then
+    CARGO_FEATURES=$CARGO_FEATURES" no_sni_check"
+fi
+
 AC_ARG_ENABLE([client],
     [AS_HELP_STRING([--enable-client], [Enable client APIs (default: enabled)])],
     [ ENABLE_CLIENT=$enableval ],
@@ -340,9 +350,10 @@ echo
 echo "   Features "
 echo "   * Jemalloc:                   $ENABLE_JEMALLOC"
 echo "   * Logging and error strings:  $ENABLE_ERROR_STRINGS"
+echo "   * Check SNI:                  $ENABLE_SNI"
 echo "   * AES-GCM:                    $ENABLE_AESGCM"
 echo "   * Chacha20-Poly1305:          $ENABLE_CHACHAPOLY"
-echo "   * TLS 1.3 (draft):            $ENABLE_TLS13"
+echo "   * TLS 1.3:                    $ENABLE_TLS13"
 echo "   * X25519 key exchange:        $ENABLE_X25519"
 echo "   * EC key exchange:            $ENABLE_ECDH"
 echo "   * RSA signature verification: yes"

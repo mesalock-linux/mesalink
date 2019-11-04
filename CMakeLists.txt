@@ -92,12 +92,17 @@ if(HAVE_SGX)
     string(APPEND CONFIG_FEATURES sgx,)
 endif()
 
-string(APPEND CONFIG_FEATURES verifier,)
+option(HAVE_SNI "Enable SNI Support" OFF)
+if(NOT HAVE_SNI)
+    string(APPEND CONFIG_FEATURES no_sni_check,)
+endif()
 
 option(HAVE_JEMALLOC "Enable Jemalloc" OFF)
 if(HAVE_JEMALLOC)
     string(APPEND CONFIG_FEATURES jemalloc_allocator,)
 endif()
+
+string(APPEND CONFIG_FEATURES verifier,)
 
 configure_file(${PROJECT_SOURCE_DIR}/mesalink/options.h.cmake.in ${PROJECT_SOURCE_DIR}/mesalink/options.h @ONLY)
 
