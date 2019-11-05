@@ -29,6 +29,7 @@ chachapoly = ["rustls/chachapoly"]
 x25519 = ["rustls/x25519"]
 ecdh = ["rustls/ecdh"]
 ecdsa = ["rustls/ecdsa"]
+no_sni_check = ["rustls/no_sni_check"]
 verifier = ["rustls/dangerous_configuration"]
 nightly = []
 
