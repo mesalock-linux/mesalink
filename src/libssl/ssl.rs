@@ -1900,6 +1900,7 @@ fn inner_mesalink_ssl_set_tlsext_host_name(
             .to_str()
             .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?
     };
+    #[cfg(not(feature = "no_sni_check"))]
     let _ = webpki::DNSNameRef::try_from_ascii_str(hostname)
         .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     ssl.hostname = Some(hostname.to_owned());
@@ -2044,6 +2045,9 @@ fn inner_mesalink_ssl_do_handshake(ssl_ptr: *mut MESALINK_SSL_ARC) -> MesalinkIn
     do_handshake(&mut ssl)
 }
 
+#[cfg(feature = "no_sni_check")]
+use base64;
+
 fn setup_ssl_if_ready(ssl: &mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     match ssl.error {
         ErrorCode::MesalinkErrorNone
@@ -2062,6 +2066,11 @@ fn setup_ssl_if_ready(ssl: &mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
                     .as_ref()
                     .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?
                     .clone();
+                // This line guarantees a valid SNI to be used as the key of the
+                // client session cache, if no_sni_check is enabled.
+                #[cfg(feature = "no_sni_check")]
+                let hostname = base64::encode_config(&hostname, base64::CRYPT);
+
                 let dnsname = webpki::DNSNameRef::try_from_ascii_str(&hostname)
                     .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
                 let client_session = rustls::ClientSession::new(&ssl.client_config, dnsname);
