@@ -665,7 +665,12 @@ pub extern "C" fn mesalink_ERR_free_error_strings() {
 /// #include <mesalink/openssl/err.h>
 ///
 /// void ERR_error_string_n(unsigned long e, char *buf, size_t len);
+///
 /// ```
+///
+/// # Safety
+/// This API is Rust-unsafe because it dereferences a pointer provided by users
+/// Use with caution!
 #[no_mangle]
 pub unsafe extern "C" fn mesalink_ERR_error_string_n(
     error_code: c_ulong,
@@ -772,6 +777,10 @@ pub extern "C" fn mesalink_ERR_clear_error() {
 ///
 /// void ERR_print_errors_fp(FILE *fp);
 /// ```
+///
+/// # Safety
+/// This API is Rust-unsafe because it dereferences a pointer provided by users
+/// Use with caution!
 #[no_mangle]
 pub unsafe extern "C" fn mesalink_ERR_print_errors_fp(fp: *mut libc::FILE) {
     use std::io::Write;
