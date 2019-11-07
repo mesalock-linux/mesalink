@@ -91,7 +91,9 @@ mod macros;
 mod error_san;
 
 /// The ssl module is the counterpart of the OpenSSL ssl library.
+#[allow(improper_ctypes)]
 pub mod libssl;
 
 /// The crypo module is the counterpart of the OpenSSL crypto library.
+#[allow(improper_ctypes)]
 pub mod libcrypto;
