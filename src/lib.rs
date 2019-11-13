@@ -98,11 +98,15 @@ lazy_static! {
     #[doc(hidden)]
     pub(self) static ref MAGIC: [u8; MAGIC_SIZE] = {
         let mut number = [0u8; MAGIC_SIZE];
-        if rand::SystemRandom::new().fill(&mut number).is_ok() {
-            number
-        } else {
-            panic!("Getrandom error");
+        for _ in 0..10 {
+            if rand::SystemRandom::new().fill(&mut number).is_ok() {
+                return number;
+            }
+            // Wait 100ms and retry
+            let duration = std::time::Duration::from_millis(100);
+            std::thread::sleep(duration);
         }
+        panic!("Getrandom error");
     };
 }
 
