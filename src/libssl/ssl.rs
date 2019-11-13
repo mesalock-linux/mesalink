@@ -2046,7 +2046,18 @@ fn inner_mesalink_ssl_do_handshake(ssl_ptr: *mut MESALINK_SSL_ARC) -> MesalinkIn
 }
 
 #[cfg(feature = "no_sni_check")]
-use base64;
+struct DNSNameRef<'a>(untrusted::Input<'a>);
+
+// This is gross, but we make our own DNSNameRef, to avoid webpki trying to
+// validate it, and then unsafe transmute it to the webpki one.
+// https://github.com/databricks/click/blob/master/src/subjaltnames.rs#L32-L43
+#[cfg(feature = "no_sni_check")]
+impl<'a> DNSNameRef<'a> {
+    unsafe fn get_webpki_ref(input: untrusted::Input<'a>) -> webpki::DNSNameRef<'a> {
+        let inner = DNSNameRef(input);
+        std::mem::transmute(inner)
+    }
+}
 
 fn setup_ssl_if_ready(ssl: &mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     match ssl.error {
@@ -2066,13 +2077,13 @@ fn setup_ssl_if_ready(ssl: &mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
                     .as_ref()
                     .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?
                     .clone();
-                // This line guarantees a valid SNI to be used as the key of the
-                // client session cache, if no_sni_check is enabled.
-                #[cfg(feature = "no_sni_check")]
-                let hostname = base64::encode_config(&hostname, base64::CRYPT);
-
+                #[cfg(not(feature = "no_sni_check"))]
                 let dnsname = webpki::DNSNameRef::try_from_ascii_str(&hostname)
                     .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+                #[cfg(feature = "no_sni_check")]
+                let dnsname: webpki::DNSNameRef = unsafe {
+                    DNSNameRef::get_webpki_ref(untrusted::Input::from(hostname.as_bytes()))
+                };
                 let client_session = rustls::ClientSession::new(&ssl.client_config, dnsname);
                 ssl.session = Some(ClientOrServerSession::Client(client_session));
             }
