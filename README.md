@@ -10,9 +10,6 @@
 [![License](https://img.shields.io/badge/license-BSD-blue.svg)](LICENSE)
 
 MesaLink is a memory-safe and OpenSSL-compatible TLS library.
-MesaLink has been in production at Baidu with >10 million monthly active users.
-
-Visit us on our website: [https://mesalink.io](https://mesalink.io).
 
 ## Release history
 * 1.0.0 (🎂 04-02-2019 🎂)
@@ -208,12 +205,8 @@ inspiration!
 
 ## Maintainer
 
- * Yiming Jing `<jingyiming@baidu.com>` [@kevinis](https://github.com/kevinis)
-
-## Steering Committee
-
-  - Tao Wei
-  - Yulong Zhang
+ * 2018.04 - 2019.11: Yiming Jing `<jingyiming@baidu.com>` [@ymjing](https://github.com/ymjing)
+ * 2019.12 - : TBD
 
 ## License
 MesaLink is provided under the 3-Clause BSD license. For a copy, see the LICENSE
