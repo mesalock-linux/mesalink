@@ -1,11 +1,5 @@
-#
-#   __  __                 _     _       _
-#  |  \/  | ___  ___  __ _| |   (_)_ __ | | __
-#  | |\/| |/ _ \/ __|/ _` | |   | | '_ \| |/ /
-#  | |  | |  __/\__ \ (_| | |___| | | | |   <
-#  |_|  |_|\___||___/\__,_|_____|_|_| |_|_|\_\
-#
-# Copyright (c) 2017-2018, The MesaLink Authors.
+# Copyright (c) 2019, Yiming Jing
+# Copyright (c) 2017-2019, The MesaLink Authors.
 # All rights reserved.
 #
 # This work is licensed under the terms of the BSD 3-Clause License.
@@ -16,7 +10,7 @@ cmake_minimum_required(VERSION 3.0)
 
 project(MesaLink C CXX)
 set(DEFAULT_BUILD_TYPE "Release")
-set(MESALINK_VERSION_STRING "1.1.0")
+set(MESALINK_VERSION_STRING "15.2.0")
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 enable_language(Rust)
@@ -26,7 +20,7 @@ if(RUSTC_VERSION AND RUSTC_VERSION VERSION_LESS 1.31)
     message(FATAL_ERROR "Rust is too old, please install at least 1.31 to support the Rust 2018 edition")
 endif()
 
-project(MesaLink VERSION 15.1.0)
+project(MesaLink VERSION 15.2.0)
 set(LIB_NAME mesalink)
 
 # Config options
@@ -42,59 +36,9 @@ endif()
 
 option(HAVE_EXAMPLES "Enable examples (default: disabled)" OFF)
 
-option(HAVE_CLIENT "Enable client APIs (default: enabled)" ON)
-if(HAVE_CLIENT)
-    string(APPEND CONFIG_FEATURES client_apis,)
-endif()
-
-option(HAVE_SERVER "Enable server APIs (default: enabled)" ON)
-if(HAVE_SERVER)
-    string(APPEND CONFIG_FEATURES server_apis,)
-endif()
-
 option(HAVE_ERROR_STRINGS "Enable error string table (default: enabled)" ON)
 if(HAVE_ERROR_STRINGS)
     string(APPEND CONFIG_FEATURES error_strings,)
-endif()
-
-option(HAVE_AESGCM "Enable AES-GCM bulk encryption (default: enabled)" ON)
-if(HAVE_AESGCM)
-    string(APPEND CONFIG_FEATURES aesgcm,)
-endif()
-
-option(HAVE_CHACHAPOLY "Enable Chacha20Poly1305 bulk encryption (default: enabled)" ON)
-if(HAVE_CHACHAPOLY)
-    string(APPEND CONFIG_FEATURES chachapoly,)
-endif()
-
-option(HAVE_TLS13 "Enable TLS 1.3" ON)
-if(HAVE_TLS13)
-    string(APPEND CONFIG_FEATURES tls13,)
-endif()
-
-option(HAVE_X25519 "Enable Curve25519 for key exchange (default: enabled)" ON)
-if(HAVE_X25519)
-    string(APPEND CONFIG_FEATURES x25519,)
-endif()
-
-option(HAVE_ECDH "Enable curve secp256r1 and secp384r1 for key exchange (default: enabled)" ON)
-if(HAVE_ECDH)
-    string(APPEND CONFIG_FEATURES ecdh,)
-endif()
-
-option(HAVE_ECDSA "Enable curve secp256r1 and secp384r1 for signature verification (default: enabled)" ON)
-if(HAVE_ECDSA)
-    string(APPEND CONFIG_FEATURES ecdsa,)
-endif()
-
-option(HAVE_SGX "Enable experimental SGX attestation (default: disabled)" OFF)
-if(HAVE_SGX)
-    string(APPEND CONFIG_FEATURES sgx,)
-endif()
-
-option(HAVE_SNI "Enable SNI Support" OFF)
-if(NOT HAVE_SNI)
-    string(APPEND CONFIG_FEATURES no_sni_check,)
 endif()
 
 option(HAVE_JEMALLOC "Enable Jemalloc" OFF)
@@ -106,7 +50,7 @@ string(APPEND CONFIG_FEATURES verifier,)
 
 configure_file(${PROJECT_SOURCE_DIR}/mesalink/options.h.cmake.in ${PROJECT_SOURCE_DIR}/mesalink/options.h @ONLY)
 
-# Build MesaLink and its examples
+# Build TabbySSL and its examples
 cargo_build(NAME mesalink CROSS_RUST_TARGET ${RUST_TARGET} FEATURES ${CONFIG_FEATURES})
 
 if(UNIX AND HAVE_EXAMPLES)
@@ -119,7 +63,7 @@ if(UNIX AND HAVE_EXAMPLES)
     target_link_libraries(server mesalink)
 endif()
 
-# Install the MesaLink shared library and headers
+# Install the TabbySSL shared library and headers
 
 include(GNUInstallDirs)
 get_property(install_lib_files GLOBAL PROPERTY install_lib_files_property)
@@ -156,7 +100,7 @@ install(DIRECTORY mesalink
 # Set up CPack
 set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
 set(CPACK_PACKAGE_VENDOR "Github")
-SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "MesaLink - A memory-safe and OpenSSL-compatible TLS Library")
+SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "MesaLink - OpenSSL compatibility layer for the Rust SSL/TLS stack")
 set(CPACK_PACKAGE_VERSION ${MESALINK_VERSION_STRING})
 set(CPACK_RESOURCE_FILE_LICENSE ${PROJECT_SOURCE_DIR}/LICENSE)
 
@@ -172,5 +116,5 @@ set(CPACK_COMPONENT_LIBRARIES_GROUP "Development")
 set(CPACK_COMPONENT_HEADERS_GROUP "Development")
 
 SET(CPACK_GENERATOR "TGZ")
-SET(CPACK_DEBIAN_PACKAGE_MAINTAINER "Yiming Jing (jingyiming@baidu.com)")
+SET(CPACK_DEBIAN_PACKAGE_MAINTAINER "Yiming Jing (yjing@apache.org)")
 INCLUDE(CPack)
