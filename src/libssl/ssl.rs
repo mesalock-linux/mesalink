@@ -900,7 +900,7 @@ fn update_ctx_if_both_certs_and_key_set(ctx: &mut Arc<MESALINK_CTX>) -> Mesalink
             .set_single_client_cert(certs.clone(), priv_key.clone());
         util::get_context_mut(ctx)
             .server_config
-            .set_single_cert(certs.clone(), priv_key.clone())
+            .set_single_cert(certs, priv_key)
             .map_err(|e| error!(e.into()))?;
     }
     Ok(SSL_SUCCESS)
@@ -1295,7 +1295,8 @@ fn inner_mesalink_ssl_ctx_set_verify(
     ctx_ptr: *mut MESALINK_CTX_ARC,
     mode: c_int,
 ) -> MesalinkInnerResult<c_int> {
-    let mode = VerifyModes::from_bits(mode).ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
+    let mode =
+        VerifyModes::from_bits(mode).ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
     if mode == VerifyModes::VERIFY_NONE {
         util::get_context_mut(ctx)
