@@ -1,5 +1,11 @@
 ## Release history
 
+* 0.7.2 (11-24-2018)
+  - Client authentication
+  - Use armv7-linux-androideabi for Android builds
+* 0.7.1 (09-05-2018)
+  - SSL_CTX_load_verify_location
+  - Fix duplicate `floatdisf` symbols
 * 0.7.0 (08-14-2018)
   - TLS 1.3 draft 28
   - Client-side support for TLS 1.3 0-RTT ([rustls PR
