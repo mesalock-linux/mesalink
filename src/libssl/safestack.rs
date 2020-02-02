@@ -339,7 +339,7 @@ mod tests {
     fn x509_name_sk() {
         let stack_ptr: *mut MESALINK_STACK_MESALINK_X509_NAME = mesalink_sk_X509_NAME_new_null();
         let names = ["*.google.com", "youtube.com", "map.google.com"];
-        for name in names.into_iter() {
+        for name in names.iter() {
             let x509_name = MESALINK_X509_NAME::new(name.as_bytes());
             let x509_name_ptr = Box::into_raw(Box::new(x509_name)) as *mut MESALINK_X509_NAME;
             assert_eq!(

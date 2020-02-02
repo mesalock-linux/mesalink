@@ -35,10 +35,6 @@ pub mod safestack;
 /// performance.
 mod cache;
 
-/// Flags reserved for SGX remote attestation
-#[cfg(feature = "sgx")]
-mod sgx;
-
 #[doc(hidden)]
 #[repr(C)]
 pub(self) enum SslConstants {

@@ -58,7 +58,6 @@ extern "C" {
 #define SSL_load_error_strings mesalink_SSL_load_error_strings
 
 #define TLS_method mesalink_TLS_method
-#ifdef HAVE_CLIENT
 // Version-flexible methods
 #define TLS_client_method mesalink_TLS_client_method
 #define SSLv23_client_method mesalink_SSLv23_client_method
@@ -70,12 +69,8 @@ extern "C" {
 
 // Version-specific methods
 #define TLSv1_2_client_method mesalink_TLSv1_2_client_method
-#ifdef HAVE_TLS13
 #define TLSv1_3_client_method mesalink_TLSv1_3_client_method
-#endif
-#endif
 
-#ifdef HAVE_SERVER
 // Version-flexible methods
 #define TLS_server_method mesalink_TLS_server_method
 #define SSLv23_server_method mesalink_SSLv23_server_method
@@ -87,11 +82,7 @@ extern "C" {
 
 // Version-specific methods
 #define TLSv1_2_server_method mesalink_TLSv1_2_server_method
-#ifdef HAVE_TLS13
 #define TLSv1_3_server_method mesalink_TLSv1_3_server_method
-#endif
-
-#endif
 
 #define SSL_CTX_new mesalink_SSL_CTX_new
 #define SSL_CTX_load_verify_locations mesalink_SSL_CTX_load_verify_locations
@@ -128,6 +119,7 @@ extern "C" {
 #define SSL_set_SSL_CTX mesalink_SSL_set_SSL_CTX
 
 #ifdef HAVE_WINDOWS
+#include <winsock2.h>
 #define SSL_set_socket mesalink_SSL_set_socket
 #define SSL_get_socket mesalink_SSL_get_socket
 #endif
@@ -137,20 +129,14 @@ extern "C" {
 
 #define SSL_do_handshake mesalink_SSL_do_handshake
 
-#ifdef HAVE_CLIENT
 #define SSL_connect mesalink_SSL_connect
 #define SSL_connect0 mesalink_SSL_connect0
-#endif
-#ifdef HAVE_SERVER
 #define SSL_accept mesalink_SSL_accept
-#endif
 
 #define SSL_write mesalink_SSL_write
 #define SSL_read mesalink_SSL_read
-#ifdef HAVE_TLS13
 #define SSL_write_early_data mesalink_SSL_write_early_data
 #define SSL_get_early_data_status mesalink_SSL_get_early_data_status
-#endif
 #define SSL_flush mesalink_SSL_flush
 #define SSL_shutdown mesalink_SSL_shutdown
 #define SSL_get_version mesalink_SSL_get_version
@@ -161,10 +147,6 @@ extern "C" {
 #define SSL_set_connect_state mesalink_SSL_set_connect_state
 #define SSL_set_accept_state mesalink_SSL_set_accept_state
 #define SSL_is_server mesalink_SSL_is_server
-
-#ifdef HAVE_SGX
-#define SSL_CTX_set_sgx_verify mesalink_SSL_CTX_set_sgx_verify
-#endif
 
 #ifdef __cplusplus
 } /* extern C */
