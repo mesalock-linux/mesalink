@@ -1,6 +1,6 @@
 variables:
-  clippy_toolchain: 1.36.0
-  minimum_toolchain: 1.31.0
+  clippy_toolchain: 1.41.0
+  minimum_toolchain: 1.41.0
 
 resources:
   repositories:
@@ -25,7 +25,7 @@ jobs:
   pool:
     vmImage: $(imageName)
   steps:
-    - template: az-pipeline/unstable/rustup.yml@templates
+    - template: ci/azure/rustup.yml
     - template: ci/azure/native_build.yml
     - template: ci/azure/pack.yml
     - template: ci/azure/release.yml
@@ -60,7 +60,7 @@ jobs:
         c_target: 'x86_64-windows-gnu'
         arch: 'x86_64_windows_mingw'
   steps:
-    - template: az-pipeline/unstable/rustup.yml@templates
+    - template: ci/azure/rustup.yml
       parameters:
         rustup_target: $(rustup_target)
     - template: ci/azure/cross_build.yml
