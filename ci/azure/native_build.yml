@@ -7,6 +7,7 @@ steps:
     condition: ne( variables['Agent.OS'], 'Windows_NT' )
     displayName: "CMake build (Linux/macOS)"
   - bash: |
+      rustup target add x86_64-pc-windows-msvc
       mkdir build && cd build
       cmake -G "Visual Studio 15 2017 Win64" ..
       cmake --build .

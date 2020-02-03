@@ -586,7 +586,6 @@ pub extern "C" fn mesalink_TLS_method() -> *const MESALINK_METHOD {
 /// ```
 ///
 #[no_mangle]
-#[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_TLS_client_method() -> *const MESALINK_METHOD {
     let method = MESALINK_METHOD::new(
         vec![
@@ -608,7 +607,6 @@ pub extern "C" fn mesalink_TLS_client_method() -> *const MESALINK_METHOD {
 /// ```
 ///
 #[no_mangle]
-#[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_SSLv23_client_method() -> *const MESALINK_METHOD {
     mesalink_TLS_client_method()
 }
@@ -622,7 +620,6 @@ pub extern "C" fn mesalink_SSLv23_client_method() -> *const MESALINK_METHOD {
 /// ```
 ///
 #[no_mangle]
-#[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_SSLv3_client_method() -> *const MESALINK_METHOD {
     mesalink_not_available_method()
 }
@@ -636,7 +633,6 @@ pub extern "C" fn mesalink_SSLv3_client_method() -> *const MESALINK_METHOD {
 /// ```
 ///
 #[no_mangle]
-#[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_TLSv1_client_method() -> *const MESALINK_METHOD {
     mesalink_not_available_method()
 }
@@ -650,7 +646,6 @@ pub extern "C" fn mesalink_TLSv1_client_method() -> *const MESALINK_METHOD {
 /// ```
 ///
 #[no_mangle]
-#[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_TLSv1_1_client_method() -> *const MESALINK_METHOD {
     mesalink_not_available_method()
 }
@@ -665,7 +660,6 @@ pub extern "C" fn mesalink_TLSv1_1_client_method() -> *const MESALINK_METHOD {
 /// ```
 ///
 #[no_mangle]
-#[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_TLSv1_2_client_method() -> *const MESALINK_METHOD {
     let method = MESALINK_METHOD::new(
         vec![rustls::ProtocolVersion::TLSv1_2],
@@ -684,7 +678,6 @@ pub extern "C" fn mesalink_TLSv1_2_client_method() -> *const MESALINK_METHOD {
 /// ```
 ///
 #[no_mangle]
-#[cfg(all(feature = "tls13", feature = "client_apis"))]
 pub extern "C" fn mesalink_TLSv1_3_client_method() -> *const MESALINK_METHOD {
     let method = MESALINK_METHOD::new(
         vec![rustls::ProtocolVersion::TLSv1_3],
@@ -703,32 +696,12 @@ pub extern "C" fn mesalink_TLSv1_3_client_method() -> *const MESALINK_METHOD {
 /// ```
 ///
 #[no_mangle]
-#[cfg(all(feature = "tls13", feature = "server_apis"))]
 pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
     let method = MESALINK_METHOD::new(
         vec![
             rustls::ProtocolVersion::TLSv1_3,
             rustls::ProtocolVersion::TLSv1_2,
         ],
-        ClientOrServerMode::Server,
-    );
-    Box::into_raw(Box::new(method))
-}
-
-/// A general-purpose version-flexible SSL/TLS method. The supported protocol is
-/// TLSv1.2.
-///
-/// ```c
-/// #include <mesalink/openssl/ssl.h>
-///
-/// const SSL_METHOD *TLS_server_method(void);
-/// ```
-///
-#[no_mangle]
-#[cfg(all(not(feature = "tls13"), feature = "server_apis"))]
-pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
-    let method = MESALINK_METHOD::new(
-        vec![rustls::ProtocolVersion::TLSv1_2],
         ClientOrServerMode::Server,
     );
     Box::into_raw(Box::new(method))
@@ -744,7 +717,7 @@ pub extern "C" fn mesalink_TLS_server_method() -> *const MESALINK_METHOD {
 /// ```
 ///
 #[no_mangle]
-#[cfg(feature = "server_apis")]
+
 pub extern "C" fn mesalink_SSLv23_server_method() -> *const MESALINK_METHOD {
     mesalink_TLS_server_method()
 }
@@ -758,7 +731,7 @@ pub extern "C" fn mesalink_SSLv23_server_method() -> *const MESALINK_METHOD {
 /// ```
 ///
 #[no_mangle]
-#[cfg(feature = "server_apis")]
+
 pub extern "C" fn mesalink_SSLv3_server_method() -> *const MESALINK_METHOD {
     mesalink_not_available_method()
 }
@@ -772,7 +745,7 @@ pub extern "C" fn mesalink_SSLv3_server_method() -> *const MESALINK_METHOD {
 /// ```
 ///
 #[no_mangle]
-#[cfg(feature = "server_apis")]
+
 pub extern "C" fn mesalink_TLSv1_server_method() -> *const MESALINK_METHOD {
     mesalink_not_available_method()
 }
@@ -786,7 +759,7 @@ pub extern "C" fn mesalink_TLSv1_server_method() -> *const MESALINK_METHOD {
 /// ```
 ///
 #[no_mangle]
-#[cfg(feature = "server_apis")]
+
 pub extern "C" fn mesalink_TLSv1_1_server_method() -> *const MESALINK_METHOD {
     mesalink_not_available_method()
 }
@@ -801,7 +774,7 @@ pub extern "C" fn mesalink_TLSv1_1_server_method() -> *const MESALINK_METHOD {
 /// ```
 ///
 #[no_mangle]
-#[cfg(feature = "server_apis")]
+
 pub extern "C" fn mesalink_TLSv1_2_server_method() -> *const MESALINK_METHOD {
     let method = MESALINK_METHOD::new(
         vec![rustls::ProtocolVersion::TLSv1_2],
@@ -820,7 +793,6 @@ pub extern "C" fn mesalink_TLSv1_2_server_method() -> *const MESALINK_METHOD {
 /// ```
 ///
 #[no_mangle]
-#[cfg(all(feature = "tls13", feature = "server_apis"))]
 pub extern "C" fn mesalink_TLSv1_3_server_method() -> *const MESALINK_METHOD {
     let method = MESALINK_METHOD::new(
         vec![rustls::ProtocolVersion::TLSv1_3],
@@ -928,7 +900,7 @@ fn update_ctx_if_both_certs_and_key_set(ctx: &mut Arc<MESALINK_CTX>) -> Mesalink
             .set_single_client_cert(certs.clone(), priv_key.clone());
         util::get_context_mut(ctx)
             .server_config
-            .set_single_cert(certs.clone(), priv_key.clone())
+            .set_single_cert(certs, priv_key)
             .map_err(|e| error!(e.into()))?;
     }
     Ok(SSL_SUCCESS)
@@ -1332,67 +1304,16 @@ fn inner_mesalink_ssl_ctx_set_verify(
             .dangerous()
             .set_certificate_verifier(Arc::new(NoServerAuth {}));
     } else if mode == VerifyModes::VERIFY_PEER | VerifyModes::VERIFY_FAIL_IF_NO_PEER_CERT {
-        let client_auth = rustls::AllowAnyAuthenticatedClient::new(ctx.ca_roots.clone());
-        util::get_context_mut(ctx).server_config.verifier = client_auth;
+        let verifier = rustls::AllowAnyAuthenticatedClient::new(ctx.ca_roots.clone());
+        util::get_context_mut(ctx)
+            .server_config
+            .set_client_certificate_verifier(verifier);
     } else if mode == VerifyModes::VERIFY_PEER {
-        let client_auth = rustls::AllowAnyAnonymousOrAuthenticatedClient::new(ctx.ca_roots.clone());
-        util::get_context_mut(ctx).server_config.verifier = client_auth;
+        let verifier = rustls::AllowAnyAnonymousOrAuthenticatedClient::new(ctx.ca_roots.clone());
+        util::get_context_mut(ctx)
+            .server_config
+            .set_client_certificate_verifier(verifier);
     }
-    Ok(SSL_SUCCESS)
-}
-
-/// `SSL_CTX_set_sgx_verify` sets the SSL_CTX to be used for SGX remote
-/// attestation
-///
-/// ```c
-/// #include <mesalink/openssl/ssl.h>
-///
-/// int SSL_CTX_set_sgx_verify(const SSL_CTX *ctx, const char *mr_signer, long sgx_flags);
-/// ```
-#[cfg(feature = "sgx")]
-#[no_mangle]
-pub extern "C" fn mesalink_SSL_CTX_set_sgx_verify(
-    ctx_ptr: *mut MESALINK_CTX_ARC,
-    signer_ptr: *const c_char,
-    flag: c_long,
-) -> c_int {
-    check_inner_result!(
-        inner_mesalink_ssl_ctx_set_sgx_verify(ctx_ptr, signer_ptr, flag),
-        SSL_FAILURE
-    )
-}
-
-#[cfg(feature = "sgx")]
-fn inner_mesalink_ssl_ctx_set_sgx_verify(
-    ctx_ptr: *mut MESALINK_CTX_ARC,
-    signer_ptr: *const c_char,
-    flag: c_long,
-) -> MesalinkInnerResult<c_int> {
-    use super::sgx::SgxConfigFlags;
-
-    let ctx = sanitize_ptr_for_mut_ref(ctx_ptr)?;
-    if signer_ptr.is_null() {
-        return Err(error!(MesalinkBuiltinError::NullPointer.into()));
-    }
-    let mut buf = [0u8; 32];
-    let mr_signer = unsafe { slice::from_raw_parts(signer_ptr as *const u8, 32) };
-    buf.copy_from_slice(&mr_signer[..32]);
-
-    let sgx_flag =
-        SgxConfigFlags::from_bits(flag).ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
-    let is_debug_launch = sgx_flag.intersects(SgxConfigFlags::SGX_FLAGS_DEBUG);
-    let mut sgx_verifier_builder = rustls::SgxVerifierBuilder::new(buf, is_debug_launch);
-    if sgx_flag.intersects(SgxConfigFlags::SGX_ALLOW_CONFIGURATION_NEEDED) {
-        sgx_verifier_builder = sgx_verifier_builder.allow_configuration_needed();
-    }
-    if sgx_flag.intersects(SgxConfigFlags::SGX_ALLOW_GROUP_OUT_OF_DATE) {
-        sgx_verifier_builder = sgx_verifier_builder.allow_group_out_of_date();
-    }
-    let sgx_verifier = sgx_verifier_builder.finalize();
-    util::get_context_mut(ctx)
-        .client_config
-        .dangerous()
-        .set_certificate_verifier(Arc::new(sgx_verifier));
     Ok(SSL_SUCCESS)
 }
 
@@ -2223,7 +2144,6 @@ fn do_handshake(ssl: &mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
 /// int SSL_connect(SSL *ssl);
 /// ```
 #[no_mangle]
-#[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     check_inner_result!(inner_mesalink_ssl_connect(ssl_ptr, false), SSL_FAILURE)
 }
@@ -2239,12 +2159,10 @@ pub extern "C" fn mesalink_SSL_connect(ssl_ptr: *mut MESALINK_SSL) -> c_int {
 /// int SSL_connect0(SSL *ssl);
 /// ```
 #[no_mangle]
-#[cfg(feature = "client_apis")]
 pub extern "C" fn mesalink_SSL_connect0(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     check_inner_result!(inner_mesalink_ssl_connect(ssl_ptr, true), SSL_FAILURE)
 }
 
-#[cfg(feature = "client_apis")]
 fn inner_mesalink_ssl_connect(
     ssl_ptr: *mut MESALINK_SSL,
     is_lazy: bool,
@@ -2270,12 +2188,10 @@ fn inner_mesalink_ssl_connect(
 /// int SSL_accept(SSL *ssl);
 /// ```
 #[no_mangle]
-#[cfg(feature = "server_apis")]
 pub extern "C" fn mesalink_SSL_accept(ssl_ptr: *mut MESALINK_SSL) -> c_int {
     check_inner_result!(inner_mesalink_ssl_accept(ssl_ptr), SSL_FAILURE)
 }
 
-#[cfg(feature = "server_apis")]
 fn inner_mesalink_ssl_accept(ssl_ptr: *mut MESALINK_SSL) -> MesalinkInnerResult<c_int> {
     let mut ssl = sanitize_ptr_for_mut_ref(ssl_ptr)?;
     ssl.mode = ClientOrServerMode::Server;
@@ -2606,11 +2522,9 @@ mod util {
     #[cfg(feature = "error_strings")]
     pub fn suite_to_name_str(suite: u16) -> &'static [u8] {
         match suite {
-            #[cfg(feature = "chachapoly")]
             0x1303 => b"TLS13_CHACHA20_POLY1305_SHA256\0",
             0xcca8 => b"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256\0",
             0xcca9 => b"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256\0",
-            #[cfg(feature = "aesgcm")]
             0x1301 => b"TLS13_AES_128_GCM_SHA256\0",
             0x1302 => b"TLS13_AES_256_GCM_SHA384\0",
             0xc02b => b"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256\0",
@@ -2623,10 +2537,8 @@ mod util {
 
     pub fn suite_to_version_str(suite: u16) -> &'static [u8] {
         match suite {
-            #[cfg(feature = "chachapoly")]
             0x1303 => CONST_TLS13_STR,
             0xcca8 | 0xcca9 => CONST_TLS12_STR,
-            #[cfg(feature = "aesgcm")]
             0x1301 | 0x1302 => CONST_TLS13_STR,
             0xc02b | 0xc02c | 0xc02f | 0xc030 => CONST_TLS12_STR,
             _ => b"Unsupported ciphersuite\0",
@@ -3683,29 +3595,5 @@ mod tests {
         let _ = unsafe { Box::from_raw(wr_len_ptr) };
         mesalink_SSL_free(ssl);
         mesalink_SSL_CTX_free(ctx);
-    }
-
-    #[cfg(feature = "sgx")]
-    #[test]
-    fn test_sgx_verifier() {
-        let ctx_ptr = mesalink_SSL_CTX_new(mesalink_TLS_client_method());
-        let mr_signer_ptr = b"12345678123456781234567812345678".as_ptr() as *const c_char;
-        assert_eq!(
-            SSL_FAILURE,
-            mesalink_SSL_CTX_set_sgx_verify(ptr::null_mut(), mr_signer_ptr, 7)
-        );
-        assert_eq!(
-            SSL_FAILURE,
-            mesalink_SSL_CTX_set_sgx_verify(ctx_ptr, ptr::null(), 7)
-        );
-        assert_eq!(
-            SSL_FAILURE,
-            mesalink_SSL_CTX_set_sgx_verify(ctx_ptr, ptr::null(), 100)
-        );
-        assert_eq!(
-            SSL_SUCCESS,
-            mesalink_SSL_CTX_set_sgx_verify(ctx_ptr, mr_signer_ptr, 7)
-        );
-        mesalink_SSL_CTX_free(ctx_ptr);
     }
 }

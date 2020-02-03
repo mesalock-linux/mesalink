@@ -69,7 +69,6 @@ MESALINK_API void mesalink_ERR_free_error_strings(void);
 
 typedef MESALINK_METHOD *(*mesalink_method_func)(void);
 MESALINK_API MESALINK_METHOD *mesalink_TLS_method(void);
-#ifdef HAVE_CLIENT
 // Version-flexible methods
 MESALINK_API MESALINK_METHOD *mesalink_TLS_client_method(void);
 MESALINK_API MESALINK_METHOD *mesalink_SSLv23_client_method(void);
@@ -81,13 +80,9 @@ MESALINK_API MESALINK_METHOD *mesalink_TLSv1_1_client_method(void);
 
 // Version-specific methods
 MESALINK_API MESALINK_METHOD *mesalink_TLSv1_2_client_method(void);
-#ifdef HAVE_TLS13
 MESALINK_API MESALINK_METHOD *mesalink_TLSv1_3_client_method(void);
-#endif
 MESALINK_API MESALINK_METHOD *mesalink_TLS_client_method(void);
-#endif
 
-#ifdef HAVE_SERVER
 // Version-flexible methods
 MESALINK_API MESALINK_METHOD *mesalink_SSLv23_server_method(void);
 MESALINK_API MESALINK_METHOD *mesalink_TLSv_server_method(void);
@@ -99,10 +94,7 @@ MESALINK_API MESALINK_METHOD *mesalink_TLSv1_1_server_method(void);
 
 // Version-specific methods
 MESALINK_API MESALINK_METHOD *mesalink_TLSv1_2_server_method(void);
-#ifdef HAVE_TLS13
 MESALINK_API MESALINK_METHOD *mesalink_TLSv1_3_server_method(void);
-#endif
-#endif
 
 MESALINK_API MESALINK_CTX *mesalink_SSL_CTX_new(MESALINK_METHOD *);
 MESALINK_API int mesalink_SSL_CTX_load_verify_locations(MESALINK_CTX *,
@@ -166,23 +158,16 @@ MESALINK_API SOCKET mesalink_SSL_get_socket(const MESALINK_SSL *);
 MESALINK_API int mesalink_SSL_set_fd(MESALINK_SSL *, int);
 MESALINK_API int mesalink_SSL_get_fd(const MESALINK_SSL *);
 
-#ifdef HAVE_CLIENT
 MESALINK_API int mesalink_SSL_connect(MESALINK_SSL *);
 MESALINK_API int mesalink_SSL_connect0(MESALINK_SSL *);
-#endif
-
-#ifdef HAVE_SERVER
 MESALINK_API int mesalink_SSL_accept(MESALINK_SSL *);
-#endif
 
 MESALINK_API int mesalink_SSL_write(MESALINK_SSL *, const void *, int);
 MESALINK_API int mesalink_SSL_read(MESALINK_SSL *, void *, int);
 MESALINK_API int mesalink_SSL_flush(MESALINK_SSL *);
-#ifdef HAVE_TLS13
 MESALINK_API int mesalink_SSL_write_early_data(MESALINK_SSL *, const void *,
                                                int, size_t *);
 MESALINK_API int mesalink_SSL_get_early_data_status(const MESALINK_SSL *);
-#endif
 MESALINK_API int mesalink_SSL_shutdown(MESALINK_SSL *);
 MESALINK_API MESALINK_CTX *mesalink_SSL_get_SSL_CTX(const MESALINK_SSL *);
 MESALINK_API MESALINK_CTX *mesalink_SSL_set_SSL_CTX(MESALINK_SSL *,
@@ -195,17 +180,6 @@ MESALINK_API int mesalink_SSL_get_error(const MESALINK_SSL *, int);
 MESALINK_API void mesalink_SSL_set_connect_state(MESALINK_SSL *);
 MESALINK_API void mesalink_SSL_set_accept_state(MESALINK_SSL *);
 MESALINK_API int mesalink_SSL_is_server(const MESALINK_SSL *);
-
-#ifdef HAVE_SGX
-typedef enum mesalink_sgx_config_flag_t {
-  SGX_FLAGS_DEBUG = 1,
-  SGX_ALLOW_CONFIGURATION_NEEDED = 2,
-  SGX_ALLOW_GROUP_OUT_OF_DATE = 4,
-} mesalink_sgx_config_flag_t;
-
-MESALINK_API int mesalink_SSL_CTX_set_sgx_verify(MESALINK_CTX *, const char *,
-                                                 long);
-#endif
 
 #ifdef __cplusplus
 } /* extern C */

@@ -25,7 +25,7 @@ LT_PREREQ([2.2])
 LT_INIT
 LT_LANG([C])
 
-MESALINK_LIBRARY_VERSION=15:1:0
+MESALINK_LIBRARY_VERSION=15:2:0
 #                        | | |
 #                 +------+ | +---+
 #                 |        |     |
@@ -133,42 +133,6 @@ then
     CARGO_FEATURES=$CARGO_FEATURES" jemalloc_allocator"
 fi
 
-AC_ARG_ENABLE([sni],
-    [AS_HELP_STRING([--enable-sni], [Enable SNI support (default: enabled)])],
-    [ ENABLE_SNI=$enableval ],
-    [ ENABLE_SNI=yes ]
-    )
-if test "$ENABLE_SNI" = "no"
-then
-    CARGO_FEATURES=$CARGO_FEATURES" no_sni_check"
-fi
-
-AC_ARG_ENABLE([client],
-    [AS_HELP_STRING([--enable-client], [Enable client APIs (default: enabled)])],
-    [ ENABLE_CLIENT=$enableval ],
-    [ ENABLE_CLIENT=yes ]
-    )
-if test "$ENABLE_CLIENT" = "yes"
-then
-    CARGO_FEATURES=$CARGO_FEATURES" client_apis"
-    CONFIG_OPTIONS="$CONFIG_OPTIONS HAVE_CLIENT"
-else
-    CONFIG_OPTIONS="$CONFIG_OPTIONS NO_CLIENT"
-fi
-
-AC_ARG_ENABLE([server],
-    [AS_HELP_STRING([--enable-server], [Enable server APIs (default: enabled)])],
-    [ ENABLE_SERVER=$enableval ],
-    [ ENABLE_SERVER=yes ]
-    )
-if test "$ENABLE_SERVER" = "yes"
-then
-    CARGO_FEATURES=$CARGO_FEATURES" server_apis"
-    CONFIG_OPTIONS="$CONFIG_OPTIONS HAVE_SERVER"
-else
-    CONFIG_OPTIONS="$CONFIG_OPTIONS NO_SERVER"
-fi
-
 AC_ARG_ENABLE([errorstrings],
     [AS_HELP_STRING([--enable-errorstrings], [Enable error string table (default: enabled)])],
     [ ENABLE_ERROR_STRINGS=$enableval ],
@@ -182,97 +146,6 @@ else
     CONFIG_OPTIONS="$CONFIG_OPTIONS NO_ERROR_STRINGS"
 fi
 
-AC_ARG_ENABLE([aesgcm],
-    [AS_HELP_STRING([--enable-aesgcm], [Enable AES-GCM bulk encryption (default: enabled)])],
-    [ ENABLE_AESGCM=$enableval ],
-    [ ENABLE_AESGCM=yes ]
-    )
-if test "$ENABLE_AESGCM" = "yes"
-then
-    CARGO_FEATURES=$CARGO_FEATURES" aesgcm"
-    CONFIG_OPTIONS="$CONFIG_OPTIONS HAVE_AESGCM"
-else
-    CONFIG_OPTIONS="$CONFIG_OPTIONS NO_AESGCM"
-fi
-
-AC_ARG_ENABLE([chachapoly],
-    [AS_HELP_STRING([--enable-chachapoly], [Enable Chacha20Poly1305 bulk encryption (default: enabled)])],
-    [ ENABLE_CHACHAPOLY=$enableval ],
-    [ ENABLE_CHACHAPOLY=yes ]
-    )
-if test "$ENABLE_CHACHAPOLY" = "yes"
-then
-    CARGO_FEATURES=$CARGO_FEATURES" chachapoly"
-    CONFIG_OPTIONS="$CONFIG_OPTIONS HAVE_CHACHAPOLY"
-else
-    CONFIG_OPTIONS="$CONFIG_OPTIONS NO_CHACHAPOLY"
-fi
-
-AC_ARG_ENABLE([tls13],
-    [AS_HELP_STRING([--enable-tls13], [Enable TLS 1.3 draft (default: enabled)])],
-    [ ENABLE_TLS13=$enableval ],
-    [ ENABLE_TLS13=yes ]
-    )
-if test "$ENABLE_TLS13" = "yes"
-then
-    CARGO_FEATURES=$CARGO_FEATURES" tls13"
-    CONFIG_OPTIONS="$CONFIG_OPTIONS HAVE_TLS13"
-else
-    CONFIG_OPTIONS="$CONFIG_OPTIONS NO_TLS13"
-fi
-
-AC_ARG_ENABLE([x25519],
-    [AS_HELP_STRING([--enable-x25519], [Enable Curve25519 for key exchange (default: enabled)])],
-    [ ENABLE_X25519=$enableval ],
-    [ ENABLE_X25519=yes ]
-    )
-if test "$ENABLE_X25519" = "yes"
-then
-    CARGO_FEATURES=$CARGO_FEATURES" x25519"
-    CONFIG_OPTIONS="$CONFIG_OPTIONS HAVE_X25519"
-else
-    CONFIG_OPTIONS="$CONFIG_OPTIONS NO_X25519"
-fi
-
-AC_ARG_ENABLE([ecdh],
-    [AS_HELP_STRING([--enable-ecdh], [Enable curve secp256r1 and secp384r1 for key exchange (default: enabled)])],
-    [ ENABLE_ECDH=$enableval ],
-    [ ENABLE_ECDH=yes ]
-    )
-if test "$ENABLE_ECDH" = "yes"
-then
-    CARGO_FEATURES=$CARGO_FEATURES" ecdh"
-    CONFIG_OPTIONS="$CONFIG_OPTIONS HAVE_ECDH"
-else
-    CONFIG_OPTIONS="$CONFIG_OPTIONS NO_ECDH"
-fi
-
-AC_ARG_ENABLE([ecdsa],
-    [AS_HELP_STRING([--enable-ecdsa], [Enable curve secp256r1 and secp384r1 for signature verification (default: enabled)])],
-    [ ENABLE_ECDSA=$enableval ],
-    [ ENABLE_ECDSA=yes ]
-    )
-if test "$ENABLE_ECDSA" = "yes"
-then
-    CARGO_FEATURES=$CARGO_FEATURES" ecdsa"
-    CONFIG_OPTIONS="$CONFIG_OPTIONS HAVE_ECDSA"
-else
-    CONFIG_OPTIONS="$CONFIG_OPTIONS NO_ECDSA"
-fi
-
-AC_ARG_ENABLE([sgx],
-    [AS_HELP_STRING([--enable-sgx], [Enable experimental SGX attestation (default: disabled)])],
-    [ ENABLE_SGX=$enableval ],
-    [ ENABLE_SGX=no ]
-    )
-if test "$ENABLE_SGX" = "yes"
-then
-    CARGO_FEATURES=$CARGO_FEATURES" sgx"
-    CONFIG_OPTIONS="$CONFIG_OPTIONS HAVE_SGX"
-else
-    CONFIG_OPTIONS="$CONFIG_OPTIONS NO_SGX"
-fi
-
 CARGO_FEATURES=$CARGO_FEATURES" verifier"
 CARGO_FEATURES=$CARGO_FEATURES"\""
 
@@ -283,7 +156,6 @@ AC_ARG_ENABLE([examples],
     )
 AM_CONDITIONAL([BUILD_EXAMPLE_CLIENT], [test "x$ENABLE_EXAMPLES" = "xyes"])
 AM_CONDITIONAL([BUILD_EXAMPLE_SERVER], [test "x$ENABLE_EXAMPLES" = "xyes"])
-AM_CONDITIONAL([BUILD_EXAMPLE_SGX], [[test "x$ENABLE_EXAMPLES" = "xyes"] && [test "x$ENABLE_SGX" = "xyes"]])
 
 AX_CREATE_GENERIC_CONFIG
 
@@ -350,14 +222,5 @@ echo
 echo "   Features "
 echo "   * Jemalloc:                   $ENABLE_JEMALLOC"
 echo "   * Logging and error strings:  $ENABLE_ERROR_STRINGS"
-echo "   * Check SNI:                  $ENABLE_SNI"
-echo "   * AES-GCM:                    $ENABLE_AESGCM"
-echo "   * Chacha20-Poly1305:          $ENABLE_CHACHAPOLY"
-echo "   * TLS 1.3:                    $ENABLE_TLS13"
-echo "   * X25519 key exchange:        $ENABLE_X25519"
-echo "   * EC key exchange:            $ENABLE_ECDH"
-echo "   * RSA signature verification: yes"
-echo "   * EC signature verification:  $ENABLE_ECDSA"
-echo "   * SGX attestation:            $ENABLE_SGX"
 echo ""
 echo "---"

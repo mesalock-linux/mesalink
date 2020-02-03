@@ -359,6 +359,7 @@ pub enum ErrorCode {
     TLSErrorInvalidDNSName = 0x0300_0e00,
     TLSErrorHandshakeNotComplete = 0x0300_0f00,
     TLSErrorPeerSentOversizedRecord = 0x0300_1000,
+    TLSErrorNoApplicationProtocol = 0x0300_1100,
     UndefinedError = 0x0eee_eeee,
 }
 
@@ -488,6 +489,7 @@ impl From<u32> for ErrorCode {
             0x0300_0e00 => ErrorCode::TLSErrorInvalidDNSName,
             0x0300_0f00 => ErrorCode::TLSErrorHandshakeNotComplete,
             0x0300_1000 => ErrorCode::TLSErrorPeerSentOversizedRecord,
+            0x0300_1100 => ErrorCode::TLSErrorNoApplicationProtocol,
             _ => ErrorCode::UndefinedError,
         }
     }
@@ -625,9 +627,9 @@ impl<'a> From<&'a MesalinkError> for ErrorCode {
                 TLSError::InvalidSCT(_) => ErrorCode::TLSErrorInvalidSCT,
                 TLSError::General(_) => ErrorCode::TLSErrorGeneral,
                 TLSError::FailedToGetCurrentTime => ErrorCode::TLSErrorFailedToGetCurrentTime,
-                TLSError::InvalidDNSName(_) => ErrorCode::TLSErrorInvalidDNSName,
                 TLSError::HandshakeNotComplete => ErrorCode::TLSErrorHandshakeNotComplete,
                 TLSError::PeerSentOversizedRecord => ErrorCode::TLSErrorPeerSentOversizedRecord,
+                TLSError::NoApplicationProtocol => ErrorCode::TLSErrorNoApplicationProtocol,
             },
         }
     }
@@ -890,7 +892,7 @@ mod tests {
         );
     }
 
-    const ERROR_CODES: [ErrorCode; 103] = [
+    const ERROR_CODES: [ErrorCode; 104] = [
         ErrorCode::MesalinkErrorNone,
         ErrorCode::MesalinkErrorZeroReturn,
         ErrorCode::MesalinkErrorWantRead,
@@ -993,12 +995,13 @@ mod tests {
         ErrorCode::TLSErrorInvalidDNSName,
         ErrorCode::TLSErrorHandshakeNotComplete,
         ErrorCode::TLSErrorPeerSentOversizedRecord,
+        ErrorCode::TLSErrorNoApplicationProtocol,
         ErrorCode::UndefinedError,
     ];
 
     #[test]
     fn error_code_conversion_from_long() {
-        for code in ERROR_CODES.into_iter() {
+        for code in ERROR_CODES.iter() {
             assert_eq!(*code, ErrorCode::from(*code as c_ulong));
         }
     }
@@ -1019,7 +1022,7 @@ mod tests {
             MesalinkBuiltinError::Panic,
         ];
 
-        for error in mesalink_errors.into_iter() {
+        for error in mesalink_errors.iter() {
             use std::error::Error;
             let mesalink_error = error!(MesalinkErrorType::Builtin(error.clone()));
             let error_code = ErrorCode::from(&mesalink_error);
@@ -1052,7 +1055,7 @@ mod tests {
             io::ErrorKind::UnexpectedEof,
         ];
 
-        for error_kind in io_errors.into_iter() {
+        for error_kind in io_errors.iter() {
             let io_error = io::Error::from(*error_kind);
             let mesalink_error = error!(MesalinkErrorType::Io(io_error));
             let error_code = ErrorCode::from(&mesalink_error);
@@ -1083,12 +1086,12 @@ mod tests {
             rustls::TLSError::WebPKIError(webpki::Error::BadDER),
             rustls::TLSError::General("".to_string()),
             rustls::TLSError::FailedToGetCurrentTime,
-            rustls::TLSError::InvalidDNSName("".to_string()),
             rustls::TLSError::HandshakeNotComplete,
             rustls::TLSError::PeerSentOversizedRecord,
+            rustls::TLSError::NoApplicationProtocol,
         ];
 
-        for error in tls_errors.into_iter() {
+        for error in tls_errors.iter() {
             let mesalink_error = error!(MesalinkErrorType::Tls(error.clone()));
             let error_code = ErrorCode::from(&mesalink_error);
             assert_eq!(true, 3 == error_code as c_ulong >> 24);
@@ -1120,7 +1123,7 @@ mod tests {
             webpki::Error::UnsupportedSignatureAlgorithm,
         ];
 
-        for pki_error in webpki_errors.into_iter() {
+        for pki_error in webpki_errors.iter() {
             let error = rustls::TLSError::WebPKIError(*pki_error);
             let mesalink_error = error!(MesalinkErrorType::Tls(error));
             let error_code = ErrorCode::from(&mesalink_error);
@@ -1169,7 +1172,7 @@ mod tests {
             AlertDescription::NoApplicationProtocol,
         ];
 
-        for alert in alerts.into_iter() {
+        for alert in alerts.iter() {
             let error = rustls::TLSError::AlertReceived(*alert);
             let mesalink_error = error!(MesalinkErrorType::Tls(error));
             let error_code = ErrorCode::from(&mesalink_error);
@@ -1180,7 +1183,7 @@ mod tests {
 
     #[test]
     fn error_strings() {
-        for code in ERROR_CODES.into_iter() {
+        for code in ERROR_CODES.iter() {
             let error_string_ptr: *const c_char =
                 mesalink_ERR_reason_error_string(*code as c_ulong);
             assert_ne!(ptr::null(), error_string_ptr);
@@ -1194,7 +1197,7 @@ mod tests {
     fn error_string_n_with_big_buf() {
         let mut buf = [0u8; 256];
         let buf_ptr = buf.as_mut_ptr() as *mut c_char;
-        for code in ERROR_CODES.into_iter() {
+        for code in ERROR_CODES.iter() {
             let builtin_error_string_ptr: *const c_char =
                 mesalink_ERR_reason_error_string(*code as c_ulong);
             let buf_error_string_ptr =
@@ -1218,7 +1221,7 @@ mod tests {
         const BUF_SIZE: usize = 10;
         let mut buf = [0u8; BUF_SIZE];
         let buf_ptr = buf.as_mut_ptr() as *mut c_char;
-        for code in ERROR_CODES.into_iter() {
+        for code in ERROR_CODES.iter() {
             let builtin_error_string_ptr: *const c_char =
                 mesalink_ERR_reason_error_string(*code as c_ulong);
             let buf_error_string_ptr =
@@ -1238,7 +1241,7 @@ mod tests {
 
     #[test]
     fn error_string_n_with_null_buf() {
-        for code in ERROR_CODES.into_iter() {
+        for code in ERROR_CODES.iter() {
             let builtin_error_string_ptr: *const c_char =
                 mesalink_ERR_reason_error_string(*code as c_ulong);
             let buf_error_string_ptr = unsafe {

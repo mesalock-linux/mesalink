@@ -1,6 +1,6 @@
 [package]
 name = "mesalink"
-version = "1.1.0-beta"
+version = "0.10.1"
 edition = "2018"
 authors = ["The MesaLink Project Contributors"]
 license = "BSD-3-Clause"
@@ -20,24 +20,17 @@ name = "mesalink"
 crate-type = ["lib", "staticlib", "cdylib"]
 
 [features]
-default = ["client_apis", "server_apis", "error_strings", "tls13", "aesgcm", "chachapoly", "x25519", "ecdh", "ecdsa", "verifier", "sgx"]
-client_apis = []
-server_apis = []
+default = ["error_strings", "verifier"]
 error_strings = ["rustls/logging"]
-tls13 = ["rustls/tls13"]
-aesgcm = ["rustls/aesgcm"]
-chachapoly = ["rustls/chachapoly"]
-x25519 = ["rustls/x25519"]
-ecdh = ["rustls/ecdh"]
-ecdsa = ["rustls/ecdsa"]
 verifier = ["rustls/dangerous_configuration"]
-no_sni_check = ["rustls/no_sni_check"]
-sgx = ["rustls/sgx"]
-nightly = []
 jemalloc_allocator = ["jemallocator"]
 
 [dependencies]
-ring = "0.16"
+rustls = { git = "https://github.com/ctz/rustls", version = "0.16.0", default-features = false }
+ring = "0.16.10"
+webpki = "0.21.2"
+webpki-roots = "0.19.0"
+sct = "0.6.0"
 untrusted = "0.7"
 env_logger = "0.7"
 libc = "0.2"
@@ -45,28 +38,8 @@ lazy_static = "1.4"
 enum_to_u8_slice_derive = "0.1"
 bitflags = "1.2"
 base64 = "0.11"
-parking_lot = "0.9"
+parking_lot = "0.10"
 jemallocator = { version = "0.3", optional = true }
-
-[dependencies.rustls]
-git = "https://github.com/mesalock-linux/rustls"
-branch = "mesalink"
-default-features = false
-
-[dependencies.webpki]
-git = "https://github.com/mesalock-linux/webpki"
-tag = "v1.1.0"
-default-features = false
-
-[dependencies.sct]
-git = "https://github.com/mesalock-linux/sct.rs"
-tag = "v1.1.0"
-default-features = false
-
-[dependencies.webpki-roots]
-git = "https://github.com/mesalock-linux/webpki-roots"
-tag = "v1.1.0"
-default-features = false
 
 [dev-dependencies]
 log = "0.4"
@@ -85,4 +58,4 @@ overflow-checks = true
 [[example]]
 name = "bogo_shim"
 path = "examples/bogo_shim/bogo_shim.rs"
-required-features = ["verifier", "error_strings", "tls13", "aesgcm", "chachapoly", "x25519", "ecdh", "ecdsa"]
+required-features = ["verifier", "error_strings"]
