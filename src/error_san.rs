@@ -16,30 +16,27 @@
 use crate::libssl::err::{MesalinkBuiltinError, MesalinkInnerResult};
 use crate::MesalinkOpaquePointerType;
 
-pub(crate) fn sanitize_const_ptr_for_ref<'a, T>(ptr: *const T) -> MesalinkInnerResult<&'a T>
+pub(crate) fn sanitize_const_ptr_for_ref<'a, T>(ptr: Option<Box<T>>) -> MesalinkInnerResult<Box<T>>
 where
     T: MesalinkOpaquePointerType,
 {
-    let ptr = ptr as *mut T;
-    sanitize_ptr_for_mut_ref(ptr).map(|r| r as &'a T)
+    sanitize_ptr_for_mut_ref(ptr)
 }
-pub(crate) fn sanitize_ptr_for_ref<'a, T>(ptr: *mut T) -> MesalinkInnerResult<&'a T>
+pub(crate) fn sanitize_ptr_for_ref<'a, T>(ptr: Option<Box<T>>) -> MesalinkInnerResult<Box<T>>
 where
     T: MesalinkOpaquePointerType,
 {
-    sanitize_ptr_for_mut_ref(ptr).map(|r| r as &'a T)
+    sanitize_ptr_for_mut_ref(ptr)
 }
-pub(crate) fn sanitize_ptr_for_mut_ref<'a, T>(ptr: *mut T) -> MesalinkInnerResult<&'a mut T>
+pub(crate) fn sanitize_ptr_for_mut_ref<'a, T>(ptr: Option<Box<T>>) -> MesalinkInnerResult<Box<T>>
 where
     T: MesalinkOpaquePointerType,
 {
-    if ptr.is_null() {
-        return Err(error!(MesalinkBuiltinError::NullPointer.into()));
-    }
-    let obj_ref: &mut T = unsafe { &mut *ptr };
-    if obj_ref.check_magic() {
-        Ok(obj_ref)
-    } else {
-        Err(error!(MesalinkBuiltinError::MalformedObject.into()))
+    match ptr {
+        Some(obj) => match obj.check_magic() {
+            true => Ok(obj),
+            false => Err(error!(MesalinkBuiltinError::MalformedObject.into())),
+        },
+        None => Err(error!(MesalinkBuiltinError::NullPointer.into())),
     }
 }

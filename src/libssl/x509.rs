@@ -83,13 +83,13 @@ impl MESALINK_X509 {
 /// void X509_free(X509 *a);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_X509_free(x509_ptr: *mut MESALINK_X509) {
+pub extern "C" fn mesalink_X509_free(x509_ptr: Option<Box<MESALINK_X509>>) {
     let _ = check_inner_result!(inner_mesalink_x509_free(x509_ptr), SSL_FAILURE);
 }
 
-fn inner_mesalink_x509_free(x509_ptr: *mut MESALINK_X509) -> MesalinkInnerResult<c_int> {
-    let _ = sanitize_ptr_for_mut_ref(x509_ptr)?;
-    let _ = unsafe { Box::from_raw(x509_ptr) };
+fn inner_mesalink_x509_free(x509_ptr: Option<Box<MESALINK_X509>>) -> MesalinkInnerResult<c_int> {
+    let x509 = sanitize_ptr_for_mut_ref(x509_ptr)?;
+    drop(x509);
     Ok(SSL_SUCCESS)
 }
 
@@ -125,15 +125,15 @@ impl<'a> MESALINK_X509_NAME {
 /// void X509_free(X509 *a);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_X509_NAME_free(x509_name_ptr: *mut MESALINK_X509_NAME) {
+pub extern "C" fn mesalink_X509_NAME_free(x509_name_ptr: Option<Box<MESALINK_X509_NAME>>) {
     let _ = check_inner_result!(inner_mesalink_x509_name_free(x509_name_ptr), SSL_FAILURE);
 }
 
 fn inner_mesalink_x509_name_free(
-    x509_name_ptr: *mut MESALINK_X509_NAME,
+    x509_name_ptr: Option<Box<MESALINK_X509_NAME>>,
 ) -> MesalinkInnerResult<c_int> {
-    let _ = sanitize_ptr_for_mut_ref(x509_name_ptr)?;
-    let _ = unsafe { Box::from_raw(x509_name_ptr) };
+    let x509_name = sanitize_ptr_for_mut_ref(x509_name_ptr)?;
+    drop(x509_name);
     Ok(SSL_SUCCESS)
 }
 
@@ -148,7 +148,7 @@ fn inner_mesalink_x509_name_free(
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_X509_get_alt_subject_names(
-    x509_ptr: *mut MESALINK_X509,
+    x509_ptr: Option<Box<MESALINK_X509>>,
 ) -> *mut MESALINK_STACK_MESALINK_X509_NAME {
     check_inner_result!(
         inner_mesalink_x509_get_alt_subject_names(x509_ptr),
@@ -157,7 +157,7 @@ pub extern "C" fn mesalink_X509_get_alt_subject_names(
 }
 
 fn inner_mesalink_x509_get_alt_subject_names(
-    x509_ptr: *mut MESALINK_X509,
+    x509_ptr: Option<Box<MESALINK_X509>>,
 ) -> MesalinkInnerResult<*mut MESALINK_STACK_MESALINK_X509_NAME> {
     let cert = sanitize_ptr_for_ref(x509_ptr)?;
     let x509 = webpki::EndEntityCert::from(&cert.inner.0)
@@ -190,14 +190,14 @@ fn inner_mesalink_x509_get_alt_subject_names(
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_X509_get_subject(
-    x509_ptr: *mut MESALINK_X509,
+    x509_ptr: Option<Box<MESALINK_X509>>,
 ) -> *mut MESALINK_X509_NAME {
     check_inner_result!(inner_mesalink_x509_get_subject(x509_ptr), ptr::null_mut())
 }
 
 fn inner_mesalink_x509_get_subject(
-    x509_ptr: *mut MESALINK_X509,
-) -> MesalinkInnerResult<*mut MESALINK_X509_NAME> {
+    x509_ptr: Option<Box<MESALINK_X509>>,
+) -> MesalinkInnerResult<Box<MESALINK_X509_NAME>> {
     let cert = sanitize_ptr_for_ref(x509_ptr)?;
     let x509 = webpki::EndEntityCert::from(&cert.inner.0)
         .map_err(|e| error!(rustls::TLSError::WebPKIError(e).into()))?;
@@ -226,7 +226,7 @@ fn inner_mesalink_x509_get_subject(
     value.extend_from_slice(subject);
     value.shrink_to_fit();
     let x509_name = MESALINK_X509_NAME::new(&value);
-    Ok(Box::into_raw(Box::new(x509_name)) as *mut MESALINK_X509_NAME)
+    Ok(Box::new(x509_name))
 }
 
 /// `X509_get_subject_name` - returns the subject of x as a human readable
@@ -240,7 +240,7 @@ fn inner_mesalink_x509_get_subject(
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_X509_get_subject_name(
-    x509_ptr: *mut MESALINK_X509,
+    x509_ptr: Option<Box<MESALINK_X509>>,
 ) -> *mut MESALINK_X509_NAME {
     check_inner_result!(
         inner_mesalink_x509_get_subject_name(x509_ptr),
@@ -249,8 +249,8 @@ pub extern "C" fn mesalink_X509_get_subject_name(
 }
 
 fn inner_mesalink_x509_get_subject_name(
-    x509_ptr: *mut MESALINK_X509,
-) -> MesalinkInnerResult<*mut MESALINK_X509_NAME> {
+    x509_ptr: Option<Box<MESALINK_X509>>,
+) -> MesalinkInnerResult<Box<MESALINK_X509_NAME>> {
     let cert = sanitize_ptr_for_ref(x509_ptr)?;
     let x509 = webpki::EndEntityCert::from(&cert.inner.0)
         .map_err(|e| error!(rustls::TLSError::WebPKIError(e).into()))?;
@@ -306,7 +306,7 @@ fn inner_mesalink_x509_get_subject_name(
         .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()));
 
     let x509_name = MESALINK_X509_NAME::new(subject_name.as_bytes());
-    Ok(Box::into_raw(Box::new(x509_name)) as *mut MESALINK_X509_NAME)
+    Ok(Box::new(x509_name))
 }
 
 /// `X509_NAME_oneline` - prints an ASCII version of a to buf. If buf is NULL
@@ -321,7 +321,7 @@ fn inner_mesalink_x509_get_subject_name(
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_X509_NAME_oneline(
-    x509_name_ptr: *mut MESALINK_X509_NAME,
+    x509_name_ptr: Option<Box<MESALINK_X509_NAME>>,
     buf_ptr: *mut c_char,
     size: c_int,
 ) -> *mut c_char {
@@ -332,14 +332,14 @@ pub extern "C" fn mesalink_X509_NAME_oneline(
 }
 
 fn inner_mesalink_x509_name_oneline(
-    x509_name_ptr: *mut MESALINK_X509_NAME,
+    x509_name_ptr: Option<Box<MESALINK_X509_NAME>>,
     buf_ptr: *mut c_char,
     buf_len: c_int,
 ) -> MesalinkInnerResult<*mut c_char> {
     let x509_name = sanitize_ptr_for_ref(x509_name_ptr)?;
     let buf_len: usize = buf_len as usize;
     unsafe {
-        let name: &[c_char] = &*(x509_name.name.as_slice() as *const [u8] as *const [c_char]);
+        let name: &[c_char] = &*(x509_name.as_ref().name.as_slice() as *const [u8] as *const [c_char]);
         let name_len: usize = name.len();
         if buf_ptr.is_null() {
             return Err(error!(MesalinkBuiltinError::NullPointer.into()));
@@ -370,10 +370,10 @@ mod tests {
         let certs = pemfile::certs(&mut certs_io).unwrap();
         assert_eq!(true, certs.len() > 0);
         let x509 = MESALINK_X509::new(certs[0].clone());
-        let x509_ptr = Box::into_raw(Box::new(x509)) as *mut MESALINK_X509;
+        let x509_ptr = Box::new(x509);
 
         let buf_1 = [0u8; 255];
-        let subject_der_ptr = mesalink_X509_get_subject(x509_ptr);
+        let subject_der_ptr = mesalink_X509_get_subject(Some(x509_ptr));
         assert_ne!(subject_der_ptr, ptr::null_mut());
         let _ = mesalink_X509_NAME_oneline(
             subject_der_ptr as *mut MESALINK_X509_NAME,
@@ -419,11 +419,11 @@ mod tests {
 
     #[test]
     fn x509_null_pointer() {
-        mesalink_X509_free(ptr::null_mut());
-        mesalink_X509_NAME_free(ptr::null_mut());
+        mesalink_X509_free(None);
+        mesalink_X509_NAME_free(None);
         assert_eq!(
             ptr::null(),
-            mesalink_X509_NAME_oneline(ptr::null_mut(), ptr::null_mut(), 10)
+            mesalink_X509_NAME_oneline(None, ptr::null_mut(), 10)
         );
     }
 }

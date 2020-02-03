@@ -69,13 +69,13 @@ pub extern "C" fn mesalink_sk_X509_new_null() -> *mut MESALINK_STACK_MESALINK_X5
 /// int sk_X509_num(const STACK_OF(X509) *sk);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_sk_X509_num(stack_ptr: *const MESALINK_STACK_MESALINK_X509) -> c_int {
+pub extern "C" fn mesalink_sk_X509_num(stack_ptr: Option<Box<MESALINK_STACK_MESALINK_X509>>) -> c_int {
     check_inner_result!(inner_mesalink_sk_X509_num(stack_ptr), SSL_FAILURE)
 }
 
 #[allow(non_snake_case)]
 fn inner_mesalink_sk_X509_num(
-    stack_ptr: *const MESALINK_STACK_MESALINK_X509,
+    stack_ptr: Option<Box<MESALINK_STACK_MESALINK_X509>>,
 ) -> MesalinkInnerResult<c_int> {
     let stack = sanitize_const_ptr_for_ref(stack_ptr)?;
     Ok(stack.stack.len() as c_int)
@@ -91,7 +91,7 @@ fn inner_mesalink_sk_X509_num(
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_sk_X509_value(
-    stack_ptr: *const MESALINK_STACK_MESALINK_X509,
+    stack_ptr: Option<Box<MESALINK_STACK_MESALINK_X509>>,
     index: c_int,
 ) -> *const MESALINK_X509 {
     check_inner_result!(inner_mesalink_sk_X509_value(stack_ptr, index), ptr::null())
@@ -99,7 +99,7 @@ pub extern "C" fn mesalink_sk_X509_value(
 
 #[allow(non_snake_case)]
 fn inner_mesalink_sk_X509_value(
-    stack_ptr: *const MESALINK_STACK_MESALINK_X509,
+    stack_ptr: Option<Box<MESALINK_STACK_MESALINK_X509>>,
     index: c_int,
 ) -> MesalinkInnerResult<*const MESALINK_X509> {
     let stack = sanitize_const_ptr_for_ref(stack_ptr)?;
@@ -119,8 +119,8 @@ fn inner_mesalink_sk_X509_value(
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_sk_X509_push(
-    stack_ptr: *mut MESALINK_STACK_MESALINK_X509,
-    item_ptr: *const MESALINK_X509,
+    stack_ptr: Option<Box<MESALINK_STACK_MESALINK_X509>>,
+    item_ptr: Option<Box<MESALINK_X509>>,
 ) -> c_int {
     check_inner_result!(
         inner_mesalink_sk_X509_push(stack_ptr, item_ptr),
@@ -130,12 +130,12 @@ pub extern "C" fn mesalink_sk_X509_push(
 
 #[allow(non_snake_case)]
 fn inner_mesalink_sk_X509_push(
-    stack_ptr: *mut MESALINK_STACK_MESALINK_X509,
-    item_ptr: *const MESALINK_X509,
+    stack_ptr: Option<Box<MESALINK_STACK_MESALINK_X509>>,
+    item_ptr: Option<Box<MESALINK_X509>>,
 ) -> MesalinkInnerResult<c_int> {
-    let stack = sanitize_ptr_for_mut_ref(stack_ptr)?;
+    let mut stack = sanitize_ptr_for_mut_ref(stack_ptr)?;
     let item = sanitize_const_ptr_for_ref(item_ptr)?;
-    stack.stack.push(item.clone());
+    stack.stack.push(item.as_ref().clone());
     Ok(SSL_SUCCESS)
 }
 
@@ -148,16 +148,16 @@ fn inner_mesalink_sk_X509_push(
 /// void sk_X509_free(const STACK_OF(X509) *sk);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_sk_X509_free(stack_ptr: *mut MESALINK_STACK_MESALINK_X509) {
+pub extern "C" fn mesalink_sk_X509_free(stack_ptr: Option<Box<MESALINK_STACK_MESALINK_X509>>) {
     let _ = check_inner_result!(inner_mesalink_sk_X509_free(stack_ptr), SSL_FAILURE);
 }
 
 #[allow(non_snake_case)]
 fn inner_mesalink_sk_X509_free(
-    stack_ptr: *mut MESALINK_STACK_MESALINK_X509,
+    stack_ptr: Option<Box<MESALINK_STACK_MESALINK_X509>>,
 ) -> MesalinkInnerResult<c_int> {
-    let _ = sanitize_ptr_for_mut_ref(stack_ptr)?;
-    let _ = unsafe { Box::from_raw(stack_ptr) };
+    let stack = sanitize_ptr_for_mut_ref(stack_ptr)?;
+    drop(stack);
     Ok(SSL_SUCCESS)
 }
 
@@ -210,14 +210,14 @@ pub extern "C" fn mesalink_sk_X509_NAME_new_null() -> *mut MESALINK_STACK_MESALI
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_sk_X509_NAME_num(
-    stack_ptr: *const MESALINK_STACK_MESALINK_X509_NAME,
+    stack_ptr: Option<Box<MESALINK_STACK_MESALINK_X509_NAME>>,
 ) -> c_int {
     check_inner_result!(inner_mesalink_sk_X509_NAME_num(stack_ptr), SSL_FAILURE)
 }
 
 #[allow(non_snake_case)]
 fn inner_mesalink_sk_X509_NAME_num(
-    stack_ptr: *const MESALINK_STACK_MESALINK_X509_NAME,
+    stack_ptr: Option<Box<MESALINK_STACK_MESALINK_X509_NAME>>,
 ) -> MesalinkInnerResult<c_int> {
     let stack = sanitize_const_ptr_for_ref(stack_ptr)?;
     Ok(stack.stack.len() as c_int)
@@ -233,7 +233,7 @@ fn inner_mesalink_sk_X509_NAME_num(
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_sk_X509_NAME_value(
-    stack_ptr: *const MESALINK_STACK_MESALINK_X509_NAME,
+    stack_ptr: Option<Box<MESALINK_STACK_MESALINK_X509_NAME>>,
     index: c_int,
 ) -> *const MESALINK_X509_NAME {
     check_inner_result!(
@@ -243,16 +243,16 @@ pub extern "C" fn mesalink_sk_X509_NAME_value(
 }
 
 #[allow(non_snake_case)]
-fn inner_mesalink_sk_X509_NAME_value(
-    stack_ptr: *const MESALINK_STACK_MESALINK_X509_NAME,
+fn inner_mesalink_sk_X509_NAME_value<'a>(
+    stack_ptr: Option<Box<MESALINK_STACK_MESALINK_X509_NAME>>,
     index: c_int,
-) -> MesalinkInnerResult<*const MESALINK_X509_NAME> {
+) -> MesalinkInnerResult<&'a MESALINK_X509_NAME> {
     let stack = sanitize_const_ptr_for_ref(stack_ptr)?;
     let item = stack
         .stack
         .get(index as usize)
         .ok_or(error!(MesalinkBuiltinError::BadFuncArg.into()))?;
-    Ok(item as *const MESALINK_X509_NAME)
+    Ok(item)
 }
 
 /// `sk_X509_NAME_push` - appends ptr to sk.
@@ -264,8 +264,8 @@ fn inner_mesalink_sk_X509_NAME_value(
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_sk_X509_NAME_push(
-    stack_ptr: *mut MESALINK_STACK_MESALINK_X509_NAME,
-    item_ptr: *const MESALINK_X509_NAME,
+    stack_ptr: Option<Box<MESALINK_STACK_MESALINK_X509_NAME>>,
+    item_ptr: Option<Box<MESALINK_X509_NAME>>,
 ) -> c_int {
     check_inner_result!(
         inner_mesalink_sk_X509_NAME_push(stack_ptr, item_ptr),
@@ -275,12 +275,12 @@ pub extern "C" fn mesalink_sk_X509_NAME_push(
 
 #[allow(non_snake_case)]
 fn inner_mesalink_sk_X509_NAME_push(
-    stack_ptr: *mut MESALINK_STACK_MESALINK_X509_NAME,
-    item_ptr: *const MESALINK_X509_NAME,
+    stack_ptr: Option<Box<MESALINK_STACK_MESALINK_X509_NAME>>,
+    item_ptr: Option<Box<MESALINK_X509_NAME>>,
 ) -> MesalinkInnerResult<c_int> {
-    let stack = sanitize_ptr_for_mut_ref(stack_ptr)?;
+    let mut stack = sanitize_ptr_for_mut_ref(stack_ptr)?;
     let item = sanitize_const_ptr_for_ref(item_ptr)?;
-    stack.stack.push(item.clone());
+    stack.stack.push(item.as_ref().clone());
     Ok(SSL_SUCCESS)
 }
 
@@ -293,16 +293,16 @@ fn inner_mesalink_sk_X509_NAME_push(
 /// void sk_X509_NAME_free(const STACK_OF(X509_NAME) *sk);
 /// ```
 #[no_mangle]
-pub extern "C" fn mesalink_sk_X509_NAME_free(stack_ptr: *mut MESALINK_STACK_MESALINK_X509_NAME) {
+pub extern "C" fn mesalink_sk_X509_NAME_free(stack_ptr: Option<Box<MESALINK_STACK_MESALINK_X509_NAME>>) {
     let _ = check_inner_result!(inner_mesalink_sk_X509_NAME_free(stack_ptr), SSL_FAILURE);
 }
 
 #[allow(non_snake_case)]
 fn inner_mesalink_sk_X509_NAME_free(
-    stack_ptr: *mut MESALINK_STACK_MESALINK_X509_NAME,
+    stack_ptr: Option<Box<MESALINK_STACK_MESALINK_X509_NAME>>,
 ) -> MesalinkInnerResult<c_int> {
-    let _ = sanitize_ptr_for_mut_ref(stack_ptr)?;
-    let _ = unsafe { Box::from_raw(stack_ptr) };
+    let stack = sanitize_ptr_for_mut_ref(stack_ptr)?;
+    drop(stack);
     Ok(SSL_SUCCESS)
 }
 

@@ -36,7 +36,7 @@ use std::{io, ptr};
 ///
 #[no_mangle]
 pub extern "C" fn mesalink_PEM_read_bio_PrivateKey(
-    bio_ptr: *mut MESALINK_BIO<'_>,
+    bio_ptr: Option<Box<MESALINK_BIO<'_>>>,
     pkey_pp: *mut *mut MESALINK_EVP_PKEY,
     _cb: *mut c_void,
     _u: *mut c_void,
@@ -48,7 +48,7 @@ pub extern "C" fn mesalink_PEM_read_bio_PrivateKey(
 }
 
 fn inner_mesalink_pem_read_bio_privatekey(
-    bio_ptr: *mut MESALINK_BIO<'_>,
+    bio_ptr: Option<Box<MESALINK_BIO<'_>>>,
     pkey_pp: *mut *mut MESALINK_EVP_PKEY,
 ) -> MesalinkInnerResult<*mut MESALINK_EVP_PKEY> {
     let bio = sanitize_ptr_for_mut_ref(bio_ptr)?;
@@ -57,7 +57,6 @@ fn inner_mesalink_pem_read_bio_privatekey(
         .map_err(|_| error!(MesalinkBuiltinError::BadFuncArg.into()))?;
     let pkey = MESALINK_EVP_PKEY::new(key);
     let pkey_ptr = Box::into_raw(Box::new(pkey)) as *mut MESALINK_EVP_PKEY;
-
     if !pkey_pp.is_null() {
         unsafe {
             let p = &mut *pkey_pp;
@@ -102,7 +101,7 @@ pub extern "C" fn mesalink_PEM_read_PrivateKey(
 /// ```
 #[no_mangle]
 pub extern "C" fn mesalink_PEM_read_bio_X509(
-    bio_ptr: *mut MESALINK_BIO<'_>,
+    bio_ptr: Option<Box<MESALINK_BIO<'_>>>,
     x509_pp: *mut *mut MESALINK_X509,
     _cb: *mut c_void,
     _u: *mut c_void,
@@ -114,7 +113,7 @@ pub extern "C" fn mesalink_PEM_read_bio_X509(
 }
 
 fn inner_mesalink_pem_read_bio_x509(
-    bio_ptr: *mut MESALINK_BIO<'_>,
+    bio_ptr: Option<Box<MESALINK_BIO<'_>>>,
     x509_pp: *mut *mut MESALINK_X509,
 ) -> MesalinkInnerResult<*mut MESALINK_X509> {
     let bio = sanitize_ptr_for_mut_ref(bio_ptr)?;
