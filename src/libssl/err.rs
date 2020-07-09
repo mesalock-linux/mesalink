@@ -146,9 +146,7 @@
 //! ```
 
 use libc::{self, c_char, c_ulong, size_t};
-use rustls;
 use std::{error, fmt, io, slice};
-use webpki;
 
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -1023,10 +1021,9 @@ mod tests {
         ];
 
         for error in mesalink_errors.iter() {
-            use std::error::Error;
             let mesalink_error = error!(MesalinkErrorType::Builtin(error.clone()));
             let error_code = ErrorCode::from(&mesalink_error);
-            println!("{}, {}", error, error.description());
+            println!("{}, {}", error, error.to_string());
             assert_eq!(true, 0 == error_code as c_ulong >> 24);
             assert_eq!(true, 0 != error_code as c_ulong & 0xFFFFFF);
         }

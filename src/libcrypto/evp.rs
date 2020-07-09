@@ -18,7 +18,6 @@ use crate::libcrypto::{CRYPTO_FAILURE, CRYPTO_SUCCESS};
 use crate::libssl::err::MesalinkInnerResult;
 use crate::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use libc::c_int;
-use rustls;
 
 /// A structure for storing keys. Currently only RSA/ECC private keys are
 /// supported.

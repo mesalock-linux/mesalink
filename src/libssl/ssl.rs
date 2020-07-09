@@ -45,10 +45,8 @@ use crate::libcrypto::evp::MESALINK_EVP_PKEY;
 use crate::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use libc::{c_char, c_int, c_long, c_uchar, c_void, size_t};
 use parking_lot::RwLock;
-use rustls;
 use std::sync::Arc;
 use std::{ffi, fs, io, net, path, ptr, slice};
-use webpki;
 
 // Trait imports
 use std::ops::{Deref, DerefMut};
@@ -2508,8 +2506,6 @@ mod util {
     pub(crate) const CONST_NONE_STR: &[u8] = b" NONE \0";
     pub(crate) const CONST_TLS12_STR: &[u8] = b"TLS1.2\0";
     pub const CONST_TLS13_STR: &[u8] = b"TLS1.3\0";
-
-    use rustls;
 
     pub fn try_get_context_certs_and_key(
         ctx: &mut ssl::MESALINK_CTX_ARC,

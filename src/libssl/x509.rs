@@ -20,10 +20,7 @@ use crate::error_san::*;
 use crate::{MesalinkOpaquePointerType, MAGIC, MAGIC_SIZE};
 use libc::{c_char, c_int};
 use ring::io::der;
-use rustls;
 use std::{ptr, slice, str};
-use untrusted;
-use webpki;
 
 /// An OpenSSL X509 object
 #[allow(non_camel_case_types)]
