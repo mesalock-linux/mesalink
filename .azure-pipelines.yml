@@ -61,10 +61,6 @@ jobs:
         rustup_target: 'x86_64-linux-android'
         c_target: 'x86_64-linux-android'
         arch: 'x86_64_android'
-      x86_64_windows_mingw:
-        rustup_target: 'x86_64-pc-windows-gnu'
-        c_target: 'x86_64-windows-gnu'
-        arch: 'x86_64_windows_mingw'
   steps:
     - template: ci/azure/rustup.yml
       parameters:
