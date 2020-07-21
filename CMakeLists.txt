@@ -50,7 +50,7 @@ string(APPEND CONFIG_FEATURES verifier,)
 
 configure_file(${PROJECT_SOURCE_DIR}/mesalink/options.h.cmake.in ${PROJECT_SOURCE_DIR}/mesalink/options.h @ONLY)
 
-# Build TabbySSL and its examples
+# Build MesaLink and its examples
 cargo_build(NAME mesalink CROSS_RUST_TARGET ${RUST_TARGET} FEATURES ${CONFIG_FEATURES})
 
 if(UNIX AND HAVE_EXAMPLES)
@@ -63,7 +63,7 @@ if(UNIX AND HAVE_EXAMPLES)
     target_link_libraries(server mesalink)
 endif()
 
-# Install the TabbySSL shared library and headers
+# Install the MesaLink shared library and headers
 
 include(GNUInstallDirs)
 get_property(install_lib_files GLOBAL PROPERTY install_lib_files_property)
