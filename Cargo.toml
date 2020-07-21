@@ -27,9 +27,9 @@ jemalloc_allocator = ["jemallocator"]
 
 [dependencies]
 rustls = { git = "https://github.com/ctz/rustls", version = "0.16.0", default-features = false }
-ring = "0.16.10"
-webpki = "0.21.2"
-webpki-roots = "0.19.0"
+ring = "0.16.15"
+webpki = "0.21.3"
+webpki-roots = "0.20.0"
 sct = "0.6.0"
 untrusted = "0.7"
 env_logger = "0.7"
@@ -37,8 +37,8 @@ libc = "0.2"
 lazy_static = "1.4"
 enum_to_u8_slice_derive = "0.2"
 bitflags = "1.2"
-base64 = "0.11"
-parking_lot = "0.10"
+base64 = "0.12.3"
+parking_lot = "0.11.0"
 jemallocator = { version = "0.3", optional = true }
 
 [dev-dependencies]

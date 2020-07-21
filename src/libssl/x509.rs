@@ -38,6 +38,7 @@ impl MesalinkOpaquePointerType for MESALINK_X509 {
 
 #[allow(unused)]
 enum EndEntityOrCA<'a> {
+    EndEntity,
     CA(&'a Cert<'a>),
 }
 
@@ -47,6 +48,11 @@ struct SignedData<'a> {
     algorithm: untrusted::Input<'a>,
     signature: untrusted::Input<'a>,
 }
+#[allow(unused)]
+struct Value<'a> {
+    tlv: untrusted::Input<'a>,
+    value: untrusted::Input<'a>,
+}
 
 #[allow(unused)]
 struct Cert<'a> {
@@ -55,7 +61,7 @@ struct Cert<'a> {
     pub issuer: untrusted::Input<'a>,
     pub validity: untrusted::Input<'a>,
     pub subject: untrusted::Input<'a>,
-    pub spki: untrusted::Input<'a>,
+    pub spki: Value<'a>,
     pub basic_constraints: Option<untrusted::Input<'a>>,
     pub eku: Option<untrusted::Input<'a>>,
     pub name_constraints: Option<untrusted::Input<'a>>,
