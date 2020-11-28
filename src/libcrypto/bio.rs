@@ -187,10 +187,8 @@ impl<'a> MesalinkOpaquePointerType for MESALINK_BIO<'a> {
 
 impl<'a> MESALINK_BIO<'a> {
     fn is_initialized(&self) -> bool {
-        match self.inner {
-            MesalinkBioInner::File(_) | MesalinkBioInner::Mem(_) => true,
-            _ => false,
-        }
+        matches!(self.inner,
+            MesalinkBioInner::File(_) | MesalinkBioInner::Mem(_))
     }
 }
 
