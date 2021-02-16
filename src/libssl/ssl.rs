@@ -287,7 +287,6 @@ pub struct MESALINK_SSL {
     io: Option<net::TcpStream>,
     session: Option<RwLock<ClientOrServerSession>>,
     error: ErrorCode,
-    eof: bool,
     mode: ClientOrServerMode,
 }
 
@@ -380,7 +379,6 @@ impl MESALINK_SSL {
             io: None,
             session: None,
             error: ErrorCode::default(),
-            eof: false,
             mode: ctx.mode.clone(),
         }
     }
@@ -394,7 +392,6 @@ impl MESALINK_SSL {
                         Err(e) => return Err(e),
                         Ok((rdlen, wrlen)) => {
                             if rdlen == 0 && wrlen == 0 {
-                                self.eof = true;
                                 return Ok(0);
                             }
                         }
