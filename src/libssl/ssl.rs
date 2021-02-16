@@ -1680,21 +1680,16 @@ fn inner_mesalink_ssl_cipher_get_bits(
 pub extern "C" fn mesalink_SSL_CIPHER_get_version(
     cipher_ptr: *mut MESALINK_CIPHER,
 ) -> *const c_char {
-    check_inner_result!(
-        inner_mesalink_ssl_cipher_get_version(cipher_ptr),
-        ptr::null()
-    )
+    inner_mesalink_ssl_cipher_get_version(cipher_ptr)
 }
 
-fn inner_mesalink_ssl_cipher_get_version(
-    cipher_ptr: *mut MESALINK_CIPHER,
-) -> MesalinkInnerResult<*const c_char> {
+fn inner_mesalink_ssl_cipher_get_version(cipher_ptr: *mut MESALINK_CIPHER) -> *const c_char {
     match sanitize_ptr_for_ref(cipher_ptr) {
         Ok(ciphersuite) => {
             let version = util::suite_to_version_str(ciphersuite.ciphersuite.suite.get_u16());
-            Ok(version.as_ptr() as *const c_char)
+            version.as_ptr() as *const c_char
         }
-        Err(_) => Ok(util::CONST_NONE_STR.as_ptr() as *const c_char),
+        Err(_) => util::CONST_NONE_STR.as_ptr() as *const c_char,
     }
 }
 
