@@ -893,7 +893,7 @@ fn load_cert_into_root_store(ctx: &mut MESALINK_CTX, path: &path::Path) -> Mesal
 
 fn update_ctx_if_both_certs_and_key_set(ctx: &mut Arc<MESALINK_CTX>) -> MesalinkInnerResult<c_int> {
     if let Ok((certs, priv_key)) = util::try_get_context_certs_and_key(ctx) {
-        util::get_context_mut(ctx)
+        let _ = util::get_context_mut(ctx)
             .client_config
             .set_single_client_cert(certs.clone(), priv_key.clone());
         util::get_context_mut(ctx)
