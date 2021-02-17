@@ -48,8 +48,8 @@
 //! * Built-in Mozilla's CA root certificates
 //!
 
-#![deny(trivial_numeric_casts, unused_qualifications)]
-#![forbid(anonymous_parameters, unused_import_braces, unused_results, warnings)]
+#![deny(trivial_numeric_casts, unused_qualifications, warnings)]
+#![forbid(anonymous_parameters, unused_import_braces, unused_results)]
 
 #[cfg(feature = "jemalloc_allocator")]
 #[global_allocator]

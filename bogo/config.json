@@ -58,6 +58,7 @@
     "CurveTest-Server-Compressed-P-521-TLS13": "",
     "*-Ed25519": "no ed25519 yet",
     "*-Ed25519-*": "",
+    "Ed25519DefaultDisable-*": "",
     "GREASE-*": "not implemented",
     "LargeMessage-Reject": "",
     "SkipEarlyData*": "no 0rtt support",
@@ -260,7 +261,6 @@
     "UnsolicitedServerNameAck-TLS12": ":PEER_MISBEHAVIOUR:",
     "UnsolicitedServerNameAck-TLS13": ":PEER_MISBEHAVIOUR:",
     "TicketSessionIDLength-33-TLS12": ":BAD_HANDSHAKE_MSG:",
-    "Ed25519DefaultDisable-NoAccept": ":PEER_MISBEHAVIOUR:",
     "SendUnknownExtensionOnCertificate-TLS13": ":PEER_MISBEHAVIOUR:",
     "SendDuplicateExtensionsOnCerts-TLS13": ":PEER_MISBEHAVIOUR:",
     "SignedCertificateTimestampListEmpty-Client-TLS12": ":PEER_MISBEHAVIOUR:",
@@ -301,7 +301,15 @@
     "SecondServerHelloWrongVersion-TLS13": ":INCOMPATIBLE:",
     "EarlyDataVersionDowngrade-Client-TLS13": ":WRONG_VERSION:",
     "EarlyDataWithoutResume-Client-TLS13": ":PEER_MISBEHAVIOUR:",
-    "EarlyDataVersionDowngrade-Client-TLS13": ":PEER_MISBEHAVIOUR:"
+    "EarlyDataVersionDowngrade-Client-TLS13": ":PEER_MISBEHAVIOUR:",
+    "FragmentAcrossChangeCipherSpec-Client": ":PEER_MISBEHAVIOUR:",
+    "FragmentAcrossChangeCipherSpec-Client-Packed": ":PEER_MISBEHAVIOUR:",
+    "FragmentAcrossChangeCipherSpec-Client-Resume": ":PEER_MISBEHAVIOUR:",
+    "FragmentAcrossChangeCipherSpec-Client-Resume-Packed": ":PEER_MISBEHAVIOUR:",
+    "FragmentAcrossChangeCipherSpec-Server": ":PEER_MISBEHAVIOUR:",
+    "FragmentAcrossChangeCipherSpec-Server-Packed": ":PEER_MISBEHAVIOUR:",
+    "FragmentAcrossChangeCipherSpec-Server-Resume": ":PEER_MISBEHAVIOUR:",
+    "FragmentAcrossChangeCipherSpec-Server-Resume-Packed": ":PEER_MISBEHAVIOUR:"
   },
   "TestLocalErrorMap": {
     "SendServerHelloAsHelloRetryRequest": "remote error: error decoding message",
