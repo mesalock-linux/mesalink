@@ -301,7 +301,15 @@
     "SecondServerHelloWrongVersion-TLS13": ":INCOMPATIBLE:",
     "EarlyDataVersionDowngrade-Client-TLS13": ":WRONG_VERSION:",
     "EarlyDataWithoutResume-Client-TLS13": ":PEER_MISBEHAVIOUR:",
-    "EarlyDataVersionDowngrade-Client-TLS13": ":PEER_MISBEHAVIOUR:"
+    "EarlyDataVersionDowngrade-Client-TLS13": ":PEER_MISBEHAVIOUR:",
+    "FragmentAcrossChangeCipherSpec-Client": ":PEER_MISBEHAVIOUR:",
+    "FragmentAcrossChangeCipherSpec-Client-Packed": ":PEER_MISBEHAVIOUR:",
+    "FragmentAcrossChangeCipherSpec-Client-Resume": ":PEER_MISBEHAVIOUR:",
+    "FragmentAcrossChangeCipherSpec-Client-Resume-Packed": ":PEER_MISBEHAVIOUR:",
+    "FragmentAcrossChangeCipherSpec-Server": ":PEER_MISBEHAVIOUR:",
+    "FragmentAcrossChangeCipherSpec-Server-Packed": ":PEER_MISBEHAVIOUR:",
+    "FragmentAcrossChangeCipherSpec-Server-Resume": ":PEER_MISBEHAVIOUR:",
+    "FragmentAcrossChangeCipherSpec-Server-Resume-Packed": ":PEER_MISBEHAVIOUR:"
   },
   "TestLocalErrorMap": {
     "SendServerHelloAsHelloRetryRequest": "remote error: error decoding message",
