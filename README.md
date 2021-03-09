@@ -24,7 +24,7 @@ THIS SOFTWARE.
 
 ## Release history
 
-* 1.0.0/0.10.0 (04-02-2019)
+* 1.0.0/0.10.0 (Apr 2, 2019)
   - CMake support; see the updated
     [CROSS_COMPILE.md](https://github.com/mesalock-linux/mesalink/blob/master/CROSS_COMPILE.md)
     for cross-compilation instructions
@@ -36,7 +36,7 @@ THIS SOFTWARE.
   - Optional jemalloc memory allocator with
     [jemallocator](https://crates.io/crates/jemallocator)
   - Renovated website
-* 0.8.0 (01-25-2019)
+* 0.8.0 (Jan 25, 2019)
   - 40 new OpenSSL APIs, covering BIO, EVP_PKEY, PEM and X509
   - SSL_CTX and SSL are thread-safe
   - Configurable session cache
