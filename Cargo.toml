@@ -29,7 +29,7 @@ jemalloc_allocator = ["jemallocator"]
 rustls = { version = "0.19.0", default-features = false }
 ring = "0.16.19"
 webpki = "0.21.4"
-webpki-roots = "0.21.0"
+webpki-roots = "1.0.10"
 sct = "0.6.0"
 untrusted = "0.7"
 env_logger = "0.8.2"
